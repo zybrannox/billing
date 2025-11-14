@@ -1,86 +1,129 @@
-import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
-import { useProjectStore } from "../../store/useProjectStore";
+import { useForm } from "react-hook-form";
+import axios from "axios";
 
 const AddProject = () => {
-  const navigate = useNavigate();
-  const { addProject } = useProjectStore();
-
   const { register, handleSubmit } = useForm();
+  const navigate = useNavigate();
 
-  function onSubmit(data: any) {
-    const files = data.images as FileList;
-const images = Array.from(files).map((file) =>
-  URL.createObjectURL(file)
-);
+  const onSubmit = async (data: any) => {
+    try {
+      const formData = new FormData();
+      formData.append("name", data.name);
+      formData.append("assignee", data.assignee);
+      formData.append("start", data.start);
+      formData.append("delivery", data.delivery);
+      formData.append("status", data.status);
+      formData.append("priority", data.priority);
+      formData.append("description", data.description);
+      formData.append("client_status", data.client_status);
 
-    const newProject = {
-      id: `P-${Math.floor(Math.random() * 9000) + 1000}`,
-      name: data.name,
-      assignee: data.assignee,
-      delivery: data.delivery,
-      priority: data.priority,
-      clientStatus: data.client_status,
-      description: data.description,
-      started: data.started,
-      status: data.status,
-      images,
-    };
+      for (let i = 0; i < data.images.length; i++) {
+        formData.append("images", data.images[i]);
+      }
 
-    addProject(newProject);
-    navigate("/");
-  }
+      await axios.post("http://localhost:8000/projects/", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      navigate("/dashboard");
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   return (
-    <div className="min-h-screen p-6 bg-gray-50 flex flex-col items-center">
-      <h1 className="text-2xl font-bold text-blue-700 mb-6">Add New Project</h1>
-
+    <div className="flex items-center justify-center min-h-screen bg-gray-100 px-4">
       <form
         onSubmit={handleSubmit(onSubmit)}
-        className="bg-white text-black p-6 rounded-lg shadow grid grid-cols-2 gap-3 w-[600px]"
+        className="w-full max-w-xl bg-white p-8 rounded-xl shadow-md space-y-5"
       >
-        <input {...register("name")} className="border border-black p-2 rounded" required placeholder="Project Name" />
-        <input {...register("assignee")} className="border border-black p-2 rounded" required placeholder="Assigned To" />
+        <h2 className="text-2xl font-semibold text-gray-800 text-center">
+          Add New Project
+        </h2>
 
-        <input type="date" {...register("delivery")} className="border border-black p-2 rounded" required />
+        <input
+          {...register("name")}
+          required
+          placeholder="Project Name"
+          className="input-style"
+        />
 
-        <select {...register("priority")} className="border border-black p-2 rounded">
+        <input
+          {...register("assignee")}
+          required
+          placeholder="Assigned To"
+          className="input-style"
+        />
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="text-sm text-gray-600">Start Date</label>
+            <input
+              {...register("start")}
+              required
+              type="date"
+              className="input-style"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm text-gray-600">Delivery Date</label>
+            <input
+              {...register("delivery")}
+              required
+              type="date"
+              className="input-style"
+            />
+          </div>
+        </div>
+
+        <textarea
+          {...register("description")}
+          required
+          placeholder="Description"
+          className="input-style min-h-[100px]"
+        />
+
+        <select {...register("priority")} required className="input-style">
+          <option value="">Select Priority</option>
           <option>Low</option>
           <option>Normal</option>
           <option>High</option>
           <option>Urgent</option>
         </select>
 
-        <select {...register("client_status")} className="border border-black p-2 rounded">
-          <option>Accepted</option>
-          <option>Rejected</option>
-          <option>Holded</option>
-        </select>
-
-        <textarea
-          {...register("description")}
-          placeholder="Client Description"
-          className="border border-black p-2 rounded col-span-2"
+        <input
+          {...register("client_status")}
+          required
+          placeholder="Client Status"
+          className="input-style"
         />
 
-        <input type="date" {...register("started")} className="border border-black p-2 rounded" required />
+        <input
+          {...register("status")}
+          required
+          placeholder="Project Status"
+          className="input-style"
+        />
 
-        <select {...register("status")} className="border border-black p-2 rounded">
-          <option>Pending</option>
-          <option>In Progress</option>
-          <option>Completed</option>
-        </select>
+        <div>
+          <label className="text-sm text-gray-600">Upload Images</label>
+          <input
+            type="file"
+            {...register("images")}
+            multiple
+            className="input-style py-2"
+          />
+        </div>
 
-        <input type="file" {...register("images")} multiple className="border border-black p-2 rounded col-span-2" />
-
-        <button className="bg-blue-700 text-white py-2 rounded col-span-2">
+        <button
+          type="submit"
+          className="w-full bg-black text-white py-3 rounded-lg hover:bg-gray-900 transition"
+        >
           Add Project
         </button>
       </form>
-
-      <button onClick={() => navigate("/")} className="mt-4 text-blue-600 underline">
-        Back to Dashboard
-      </button>
     </div>
   );
 };
