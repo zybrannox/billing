@@ -45,7 +45,6 @@ const AddProject = () => {
       const fd = new FormData();
       fd.append("file", files[i]);
       fd.append("upload_preset", "zybrannox_billing");
-      fd.append("cloud_name", "du9hcdtn0");
 
       try {
         const res = await axios.post(
