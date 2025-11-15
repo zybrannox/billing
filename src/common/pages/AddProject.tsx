@@ -8,118 +8,181 @@ const AddProject = () => {
 
   const onSubmit = async (data: any) => {
     try {
-      const formData = new FormData();
-      formData.append("name", data.name);
-      formData.append("assignee", data.assignee);
-      formData.append("start", data.start);
-      formData.append("delivery", data.delivery);
-      formData.append("status", data.status);
-      formData.append("priority", data.priority);
-      formData.append("description", data.description);
-      formData.append("client_status", data.client_status);
+      const imageFiles = data.images;
 
-      for (let i = 0; i < data.images.length; i++) {
-        formData.append("images", data.images[i]);
+      if (!imageFiles || imageFiles.length === 0) {
+        alert("Please upload at least 1 image.");
+        return;
       }
+      const imageUrls = await uploadImagesToCloudinary(imageFiles);
 
-      await axios.post("http://localhost:8000/projects/", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const payload = {
+        name: data.name,
+        assignee: data.assignee,
+        started: data.start,
+        delivery: data.delivery,
+        status: data.status,
+        priority: data.priority,
+        description: data.description,
+        client_status: data.client_status,
+        images: imageUrls,
+      };
+      console.log(payload);
 
-      navigate("/dashboard");
+
+      await axios.post("http://localhost:8000/projects/", payload);
+
+      navigate("/");
     } catch (error) {
       console.error(error);
     }
   };
 
+  const uploadImagesToCloudinary = async (files: FileList) => {
+    const uploadedUrls: string[] = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const fd = new FormData();
+      fd.append("file", files[i]);
+      fd.append("upload_preset", "zybrannox_billing");
+      fd.append("cloud_name", "du9hcdtn0");
+
+      try {
+        const res = await axios.post(
+          "https://api.cloudinary.com/v1_1/du9hcdtn0/image/upload",
+          fd
+        );
+
+        uploadedUrls.push(res.data.secure_url);
+      } catch (error) {
+        console.error("❌ Cloudinary upload error", error);
+      }
+    }
+
+    return uploadedUrls;
+  };
+
+
+
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100 px-4">
       <form
         onSubmit={handleSubmit(onSubmit)}
-        className="w-full max-w-xl bg-white p-8 rounded-xl shadow-md space-y-5"
+        className="w-full max-w-2xl bg-white p-10 rounded-2xl shadow-lg space-y-6 border border-gray-200"
       >
-        <h2 className="text-2xl font-semibold text-gray-800 text-center">
+        <h2 className="text-3xl font-semibold text-gray-900 text-center mb-4">
           Add New Project
         </h2>
 
-        <input
-          {...register("name")}
-          required
-          placeholder="Project Name"
-          className="input-style"
-        />
+        {/* Project Name */}
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-gray-700">Project Name</label>
+          <input
+            {...register("name")}
+            required
+            placeholder="Enter project name"
+            className="input-style w-full bg-white text-black border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-black focus:outline-none"
+          />
+        </div>
 
-        <input
-          {...register("assignee")}
-          required
-          placeholder="Assigned To"
-          className="input-style"
-        />
+        {/* Assignee */}
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-gray-700">Assigned To</label>
+          <input
+            {...register("assignee")}
+            required
+            placeholder="Enter assignee name"
+            className="input-style w-full bg-white text-black border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-black focus:outline-none"
+          />
+        </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-sm text-gray-600">Start Date</label>
+        {/* Dates */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-700">Start Date</label>
             <input
               {...register("start")}
               required
               type="date"
-              className="input-style"
+              className="input-style w-full bg-white text-black border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-black focus:outline-none"
             />
           </div>
 
-          <div>
-            <label className="text-sm text-gray-600">Delivery Date</label>
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-700">Delivery Date</label>
             <input
               {...register("delivery")}
               required
               type="date"
-              className="input-style"
+              className="input-style w-full bg-white text-black border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-black focus:outline-none"
             />
           </div>
         </div>
 
-        <textarea
-          {...register("description")}
-          required
-          placeholder="Description"
-          className="input-style min-h-[100px]"
-        />
+        {/* Description */}
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-gray-700">Description</label>
+          <textarea
+            {...register("description")}
+            required
+            placeholder="Enter project description"
+            className="input-style w-full min-h-[120px] bg-white text-black border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-black focus:outline-none"
+          />
+        </div>
 
-        <select {...register("priority")} required className="input-style">
-          <option value="">Select Priority</option>
-          <option>Low</option>
-          <option>Normal</option>
-          <option>High</option>
-          <option>Urgent</option>
-        </select>
+        {/* Priority */}
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-gray-700">Priority</label>
+          <select
+            {...register("priority")}
+            required
+            className="input-style w-full bg-white text-black border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-black focus:outline-none"
+          >
+            <option value="">Select Priority</option>
+            <option>Low</option>
+            <option>Normal</option>
+            <option>High</option>
+            <option>Urgent</option>
+          </select>
+        </div>
 
-        <input
-          {...register("client_status")}
-          required
-          placeholder="Client Status"
-          className="input-style"
-        />
+        {/* Client Status */}
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-gray-700">Client Status</label>
+          <input
+            {...register("client_status")}
+            required
+            placeholder="Enter client status"
+            className="input-style w-full bg-white text-black border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-black focus:outline-none"
+          />
+        </div>
 
-        <input
-          {...register("status")}
-          required
-          placeholder="Project Status"
-          className="input-style"
-        />
+        {/* Project Status */}
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-gray-700">Project Status</label>
+          <input
+            {...register("status")}
+            required
+            placeholder="Enter project status"
+            className="input-style w-full bg-white text-black border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-black focus:outline-none"
+          />
+        </div>
 
-        <div>
-          <label className="text-sm text-gray-600">Upload Images</label>
+        {/* File Upload */}
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-gray-700">Upload Images</label>
           <input
             type="file"
             {...register("images")}
             multiple
-            className="input-style py-2"
+            className="input-style w-full bg-white text-black border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-black focus:outline-none"
           />
         </div>
 
+        {/* Submit Button */}
         <button
           type="submit"
-          className="w-full bg-black text-white py-3 rounded-lg hover:bg-gray-900 transition"
+          className="w-full bg-black text-white py-3 rounded-lg hover:bg-gray-900 transition font-medium text-lg shadow-md"
         >
           Add Project
         </button>
