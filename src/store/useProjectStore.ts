@@ -1,12 +1,12 @@
 import { create } from "zustand";
 
 export interface Project {
-  id: string;
+  _id: string;
   name: string;
   assignee: string;
   delivery: string;
   priority: string;
-  clientStatus: string;
+  client_status: string;
   description: string;
   started: string;
   status: string;
@@ -16,10 +16,13 @@ export interface Project {
 interface ProjectState {
   projects: Project[];
   addProject: (project: Project) => void;
+  setProjects: (projects: Project[]) => void; // <-- new
 }
 
 export const useProjectStore = create<ProjectState>((set) => ({
   projects: [],
   addProject: (project) =>
     set((state) => ({ projects: [...state.projects, project] })),
+  setProjects: (projects) => set({ projects }), // <-- new
 }));
+

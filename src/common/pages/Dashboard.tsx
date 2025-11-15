@@ -1,8 +1,28 @@
 import Table from "../componets/Table";
 import { Link } from "react-router-dom";
 import ImageModel from "../componets/ImageModel";
+import { useProjectStore } from "../../store/useProjectStore";
+import { useModalStore } from "../../store/useModalStore";
+import { useEffect } from "react";
+import axios from "axios";
 
 const Dashboard = () => {
+  const setProjects = useProjectStore((state) => state.setProjects);
+  const { showImages } = useModalStore();
+
+  useEffect(() => {
+    // Fetch projects from backend
+    const fetchProjects = async () => {
+      try {
+        const res = await axios.get("http://localhost:8000/projects/");
+        setProjects(res.data); // update Zustand store
+      } catch (err) {
+        console.error("Failed to fetch projects:", err);
+      }
+    };
+
+    fetchProjects();
+  }, [setProjects]);
   return (
     <main>
        {/* <div className="max-w-6xl mx-auto"> */}
