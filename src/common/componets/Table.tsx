@@ -33,7 +33,7 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
 }));
 
 // Minimal aesthetic button
-const ActionButton = styled("button")(({ theme }) => ({
+const ActionButton = styled("button")(() => ({
   backgroundColor: "#1976d2",
   color: "#fff",
   border: "none",

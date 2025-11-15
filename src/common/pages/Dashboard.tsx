@@ -2,13 +2,11 @@ import Table from "../componets/Table";
 import { Link } from "react-router-dom";
 import ImageModel from "../componets/ImageModel";
 import { useProjectStore } from "../../store/useProjectStore";
-import { useModalStore } from "../../store/useModalStore";
 import { useEffect } from "react";
 import axios from "axios";
 
 const Dashboard = () => {
   const setProjects = useProjectStore((state) => state.setProjects);
-  const { showImages } = useModalStore();
 
   useEffect(() => {
     // Fetch projects from backend
