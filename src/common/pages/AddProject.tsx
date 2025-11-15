@@ -30,7 +30,7 @@ const AddProject = () => {
       console.log(payload);
 
 
-      await axios.post("http://localhost:8000/projects/", payload);
+      await axios.post("https://billing-server-84uz.onrender.com/projects/", payload);
 
       navigate("/");
     } catch (error) {

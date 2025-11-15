@@ -12,7 +12,7 @@ const Dashboard = () => {
     // Fetch projects from backend
     const fetchProjects = async () => {
       try {
-        const res = await axios.get("http://localhost:8000/projects/");
+        const res = await axios.get("https://billing-server-84uz.onrender.com/projects/");
         setProjects(res.data); // update Zustand store
       } catch (err) {
         console.error("Failed to fetch projects:", err);
