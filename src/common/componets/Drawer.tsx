@@ -1,0 +1,277 @@
+"use client";
+
+import React from "react";
+import {
+  styled,
+  type Theme,
+  type CSSObject,
+  useTheme,
+} from "@mui/material/styles";
+import MuiDrawer from "@mui/material/Drawer";
+import Box from "@mui/material/Box";
+import List from "@mui/material/List";
+import Typography from "@mui/material/Typography";
+import IconButton from "@mui/material/IconButton";
+import ListItem from "@mui/material/ListItem";
+import ListItemIcon from "@mui/material/ListItemIcon";
+import ListItemText from "@mui/material/ListItemText";
+import { CloseOutlined } from "@mui/icons-material";
+import useMediaQuery from "@mui/material/useMediaQuery";
+import { Link, useLocation } from "react-router-dom";
+import type { NavItem } from "../../types/adminTypes";
+
+/**
+ * Responsive Drawer
+ *
+ * - Desktop: permanent, collapsible mini-drawer (open/closed)
+ * - Tablet & Mobile: temporary overlay drawer (slides over content)
+ *
+ * Props:
+ *  - open: boolean (controls permanent drawer open state)
+ *  - onClose: () => void (used to close temporary drawer on mobile)
+ *  - onToggle?: () => void (optional toggle handler for desktop)
+ */
+const DRAWER_WIDTH = 260;
+
+/* ---------------- MIXINS ---------------- */
+const openedMixin = (theme: Theme): CSSObject => ({
+  width: DRAWER_WIDTH,
+  transition: theme.transitions.create("width", {
+    easing: theme.transitions.easing.sharp,
+    duration: theme.transitions.duration.enteringScreen,
+  }),
+  overflowX: "hidden",
+  backgroundColor: "#fff",
+  color: "var(--admin-gray)",
+  borderTopRightRadius: "24px",
+  borderBottomRightRadius: "24px",
+  border: "none",
+  // boxShadow: "-4px 0 12px rgba(0, 0, 0, 0.15)",
+});
+
+const closedMixin = (theme: Theme): CSSObject => ({
+  transition: theme.transitions.create("width", {
+    easing: theme.transitions.easing.sharp,
+    duration: theme.transitions.duration.leavingScreen,
+  }),
+  overflowX: "hidden",
+  width: `calc(${theme.spacing(7)} + 1px)`,
+  [theme.breakpoints.up("sm")]: {
+    width: `calc(${theme.spacing(8)} + 1px)`,
+  },
+  backgroundColor: "#fff",
+  color: "var(--admin-gray)",
+  borderTopRightRadius: "24px",
+  borderBottomRightRadius: "24px",
+  border: "none",
+  boxShadow: "-4px 0 12px rgba(0, 0, 0, 0.15)",
+});
+
+/* ---------------- STYLED PERMANENT DRAWER ---------------- */
+const CustomMuiDrawer = styled(MuiDrawer, {
+  shouldForwardProp: (prop) => prop !== "open",
+})(({ theme, open }: { theme?: Theme; open?: boolean }) => {
+  return {
+    width: DRAWER_WIDTH,
+    whiteSpace: "nowrap",
+    boxSizing: "border-box",
+    flexShrink: 0,
+    boxShadow: "-4px 0 12px rgba(0, 0, 0, 0.15)",
+    ...(open
+      ? {
+          ...openedMixin(theme as Theme),
+          "& .MuiDrawer-paper": openedMixin(theme as Theme),
+        }
+      : {
+          ...closedMixin(theme as Theme),
+          "& .MuiDrawer-paper": closedMixin(theme as Theme),
+        }),
+  };
+});
+
+/* ---------------- HEADER ---------------- */
+const DrawerHeader = styled("div")(({ theme }) => ({
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  padding: theme.spacing(0, 2),
+  ...theme.mixins.toolbar,
+  height: 64,
+  minHeight: 64,
+  boxSizing: "border-box",
+}));
+
+interface Props {
+  open: boolean; // controls desktop permanent collapsed/expanded
+  onClose: () => void; // close overlay (mobile)
+  onToggle?: () => void; // toggle permanent (desktop)
+  navigations: NavItem[];
+}
+
+const Drawer: React.FC<Props> = ({ open, onClose, onToggle, navigations }) => {
+  const theme = useTheme();
+  const location = useLocation();
+  const pathname = location.pathname;
+  const isMobileOrTablet = useMediaQuery(theme.breakpoints.down("md")); // md ~ 960px
+
+  const renderNav = (items: NavItem[]) =>
+    items.map(({ name, href, icon: Icon }: NavItem) => {
+      const isActive = pathname === href;
+      return (
+        <ListItem
+          key={name}
+          disablePadding
+          sx={{ display: "block", marginTop: "5px" }}
+        >
+          <Link
+            to={href}
+            onClick={() => (isMobileOrTablet ? onClose() : null)}
+            className={`
+              group flex py-1.5 px-4 rounded-sm transition-all duration-300 ease-out
+              ${
+                isMobileOrTablet
+                  ? "justify-start gap-3"
+                  : "justify-center gap-3"
+              }
+              ${isActive ? "bg-blue-50 text-blue-700" : ""}
+            `}
+            style={{ textDecoration: "none" }}
+          >
+            <ListItemIcon
+              sx={{
+                minWidth: 0,
+                justifyContent: "center",
+                color: isActive ? "var(--blue-800)" : "var(--blue-800)",
+                ".group:hover &": { color: "var(--blue-900)" },
+                ml: !isMobileOrTablet && !open ? 1.5 : "auto",
+                mr: !isMobileOrTablet && open ? 1.5 : "auto",
+              }}
+            >
+              <Icon />
+            </ListItemIcon>
+
+            <ListItemText
+              primary={name}
+              sx={{
+                opacity: isMobileOrTablet ? 1 : open ? 1 : 0,
+                transition: "opacity .2s",
+                margin: 0,
+                "& .MuiListItemText-primary": {
+                  fontWeight: 500,
+                  color: isActive ? "var(--blue-800)" : "var(--blue-800)",
+                  ".group:hover &": { color: "var(--blue-900)" },
+                },
+              }}
+            />
+          </Link>
+        </ListItem>
+      );
+    });
+
+  /* Permanent (desktop) variant */
+  if (!isMobileOrTablet) {
+    return (
+      <CustomMuiDrawer variant="permanent" open={open}>
+        <DrawerHeader sx={{ px: 2 }}>
+          <div className="flex gap-1">
+            <Box
+              role="img"
+              aria-label="App logo"
+              sx={{
+                width: 32,
+                height: 24,
+                flexShrink: 0,
+                display: "flex",
+                placeItems: "center",
+                pointerEvents: "none", // branding is not interactive
+              }}
+            >
+              <Box
+                component="img"
+                src="/images/logo.webp"
+                alt=""
+                sx={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "contain",
+                  display: "block",
+                }}
+              />
+            </Box>
+            {open && (
+              <Box
+                role="img"
+                aria-label="App logo"
+                sx={{
+                  width: 108,
+                  height: 24,
+                  flexShrink: 0,
+                  display: "flex",
+                  placeItems: "center",
+                  pointerEvents: "none", // branding is not interactive
+                }}
+              >
+                <Box
+                  component="img"
+                  src="/images/logo_text.webp"
+                  alt=""
+                  sx={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "contain",
+                    display: "block",
+                  }}
+                />
+              </Box>
+            )}
+          </div>
+          <IconButton
+            onClick={onToggle}
+            size="small"
+            sx={{
+              display: open ? "block" : "none",
+            }}
+          >
+            <CloseOutlined sx={{ color: "#fff" }} />
+          </IconButton>
+        </DrawerHeader>
+
+        <Box sx={{ px: 1.5 }}>
+          <List>{renderNav(navigations)}</List>
+        </Box>
+      </CustomMuiDrawer>
+    );
+  }
+
+  /* Temporary overlay (mobile/tablet) variant */
+  return (
+    <MuiDrawer
+      variant="temporary"
+      open={open}
+      onClose={onClose}
+      ModalProps={{ keepMounted: true }}
+      PaperProps={{
+        sx: {
+          width: DRAWER_WIDTH,
+          backgroundColor: "var(--admin-body-bg)",
+          color: "var(--admin-gray)",
+        },
+      }}
+    >
+      <DrawerHeader sx={{ px: 2 }}>
+        <Typography variant="h6" sx={{ color: "#fff" }}>
+          Logo
+        </Typography>
+        <IconButton onClick={onClose} size="small">
+          <CloseOutlined sx={{ color: "#fff" }} />
+        </IconButton>
+      </DrawerHeader>
+
+      <Box sx={{ px: 1.5 }}>
+        <List>{renderNav(navigations)}</List>
+      </Box>
+    </MuiDrawer>
+  );
+};
+
+export default Drawer;
