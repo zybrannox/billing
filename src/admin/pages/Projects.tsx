@@ -243,6 +243,7 @@ const AdminProjects = () => {
           columns={columns}
           processRowUpdate={processRowUpdate}
           getRowClassName={getRowClassName}
+          checkboxSelection={true}
           renderActions={(params, handlers) => [
             <CrudActions
               key="crud"
@@ -257,7 +258,6 @@ const AdminProjects = () => {
             />,
           ]}
           onSelectionChange={(newSelectionModel) => {
-            console.log("Selection changed:", newSelectionModel);
             setSelectedIds(newSelectionModel as string[]);
           }}
           rowSelectionModel={selectedIds}

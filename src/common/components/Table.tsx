@@ -48,6 +48,7 @@ interface TableProps<T extends GridRowModel> {
   onSelectionChange?: (ids: GridRowId[]) => void;
   rowSelectionModel?: GridRowId[]; // Keep as GridRowId[] for compatibility
   initialState?: GridInitialState;
+  checkboxSelection?: boolean;
 }
 
 export default function Table<T extends GridRowModel>({
@@ -65,6 +66,7 @@ export default function Table<T extends GridRowModel>({
   onToggle,
   onSelectionChange,
   rowSelectionModel,
+  checkboxSelection,
   initialState,
 }: TableProps<T>) {
   // Memoize SX to avoid creating a new object on every render
@@ -421,8 +423,8 @@ export default function Table<T extends GridRowModel>({
         sx={gridSx}
         disableRowSelectionOnClick
         initialState={initialState}
-        checkboxSelection
         disableColumnFilter
+        checkboxSelection={checkboxSelection??false}
         rowSelectionModel={{
           type: "include",
           ids: new Set(rowSelectionModel || []),
@@ -430,9 +432,18 @@ export default function Table<T extends GridRowModel>({
         onRowSelectionModelChange={(
           newSelectionModel: GridRowSelectionModel,
         ) => {
-          onSelectionChange?.(
-            Array.from(newSelectionModel.ids as Set<GridRowId>),
-          );
+          if (onSelectionChange) {
+            if (newSelectionModel.type === "include") {
+              onSelectionChange(Array.from(newSelectionModel.ids));
+            } else {
+              // Handle "exclude" (Project everything except these IDs)
+              const excludedIds = newSelectionModel.ids;
+              const selectedIds = rows
+                .map((r) => r.id)
+                .filter((id) => !excludedIds.has(id));
+              onSelectionChange(selectedIds as GridRowId[]);
+            }
+          }
         }}
         editMode="row" // enable editing
         rowModesModel={rowModesModel}
