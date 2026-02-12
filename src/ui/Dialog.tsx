@@ -4,9 +4,9 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import CloseIcon from "@mui/icons-material/Close";
 import { useDialogStore } from "../store/useDialogStore";
-import CustomForm, {
-  type FieldDefinition,
-} from ".././common/componets/CustomForm";
+import type { FieldDefinition } from "../common/components/CustomForm";
+import CustomForm from "../common/components/CustomForm";
+
 
 // ----------------------------------------------------------------------
 // Types & Interfaces

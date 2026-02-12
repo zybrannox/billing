@@ -5,10 +5,10 @@ import { createTheme } from "@mui/material/styles";
 import IconButton from "@mui/material/IconButton";
 import { AppBar as MuiAppBar, Toolbar as MuiToolbar } from "@mui/material";
 import { MenuOutlined } from "@mui/icons-material";
-import Drawer from "../common/componets/Drawer";
 import { adminNavigations } from "../config/admin";
 import Avatar from "../ui/Avatar";
 import Menu from "../ui/Menu";
+import Drawer from "../common/components/Drawer";
 
 const theme = createTheme({
   typography: {

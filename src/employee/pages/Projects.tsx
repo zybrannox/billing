@@ -1,8 +1,6 @@
-import Table from "../../common/componets/Table";
 import type { GridColDef } from "@mui/x-data-grid";
 import CrudActions from "../../ui/Actions";
 import { useProjectStore, type Project } from "../../store/useProjectStore";
-import FilePreview from "../../common/componets/FilePreview";
 import { useEffect } from "react";
 import axios from "axios";
 import { ButtonLink } from "../../ui/ButtonLink";
@@ -13,6 +11,8 @@ import { SemanticSelectEditCell } from "../../ui/Select";
 import Dialog from "../../ui/Dialog";
 import { getRowClassName } from "../../utils/appSupport";
 import { formatDateTime } from "../../utils/dateFormatter";
+import Table from "../../common/components/Table";
+import FilePreview from "../../common/components/FilePreview";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 

@@ -1,4 +1,4 @@
-import CustomForm from "../../common/componets/CustomForm";
+import CustomForm from "../../common/components/CustomForm";
 import { addEmployeeFields } from "../../config/admin";
 import { useApiRequest } from "../../hooks/useApiRequest";
 

@@ -9,11 +9,11 @@ import EmployeeLayout from "./employee/Layout";
 import EmployeeProjects from "./employee/pages/Projects";
 
 import ConfirmDialog from "./ui/ConfirmDialog";
-import ProtectedRoute from "./common/componets/auth/ProtectedRoute";
-import Login from "./common/componets/auth/Login";
 import { useConfirmDialogStore } from "./hooks/useconfirmDialogStore";
 import AdminProjects from "./admin/pages/Projects";
 import Billing from "./admin/pages/Billing";
+import ProtectedRoute from "./common/components/auth/ProtectedRoute";
+import Login from "./common/components/auth/Login";
 
 function App() {
   const {

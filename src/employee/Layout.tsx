@@ -5,7 +5,6 @@ import { createTheme } from "@mui/material/styles";
 import IconButton from "@mui/material/IconButton";
 import { AppBar as MuiAppBar, Toolbar as MuiToolbar } from "@mui/material";
 import { MenuOutlined } from "@mui/icons-material";
-import Drawer from "../common/componets/Drawer";
 import { employeeNavigations } from "../config/employee";
 // import Menu from "../ui/Menu";
 // import Avatar from "../ui/Avatar";
@@ -13,6 +12,7 @@ import NotificationsIcon from "@mui/icons-material/Notifications";
 import Badge from "@mui/material/Badge";
 import Menu from "../ui/Menu";
 import Avatar from "../ui/Avatar";
+import Drawer from "../common/components/Drawer";
 
 const theme = createTheme({
   typography: {

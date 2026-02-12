@@ -1,8 +1,8 @@
-import CustomForm from "../../common/componets/CustomForm";
 import { addProjectFields } from "../../config/common";
 import { useApiRequest } from "../../hooks/useApiRequest";
 import { getImageDimensions } from "../../utils/appSupport";
 import { useDialogStore } from "../../store/useDialogStore";
+import CustomForm from "../components/CustomForm";
 
 export default function AddProject() {
   const { sendRequest, loading } = useApiRequest();

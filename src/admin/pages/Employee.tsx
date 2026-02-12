@@ -1,4 +1,3 @@
-import Table from "../../common/componets/Table";
 import type { Project } from "../../store/useProjectStore";
 import type { GridColDef } from "@mui/x-data-grid";
 import { useApiRequest } from "../../hooks/useApiRequest";
@@ -12,6 +11,7 @@ import Button from "../../ui/Button";
 import { useDialogStore } from "../../store/useDialogStore";
 import AddEmployee from "./AddEmployee";
 import Dialog from "../../ui/Dialog";
+import Table from "../../common/components/Table";
 
 const columns: GridColDef[] = [
   { field: "id", headerName: "SI.NO", width: 100 },

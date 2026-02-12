@@ -1,8 +1,6 @@
-import Table from "../../common/componets/Table";
 import type { GridColDef } from "@mui/x-data-grid";
 import CrudActions from "../../ui/Actions";
 import { useProjectStore, type Project } from "../../store/useProjectStore";
-import FilePreview from "../../common/componets/FilePreview";
 import { useEffect, useState, useMemo } from "react";
 import { Badge, Tooltip } from "@mui/material";
 import axios from "axios";
@@ -18,6 +16,8 @@ import Button from "../../ui/Button";
 import { getRowClassName } from "../../utils/appSupport";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { formatDateTime } from "../../utils/dateFormatter";
+import Table from "../../common/components/Table";
+import FilePreview from "../../common/components/FilePreview";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
