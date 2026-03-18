@@ -41,7 +41,7 @@ function App() {
               <Route path="projects" element={<AdminProjects />} />
               <Route path="employees" element={<Employee />} />
               <Route path="employees/new" element={<AddEmployee />} />
-              {/* <Route path="billing" element={<Billing />} /> */}
+              <Route path="billing" element={<Billing />} />
             </Route>
           </Route>
 

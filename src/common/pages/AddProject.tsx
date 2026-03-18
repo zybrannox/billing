@@ -3,6 +3,7 @@ import { useApiRequest } from "../../hooks/useApiRequest";
 import { getImageDimensions } from "../../utils/appSupport";
 import { useDialogStore } from "../../store/useDialogStore";
 import CustomForm from "../components/CustomForm";
+import { compressImage } from "../../utils/imageCompression";
 
 export default function AddProject() {
   const { sendRequest, loading } = useApiRequest();
@@ -33,7 +34,10 @@ export default function AddProject() {
         const imageList = Array.isArray(images) ? images : [images];
 
         for (const img of imageList) {
-          formDataToSend.append("files", img);
+          // Compress image before upload
+          const compressedFile = await compressImage(img);
+          formDataToSend.append("files", compressedFile);
+
           const dimensions = await getImageDimensions(img);
           metadata.push({
             filename: img.name,

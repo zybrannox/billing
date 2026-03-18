@@ -1,7 +1,6 @@
 import { Assignment, Badge, ReceiptLong } from "@mui/icons-material";
-import type { FieldDefinition } from "../common/componets/CustomForm";
+import type { FieldDefinition } from "../common/components/CustomForm";
 import type { NavItem } from "../types/adminTypes";
-
 
 export const loginFormFields = [
   {
@@ -176,5 +175,5 @@ export const addEmployeeFields: FieldDefinition[] = [
 export const adminNavigations: NavItem[] = [
   { name: "Projects", href: "/admin/projects", icon: Assignment },
   { name: "Employees", href: "/admin/employees", icon: Badge },
-  // { name: "Billing", href: "/admin/billing", icon: ReceiptLong },
+  { name: "Billing", href: "/admin/billing", icon: ReceiptLong },
 ];

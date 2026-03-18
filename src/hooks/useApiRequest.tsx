@@ -31,11 +31,10 @@ export function useApiRequest() {
       const isFormData =
         data instanceof FormData ||
         Object.values(data || {}).some(
-          (v) => v instanceof File || v instanceof Blob
+          (v) => v instanceof File || v instanceof Blob,
         );
 
       let payload = data;
-      
 
       if (isFormData && !(data instanceof FormData)) {
         const form = new FormData();
@@ -57,7 +56,7 @@ export function useApiRequest() {
       if (!api) throw new Error(`Unsupported method: ${method}`);
 
       res = await api();
-      onSuccess?.(res);      
+      onSuccess?.(res);
 
       if (redirectTo) navigate(redirectTo);
 

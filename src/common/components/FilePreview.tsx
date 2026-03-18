@@ -281,6 +281,7 @@ const FilePreview = () => {
                   width: "100%",
                   objectFit: "contain",
                 }}
+                loading="lazy"
               />
             )}
 
@@ -382,7 +383,7 @@ const FilePreview = () => {
             },
           }}
         >
-          {filteredFiles.map((file, idx) => {
+          {filteredFiles.map((file) => {
             const fileName = typeof file === "string" ? file : file.path;
             const originalIndex = files.indexOf(file);
             const isCurrent = originalIndex === currentIndex;
@@ -431,13 +432,37 @@ const FilePreview = () => {
                     },
                   }}
                 >
-                  <FileIcon type={type} size={24} />
+                  <Box
+                    sx={{
+                      width: 24,
+                      height: 24,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {type === "image" ? (
+                      <Box
+                        component="img"
+                        src={`${API_BASE_URL}/files/thumbnail/${encodeURIComponent(fileName)}`}
+                        sx={{
+                          width: 24,
+                          height: 24,
+                          borderRadius: 0.5,
+                          objectFit: "cover",
+                        }}
+                        alt=""
+                      />
+                    ) : (
+                      <FileIcon type={type} size={24} />
+                    )}
+                  </Box>
                   <Typography
                     variant="caption"
                     noWrap
                     sx={{
                       width: "100%",
-                      textAlign: "center",
+                      textAlign: "left",
                       mt: 0.5,
                       fontSize: "0.7rem",
                       color: isCurrent ? "primary.main" : "text.secondary",

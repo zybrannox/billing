@@ -17,7 +17,7 @@ export const apiService = {
   postWithProgress: async <T>(
     url: string,
     data: any,
-    onProgress: (percent: number) => void
+    onProgress: (percent: number) => void,
   ): Promise<T> => {
     const res = await axiosClient.post(url, data, {
       onUploadProgress: (event) => {
