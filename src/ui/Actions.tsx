@@ -10,7 +10,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import ToggleOffIcon from "@mui/icons-material/ToggleOff";
 import ToggleOnIcon from "@mui/icons-material/ToggleOn";
 import { GridDownloadIcon } from "@mui/x-data-grid";
-import { DeleteRounded, Info } from "@mui/icons-material";
+import { DeleteRounded, Info, Visibility } from "@mui/icons-material";
 import { formatDateTime } from "../utils/dateFormatter";
 
 interface CrudActionsProps {
@@ -19,12 +19,14 @@ interface CrudActionsProps {
   toggle?: boolean;
   download?: boolean;
   info?: boolean;
+  preview?: boolean;
   data?: any;
 
   onEdit?: () => void;
   onDelete?: () => void;
   onToggle?: () => void;
   onDownload?: () => void;
+  onPreview?: () => void;
 
   isActive?: boolean;
   size?: "small" | "medium";
@@ -36,12 +38,14 @@ const CrudActions = ({
   toggle = false,
   download = false,
   info = false,
+  preview = false,
   data,
 
   onEdit,
   onDelete,
   onToggle,
   onDownload,
+  onPreview,
 
   isActive = false,
   size = "medium",
@@ -66,6 +70,22 @@ const CrudActions = ({
             }}
           >
             <GridDownloadIcon fontSize={size} sx={{ color: "#0dcaf0" }} />
+          </IconButton>
+        </Tooltip>
+      )}
+      {preview && (
+        <Tooltip title="Preview in sidebar">
+          <IconButton
+            size={size}
+            onClick={onPreview}
+            sx={{
+              color: "#fff",
+              padding: "0",
+              borderRadius: "var(--border-radius-md)",
+              transition: "0.2s",
+            }}
+          >
+            <Visibility fontSize={size} sx={{ color: "#6f42c1" }} />
           </IconButton>
         </Tooltip>
       )}

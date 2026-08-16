@@ -35,6 +35,7 @@ interface TableProps<T extends GridRowModel> {
       save: () => void;
       cancel: () => void;
       toggle: () => void;
+      preview: () => void;
     },
   ) => React.ReactElement[];
   onSave?: (row: GridRowModel) => void;
@@ -318,6 +319,13 @@ export default function Table<T extends GridRowModel>({
     [showDialog, setLoading, closeDialog, downloadProject], // include deleteProject here
   );
 
+  const handlePreviewClick = React.useCallback(
+    (row: T) => () => {
+      setSelectedProject(row as any);
+    },
+    [setSelectedProject],
+  );
+
   const handleToggleClick = React.useCallback(
     (params: GridRowParams) => () => {
       const id = params.id;
@@ -379,6 +387,7 @@ export default function Table<T extends GridRowModel>({
             save: handleSaveClick(params.id),
             cancel: handleCancelClick(params.id),
             toggle: handleToggleClick(params),
+            preview: handlePreviewClick(params.row as T),
           })
         : [];
     },
@@ -391,6 +400,7 @@ export default function Table<T extends GridRowModel>({
       handleSaveClick,
       handleCancelClick,
       handleToggleClick,
+      handlePreviewClick,
     ],
   );
 

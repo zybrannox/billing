@@ -7,6 +7,7 @@ import TextField from "../../ui/TextField";
 import { Link } from "react-router-dom";
 import { MenuItem } from "@mui/material";
 import FileField from "../.././ui/FileField";
+import GmailFileUploader from "../.././ui/GmailFileUploader";
 import { useAppStore } from "../../store/useAppStore";
 import { type SxProps, type Theme } from "@mui/material/styles";
 import CheckboxField, { type Option } from "../.././ui/Checkbox";
@@ -26,6 +27,7 @@ export type FieldType =
   | "select"
   | "number"
   | "file"
+  | "file_upload"
   | "date"
   | "date_time"
   | "checkbox"
@@ -131,6 +133,12 @@ const buildZodSchema = (fields: FieldDefinition[]) => {
         } else {
           schema = z.instanceof(File);
         }
+        break;
+      case "file_upload":
+        // Items are upload-tracking objects ({status, path, ...}), not raw Files.
+        schema = f.multiple
+          ? z.array(z.any()).min(1, `${f.label || name} is required`)
+          : z.array(z.any());
         break;
       case "checkbox":
         if (f.options && Array.isArray(f.options) && f.options.length > 0) {
@@ -293,6 +301,26 @@ const FormField = React.memo(
                 multiple={field.multiple}
                 error={!!error}
                 helperText={error?.message || field.helperText}
+              />
+            )}
+          />
+        );
+
+      case "file_upload":
+        return (
+          <Controller
+            name={name}
+            control={control}
+            defaultValue={field.defaultValue ?? []}
+            render={({ field: ctrlField }) => (
+              <GmailFileUploader
+                value={ctrlField.value}
+                onChange={ctrlField.onChange}
+                label={field.label}
+                accept={field.acceptFileType}
+                multiple={field.multiple}
+                error={error?.message}
+                helperText={field.helperText}
               />
             )}
           />
@@ -497,7 +525,7 @@ export default function CustomForm({
 
           {/* Render all rows */}
           {Object.keys(rows).map((rowKey) => (
-            <div key={rowKey} className="grid grid-cols-2 gap-4">
+            <div key={rowKey} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {rows[+rowKey].map((field) => (
                 <FormField
                   key={field.name}

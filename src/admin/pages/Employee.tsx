@@ -1,7 +1,6 @@
-import type { Project } from "../../store/useProjectStore";
 import type { GridColDef } from "@mui/x-data-grid";
 import { useApiRequest } from "../../hooks/useApiRequest";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import CrudActions from "../../ui/Actions";
 import Chip from "../../ui/Chip";
 import { semanticChipSx } from "../../ui/chipStyles";
@@ -12,6 +11,17 @@ import { useDialogStore } from "../../store/useDialogStore";
 import AddEmployee from "./AddEmployee";
 import Dialog from "../../ui/Dialog";
 import Table from "../../common/components/Table";
+import TableSearchBar from "../../common/components/TableSearchBar";
+import { useTableSearch } from "../../hooks/useTableSearch";
+
+interface Employee {
+  id: number;
+  username: string;
+  email: string;
+  phone: string;
+  role: string;
+  is_active: boolean;
+}
 
 const columns: GridColDef[] = [
   { field: "id", headerName: "SI.NO", width: 100 },
@@ -69,42 +79,56 @@ const columns: GridColDef[] = [
 
 const Employee = () => {
   const { openDialog } = useDialogStore();
-  const { sendRequest, loading } = useApiRequest();
-  const [employees, setEmployees] = useState();
-  const handleSubmit = async () => {
+  const { sendRequest } = useApiRequest();
+  const [employees, setEmployees] = useState<Employee[]>([]);
+
+  const fetchEmployees = async () => {
     await sendRequest({
       endpoint: "/users/",
       method: "get",
-      onSuccess: (res) => {
-        console.log("Employee added", res);
+      onSuccess: (res: Employee[]) => {
         setEmployees(res);
-        // toast.success("Employee added");
       },
       onError: (err) => {
-        console.log("Error", err);
-        // toast.error(err.message || "Error adding employee");
+        console.error("Error fetching employees", err);
       },
     });
   };
+
   useEffect(() => {
-    handleSubmit();
+    fetchEmployees();
   }, []);
+
+  // Admins are managed separately and shouldn't clutter the employee list.
+  const nonAdminEmployees = useMemo(
+    () => employees.filter((e) => e.role !== "admin"),
+    [employees],
+  );
+
+  const { query, setQuery, filteredRows } = useTableSearch(
+    nonAdminEmployees,
+    ["username", "email", "phone", "role"],
+  );
 
   return (
     <main className="h-full p-4 m-4 md:p-10 min-w-0 rounded-3xl bg-blue-50 shadow">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
         <h1 className="text-4xl sm:text-5xl lg:text-4xl leading-tight sm:leading-snug lg:leading-snug bg-linear-to-br from-blue-900 via-blue-800 to-slate-900 bg-clip-text text-transparent">
           Employee Details
         </h1>
-        {/* <ButtonLink to="new">+ Add Employee</ButtonLink> */}
-        <Button onClick={() => openDialog(<AddEmployee />, "Add New Employee")}>
-          + Add Employee
-        </Button>
+        <div className="flex flex-wrap items-center gap-3">
+          <TableSearchBar
+            value={query}
+            onChange={setQuery}
+            placeholder="Search employees..."
+          />
+          <Button onClick={() => openDialog("user")}>+ Add Employee</Button>
+        </div>
       </div>
-      <Table<Project>
-        rows={employees}
+      <Table<Employee>
+        rows={filteredRows}
         columns={columns}
-        renderActions={(params, handlers) => [
+        renderActions={(_params, handlers) => [
           <CrudActions
             key="crud"
             edit
@@ -114,7 +138,12 @@ const Employee = () => {
           />,
         ]}
       />
-      <Dialog />
+      <Dialog
+        title="Employee"
+        children={<AddEmployee onSuccess={fetchEmployees} />}
+        maxWidth="md"
+        apiEndPoint="/"
+      />
     </main>
   );
 };

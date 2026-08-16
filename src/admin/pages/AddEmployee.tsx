@@ -1,26 +1,30 @@
 import CustomForm from "../../common/components/CustomForm";
 import { addEmployeeFields } from "../../config/admin";
 import { useApiRequest } from "../../hooks/useApiRequest";
+import { useDialogStore } from "../../store/useDialogStore";
 
-export default function AddEmployee() {
+interface AddEmployeeProps {
+  onSuccess?: () => void;
+}
+
+export default function AddEmployee({ onSuccess }: AddEmployeeProps) {
   const { sendRequest, loading } = useApiRequest();
+  const { closeDialog } = useDialogStore();
 
-  const handleSubmit = async (formData) => {
-    console.log(formData);
-    
-    await sendRequest({
+  const handleSubmit = async (formData: any) => {
+    const result = await sendRequest({
       endpoint: "/users/",
       method: "post",
       data: formData,
-      onSuccess: (res) => {
-        // toast.success("Employee added");
-      },
       onError: (err) => {
-        console.log("Error", err);
-        // toast.error(err.message || "Error adding employee");
+        console.error("Error adding employee", err);
       },
-      redirectTo: "/admin/employees", // optional redirect
     });
+
+    if (result) {
+      closeDialog();
+      onSuccess?.();
+    }
   };
 
   return (
@@ -29,8 +33,9 @@ export default function AddEmployee() {
 
       <CustomForm
         fields={addEmployeeFields}
-        onSubmit={handleSubmit}   // handler
+        onSubmit={handleSubmit}
         buttonName={loading ? "Submitting..." : "Add Employee"}
+        loading={loading}
       />
     </div>
   );

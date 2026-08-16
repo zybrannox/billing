@@ -147,9 +147,9 @@ const EmployeeProjects = () => {
   };
 
   return (
-    <div className="h-full grid grid-cols-[1fr_300px] gap-4 items-center p-4">
+    <div className="h-full grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4 lg:items-center p-4">
       <div className="h-full p-4 md:p-10 min-w-0 rounded-3xl bg-blue-50 shadow">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
           <h1 className="text-4xl sm:text-5xl lg:text-4xl leading-tight sm:leading-snug lg:leading-snug bg-linear-to-br from-blue-900 via-blue-800 to-slate-900 bg-clip-text text-transparent">
             Ongoing Activities
           </h1>
@@ -176,7 +176,7 @@ const EmployeeProjects = () => {
           ]}
         />
       </div>
-      <div className="h-full items-center">
+      <div className="min-h-[420px] lg:min-h-0 lg:h-full items-center">
         <div className="rounded-3xl bg-blue-50 h-full p-4 shadow">
           <FilePreview />
           <Dialog />

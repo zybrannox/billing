@@ -1,5 +1,5 @@
 import * as React from "react";
-import { IconButton, Dialog as MuiDialog } from "@mui/material";
+import { IconButton, Dialog as MuiDialog, useMediaQuery, useTheme } from "@mui/material";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import CloseIcon from "@mui/icons-material/Close";
@@ -43,19 +43,24 @@ export function GenericDialog({
   maxWidth = false,
   fullWidth = false,
 }: GenericDialogProps) {
+  const theme = useTheme();
+  const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
+
   return (
     <MuiDialog
       open={open}
       onClose={onClose}
       maxWidth={maxWidth}
       fullWidth={fullWidth}
+      fullScreen={fullScreen}
       aria-labelledby="dialog-title"
       sx={{
         "& .MuiPaper-root": {
           backgroundColor: "#fff",
           color: "var(--admin-text-white)",
           width: maxWidth ? undefined : "30rem", // Default width if no maxWidth is set
-          borderRadius: "var(--border-radius-2xl)",
+          maxWidth: fullScreen ? "100%" : "95vw",
+          borderRadius: fullScreen ? 0 : "var(--border-radius-2xl)",
         },
       }}
     >

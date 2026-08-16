@@ -46,7 +46,7 @@ const openedMixin = (theme: Theme): CSSObject => ({
   borderTopRightRadius: "24px",
   borderBottomRightRadius: "24px",
   border: "none",
-  // boxShadow: "-4px 0 12px rgba(0, 0, 0, 0.15)",
+  boxShadow: "-4px 0 12px rgba(0, 0, 0, 0.15)",
 });
 
 const closedMixin = (theme: Theme): CSSObject => ({
@@ -108,11 +108,51 @@ interface Props {
   navigations: NavItem[];
 }
 
+const AUTO_CLOSE_IDLE_MS = 10000;
+
 const Drawer: React.FC<Props> = ({ open, onClose, onToggle, navigations }) => {
   const theme = useTheme();
   const location = useLocation();
   const pathname = location.pathname;
   const isMobileOrTablet = useMediaQuery(theme.breakpoints.down("md")); // md ~ 960px
+
+  // Desktop only: once expanded, auto-collapse after 10s of the mouse not
+  // being over the drawer. Mobile/tablet is a tap-to-open overlay (no hover
+  // concept there), so it only ever closes via backdrop tap, the close
+  // button, or picking a nav link.
+  const closeTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+
+  const clearCloseTimer = React.useCallback(() => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  }, []);
+
+  const scheduleAutoClose = React.useCallback(() => {
+    clearCloseTimer();
+    closeTimerRef.current = setTimeout(onClose, AUTO_CLOSE_IDLE_MS);
+  }, [clearCloseTimer, onClose]);
+
+  React.useEffect(() => {
+    if (isMobileOrTablet) return;
+    if (open) {
+      scheduleAutoClose();
+    } else {
+      clearCloseTimer();
+    }
+    return clearCloseTimer;
+  }, [open, isMobileOrTablet, scheduleAutoClose, clearCloseTimer]);
+
+  const handleDrawerMouseEnter = () => {
+    if (!isMobileOrTablet) clearCloseTimer();
+  };
+
+  const handleDrawerMouseLeave = () => {
+    if (!isMobileOrTablet && open) scheduleAutoClose();
+  };
 
   const renderNav = (items: NavItem[]) =>
     items.map(({ name, href, icon: Icon }: NavItem) => {
@@ -171,7 +211,12 @@ const Drawer: React.FC<Props> = ({ open, onClose, onToggle, navigations }) => {
   /* Permanent (desktop) variant */
   if (!isMobileOrTablet) {
     return (
-      <CustomMuiDrawer variant="permanent" open={open}>
+      <CustomMuiDrawer
+        variant="permanent"
+        open={open}
+        onMouseEnter={handleDrawerMouseEnter}
+        onMouseLeave={handleDrawerMouseLeave}
+      >
         <DrawerHeader sx={{ px: 2 }}>
           <div className="flex gap-1">
             <Box

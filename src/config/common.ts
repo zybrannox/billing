@@ -95,7 +95,7 @@ export const addProjectFields: FieldDefinition[] = [
   {
     name: "images",
     label: "Images",
-    type: "file",
+    type: "file_upload",
     multiple: true,
     placeholder: "Upload project images",
     required: false,

@@ -1,9 +1,8 @@
 import { addProjectFields } from "../../config/common";
 import { useApiRequest } from "../../hooks/useApiRequest";
-import { getImageDimensions } from "../../utils/appSupport";
 import { useDialogStore } from "../../store/useDialogStore";
 import CustomForm from "../components/CustomForm";
-import { compressImage } from "../../utils/imageCompression";
+import type { UploadItem } from "../../ui/GmailFileUploader";
 
 export default function AddProject() {
   const { sendRequest, loading } = useApiRequest();
@@ -11,8 +10,23 @@ export default function AddProject() {
 
   const handleSubmit = async (formData: any) => {
     const { images, ...rest } = formData;
-    console.log("Submitting Project. Images:", images);
-    console.log(formData);
+    const items: UploadItem[] = images || [];
+
+    // Images upload as soon as they're picked (see GmailFileUploader), so by
+    // the time the form submits they should already be "done". Block submit
+    // if any are still in flight rather than silently dropping them.
+    if (items.some((item) => item.status === "uploading")) {
+      alert("Please wait for all files to finish uploading before submitting.");
+      return;
+    }
+
+    const attachedFiles = items
+      .filter((item) => item.status === "done" && item.path)
+      .map((item) => ({
+        path: item.path,
+        width: item.width ?? null,
+        height: item.height ?? null,
+      }));
 
     try {
       // 1️⃣ Create project
@@ -27,32 +41,19 @@ export default function AddProject() {
         data: projectPayload,
       });
 
-      // 2️⃣ Upload images if any
-      if (images && images.length > 0 && project?.id) {
-        const formDataToSend = new FormData();
-        const metadata: any[] = [];
-        const imageList = Array.isArray(images) ? images : [images];
-
-        for (const img of imageList) {
-          // Compress image before upload
-          const compressedFile = await compressImage(img);
-          formDataToSend.append("files", compressedFile);
-
-          const dimensions = await getImageDimensions(img);
-          metadata.push({
-            filename: img.name,
-            width: dimensions?.width || null,
-            height: dimensions?.height || null,
-          });
-        }
-
-        formDataToSend.append("metadata", JSON.stringify(metadata));
-
-        await sendRequest({
-          endpoint: `/files/upload/${project.id}`,
+      // 2️⃣ Link already-uploaded files to the new project (no re-upload)
+      if (attachedFiles.length > 0 && project?.id) {
+        const attachResult = await sendRequest({
+          endpoint: `/files/attach/${project.id}`,
           method: "post",
-          data: formDataToSend,
+          data: { files: attachedFiles },
         });
+
+        if (!attachResult) {
+          alert(
+            "Project was created, but attaching the uploaded files failed. Please edit the project and re-add them.",
+          );
+        }
       }
 
       closeDialog();

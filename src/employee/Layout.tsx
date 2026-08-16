@@ -32,17 +32,6 @@ export default function EmployeeLayout() {
   const handleClose = () => {
     setAnchorEl(null);
   };
-  const AUTO_CLOSE_MS = 5000;
-
-  // React.useEffect(() => {
-  //   if (!open) return;
-
-  //   const timer = setTimeout(() => {
-  //     setOpen(false);
-  //   }, AUTO_CLOSE_MS);
-
-  //   return () => clearTimeout(timer); // cleanup on re-open/unmount
-  // }, [open]);
 
   const handleDrawerToggle = () => setOpen((p) => !p);
   const handleDrawerClose = () => setOpen(false);
@@ -59,7 +48,9 @@ export default function EmployeeLayout() {
           onToggle={handleDrawerToggle}
         />
         {/* Main area */}
-        <Box component="main" sx={{ flexGrow: 1, minHeight: "100vh" }}>
+        {/* minWidth: 0 lets this flex item actually shrink when the drawer
+            expands, instead of being held to its content's intrinsic width. */}
+        <Box component="main" sx={{ flexGrow: 1, minWidth: 0, minHeight: "100vh" }}>
           {/* Topbar */}
           <MuiAppBar
             position="relative"
@@ -96,6 +87,7 @@ export default function EmployeeLayout() {
             component="main"
             sx={{
               flexGrow: 1,
+              minWidth: 0,
               width: "100%",
               height: "100%",
               backgroundColor: "#fff",

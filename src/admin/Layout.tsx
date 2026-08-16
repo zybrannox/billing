@@ -19,17 +19,9 @@ const theme = createTheme({
 export default function AdminLayout() {
   const [open, setOpen] = React.useState(false);
 
-  const AUTO_CLOSE_MS = 5000;
-
-  React.useEffect(() => {
-    if (!open) return;
-
-    const timer = setTimeout(() => {
-      setOpen(false);
-    }, AUTO_CLOSE_MS);
-
-    return () => clearTimeout(timer); // cleanup on re-open/unmount
-  }, [open]);
+  // No auto-close timer: on mobile the drawer is a temporary overlay that
+  // must stay open until the user picks a link or taps the backdrop/close
+  // button - auto-closing it after a few seconds mid-decision is a trap.
 
   const handleDrawerToggle = () => setOpen((p) => !p);
   const handleDrawerClose = () => setOpen(false);
@@ -45,7 +37,10 @@ export default function AdminLayout() {
           navigations={adminNavigations}
         />
         {/* Main area */}
-        <Box sx={{ flexGrow: 1, width: "100%" }}>
+        {/* minWidth: 0 is required so this flex item actually shrinks when
+            the drawer expands, instead of being held to its content's
+            intrinsic width (the classic flexbox min-width:auto trap). */}
+        <Box sx={{ flexGrow: 1, minWidth: 0 }}>
           {/* Topbar */}
           <MuiAppBar
             position="relative"

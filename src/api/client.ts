@@ -3,23 +3,8 @@ import axios from "axios";
 
 const axiosClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
-  withCredentials: true, // allows sending cookies
+  withCredentials: true, // sends the httpOnly access_token cookie automatically
   timeout: 120000, // 2 minutes
-});
-
-
-// 💡 Auto-attach token if exists
-axiosClient.interceptors.request.use((config) => {
-  const token = document.cookie
-    ?.split("; ")
-    ?.find((i) => i.startsWith("token="))
-    ?.split("=")[1];
-
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-
-  return config;
 });
 
 // 💡 Handle global errors

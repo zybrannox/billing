@@ -9,9 +9,12 @@ import {
   Tooltip,
   Box,
   CircularProgress,
+  Dialog as MuiDialog,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import SearchInput from "../../ui/SearchInput";
-import { FileDownloadRounded } from "@mui/icons-material";
+import { FileDownloadRounded, ZoomInRounded, Close as CloseIcon } from "@mui/icons-material";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import ArchiveIcon from "@mui/icons-material/Archive";
 import DescriptionIcon from "@mui/icons-material/Description";
@@ -82,6 +85,8 @@ const PreviewContainer = ({ children }: { children: React.ReactNode }) => (
 
 const FilePreview = () => {
   const { selectedProject } = useProjectStore();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isImageLoading, setIsImageLoading] = useState(false);
@@ -89,6 +94,7 @@ const FilePreview = () => {
     new Set(),
   );
   const [searchTerm, setSearchTerm] = useState("");
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   const files = selectedProject?.file_paths ?? [];
   const totalFiles = files.length;
@@ -270,19 +276,45 @@ const FilePreview = () => {
 
             {/* Image */}
             {currentFileType === "image" && !isImageLoading && (
-              <CardMedia
-                component="img"
-                image={`${API_BASE_URL}/files/view/${encodeURIComponent(
-                  currentFileName,
-                )}`}
-                alt={currentFileName}
+              <Box
+                onClick={() => setLightboxOpen(true)}
                 sx={{
+                  position: "relative",
                   height: "100%",
                   width: "100%",
-                  objectFit: "contain",
+                  cursor: "zoom-in",
+                  "&:hover .preview-zoom-hint": { opacity: 1 },
                 }}
-                loading="lazy"
-              />
+              >
+                <CardMedia
+                  component="img"
+                  image={`${API_BASE_URL}/files/view/${encodeURIComponent(
+                    currentFileName,
+                  )}`}
+                  alt={currentFileName}
+                  sx={{
+                    height: "100%",
+                    width: "100%",
+                    objectFit: "contain",
+                  }}
+                  loading="lazy"
+                />
+                <Box
+                  className="preview-zoom-hint"
+                  sx={{
+                    position: "absolute",
+                    inset: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    bgcolor: "rgba(0,0,0,0.25)",
+                    opacity: 0,
+                    transition: "opacity 0.15s",
+                  }}
+                >
+                  <ZoomInRounded sx={{ color: "#fff", fontSize: 40 }} />
+                </Box>
+              </Box>
             )}
 
             {/* Non-image */}
@@ -411,7 +443,10 @@ const FilePreview = () => {
                 arrow
               >
                 <Box
-                  onClick={() => setCurrentIndex(originalIndex)}
+                  onClick={() => {
+                    setCurrentIndex(originalIndex);
+                    if (type === "image") setLightboxOpen(true);
+                  }}
                   sx={{
                     display: "flex",
                     alignItems: "center",
@@ -445,6 +480,7 @@ const FilePreview = () => {
                       <Box
                         component="img"
                         src={`${API_BASE_URL}/files/thumbnail/${encodeURIComponent(fileName)}`}
+                        loading="lazy"
                         sx={{
                           width: 24,
                           height: 24,
@@ -520,6 +556,125 @@ const FilePreview = () => {
           })}
         </Box>
       </CardContent>
+
+      {/* ================= BIG IMAGE PREVIEW (LIGHTBOX) ================= */}
+      <MuiDialog
+        open={lightboxOpen && currentFileType === "image"}
+        onClose={() => setLightboxOpen(false)}
+        maxWidth="lg"
+        fullWidth
+        fullScreen={isMobile}
+        sx={{
+          "& .MuiPaper-root": {
+            backgroundColor: "rgba(15, 15, 20, 0.97)",
+            boxShadow: "none",
+            borderRadius: isMobile ? 0 : 2,
+          },
+        }}
+      >
+        <Box
+          sx={{
+            position: "relative",
+            height: isMobile ? "100vh" : "85vh",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <IconButton
+            onClick={() => setLightboxOpen(false)}
+            aria-label="Close preview"
+            sx={{
+              position: "absolute",
+              top: 12,
+              right: 12,
+              color: "#fff",
+              bgcolor: "rgba(255,255,255,0.1)",
+              "&:hover": { bgcolor: "rgba(255,255,255,0.2)" },
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+
+          {totalFiles > 1 && (
+            <IconButton
+              onClick={handlePrev}
+              disabled={currentIndex === 0}
+              aria-label="Previous file"
+              sx={{
+                position: "absolute",
+                left: 12,
+                color: "#fff",
+                bgcolor: "rgba(255,255,255,0.1)",
+                "&:hover": { bgcolor: "rgba(255,255,255,0.2)" },
+                "&.Mui-disabled": { opacity: 0.3 },
+              }}
+            >
+              <ChevronLeftIcon />
+            </IconButton>
+          )}
+
+          {currentFile && currentFileType === "image" && (
+            <Box
+              component="img"
+              src={`${API_BASE_URL}/files/view/${encodeURIComponent(currentFileName)}`}
+              alt={currentFileName}
+              sx={{
+                maxHeight: "100%",
+                maxWidth: "100%",
+                objectFit: "contain",
+              }}
+            />
+          )}
+
+          {totalFiles > 1 && (
+            <IconButton
+              onClick={handleNext}
+              disabled={currentIndex === totalFiles - 1}
+              aria-label="Next file"
+              sx={{
+                position: "absolute",
+                right: 12,
+                color: "#fff",
+                bgcolor: "rgba(255,255,255,0.1)",
+                "&:hover": { bgcolor: "rgba(255,255,255,0.2)" },
+                "&.Mui-disabled": { opacity: 0.3 },
+              }}
+            >
+              <ChevronRightIcon />
+            </IconButton>
+          )}
+
+          <Stack
+            direction="row"
+            alignItems="center"
+            spacing={2}
+            sx={{
+              position: "absolute",
+              bottom: 12,
+              left: "50%",
+              transform: "translateX(-50%)",
+              px: 2,
+              py: 0.5,
+              borderRadius: 2,
+              bgcolor: "rgba(255,255,255,0.1)",
+            }}
+          >
+            <Typography variant="caption" sx={{ color: "#fff" }}>
+              {currentFileName}
+              {totalFiles > 1 && ` • ${currentIndex + 1} of ${totalFiles}`}
+            </Typography>
+            <IconButton
+              size="small"
+              onClick={() => handleDownload(currentFileName)}
+              aria-label="Download"
+              sx={{ color: "#fff" }}
+            >
+              <FileDownloadRounded fontSize="small" />
+            </IconButton>
+          </Stack>
+        </Box>
+      </MuiDialog>
     </>
   );
 };

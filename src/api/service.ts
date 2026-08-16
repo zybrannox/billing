@@ -18,6 +18,7 @@ export const apiService = {
     url: string,
     data: any,
     onProgress: (percent: number) => void,
+    signal?: AbortSignal,
   ): Promise<T> => {
     const res = await axiosClient.post(url, data, {
       onUploadProgress: (event) => {
@@ -26,6 +27,7 @@ export const apiService = {
           onProgress(percent);
         }
       },
+      signal,
     });
     return res.data;
   },

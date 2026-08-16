@@ -145,7 +145,7 @@ export const addEmployeeFields: FieldDefinition[] = [
   {
     name: "password",
     label: "Password",
-    type: "text",
+    type: "password",
     required: true,
     placeholder: "Enter Password",
     row: 1,
