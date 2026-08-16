@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import "./App.css";
 
 import AdminLayout from "./admin/Layout";
@@ -9,6 +9,7 @@ import EmployeeLayout from "./employee/Layout";
 import EmployeeProjects from "./employee/pages/Projects";
 
 import ConfirmDialog from "./ui/ConfirmDialog";
+import DownloadProgressIndicator from "./ui/DownloadProgressIndicator";
 import { useConfirmDialogStore } from "./hooks/useconfirmDialogStore";
 import AdminProjects from "./admin/pages/Projects";
 import Billing from "./admin/pages/Billing";
@@ -51,6 +52,15 @@ function App() {
               <Route index element={<EmployeeProjects />} />
             </Route>
           </Route>
+
+          {/* "+ Add Project" now opens a dialog on "/" instead of navigating,
+              but this route is kept as a redirect in case it's bookmarked
+              or was shared from before that change. */}
+          <Route path="/add-project" element={<Navigate to="/" replace />} />
+
+          {/* Catch-all: send any unmatched path back to the app instead of
+              rendering a blank page. */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
 
@@ -66,6 +76,8 @@ function App() {
         onConfirm={onConfirm}
         onCancel={onCancel}
       />
+
+      <DownloadProgressIndicator />
     </>
   );
 }

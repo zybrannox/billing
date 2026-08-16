@@ -13,6 +13,7 @@ import {
 import React from "react";
 import { useConfirmDialogStore } from "../../hooks/useconfirmDialogStore";
 import { useProjectStore } from "../../store/useProjectStore";
+import { useDownloadProgressStore } from "../../store/useDownloadProgressStore";
 import {
   GridActionsCellItem,
   GridRowModes,
@@ -308,15 +309,22 @@ export default function Table<T extends GridRowModel>({
         confirmText: "Yes",
         isDestructive: true,
         onConfirm: async () => {
-          setLoading(true);
-          await downloadProject(id as string);
-          onDownloadRef.current?.(id);
-          setLoading(false);
+          // Close the confirm dialog right away instead of blocking it with a
+          // spinner for the whole download — the floating progress indicator
+          // takes over from here so the rest of the UI stays usable.
           closeDialog();
+          const { start, update, finish } = useDownloadProgressStore.getState();
+          start("Downloading project files…");
+          try {
+            await downloadProject(id as string, update);
+            onDownloadRef.current?.(id);
+          } finally {
+            finish();
+          }
         },
       });
     },
-    [showDialog, setLoading, closeDialog, downloadProject], // include deleteProject here
+    [showDialog, closeDialog, downloadProject], // include deleteProject here
   );
 
   const handlePreviewClick = React.useCallback(

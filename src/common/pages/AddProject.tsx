@@ -1,12 +1,27 @@
+import { useMemo } from "react";
 import { addProjectFields } from "../../config/common";
 import { useApiRequest } from "../../hooks/useApiRequest";
 import { useDialogStore } from "../../store/useDialogStore";
+import { useAppStore } from "../../store/useAppStore";
 import CustomForm from "../components/CustomForm";
 import type { UploadItem } from "../../ui/GmailFileUploader";
 
 export default function AddProject() {
   const { sendRequest, loading } = useApiRequest();
   const { closeDialog } = useDialogStore();
+  const { user } = useAppStore();
+
+  // Only admins assign projects to someone else. Everyone else can only be
+  // assigned to themselves, so lock the field to their own name.
+  const fields = useMemo(() => {
+    if (user?.role === "admin") return addProjectFields;
+
+    return addProjectFields.map((field) =>
+      field.name === "assigned_to"
+        ? { ...field, defaultValue: user?.username ?? "", disabled: true }
+        : field,
+    );
+  }, [user]);
 
   const handleSubmit = async (formData: any) => {
     const { images, ...rest } = formData;
@@ -66,7 +81,7 @@ export default function AddProject() {
 
   return (
     <CustomForm
-      fields={addProjectFields}
+      fields={fields}
       onSubmit={handleSubmit}
       buttonName="Add Project"
       loading={loading}

@@ -3,12 +3,14 @@ import CrudActions from "../../ui/Actions";
 import { useProjectStore, type Project } from "../../store/useProjectStore";
 import { useEffect } from "react";
 import axios from "axios";
-import { ButtonLink } from "../../ui/ButtonLink";
+import Button from "../../ui/Button";
 import Chip from "../../ui/Chip";
 import { semanticChipSx } from "../../ui/chipStyles";
 import { getSemanticColor } from "../../utils/colors";
 import { SemanticSelectEditCell } from "../../ui/Select";
 import Dialog from "../../ui/Dialog";
+import { useDialogStore } from "../../store/useDialogStore";
+import AddProject from "../../common/pages/AddProject";
 import { getRowClassName } from "../../utils/appSupport";
 import { formatDateTime } from "../../utils/dateFormatter";
 import Table from "../../common/components/Table";
@@ -24,7 +26,7 @@ const columns: GridColDef[] = [
     flex: 1,
     editable: true,
   },
-  { field: "assigned_to", headerName: "Assignee", flex: 1, editable: true },
+  { field: "assigned_to", headerName: "Assignee", flex: 1, editable: false },
   {
     field: "start_date",
     headerName: "Start Date",
@@ -123,6 +125,7 @@ const EmployeeProjects = () => {
     fetchProjects();
   }, [setProjects]);
   const { updateProject } = useProjectStore();
+  const { openDialog } = useDialogStore();
 
   const processRowUpdate = async (newRow: Project, oldRow: Project) => {
     const payload: Partial<Project> = {
@@ -154,7 +157,7 @@ const EmployeeProjects = () => {
             Ongoing Activities
           </h1>
 
-          <ButtonLink to="/add-project">+ Add Project</ButtonLink>
+          <Button onClick={() => openDialog("project")}>+ Add Project</Button>
         </div>
 
         <Table<Project>
@@ -179,7 +182,12 @@ const EmployeeProjects = () => {
       <div className="min-h-[420px] lg:min-h-0 lg:h-full items-center">
         <div className="rounded-3xl bg-blue-50 h-full p-4 shadow">
           <FilePreview />
-          <Dialog />
+          <Dialog
+            title="new Project"
+            children={<AddProject />}
+            maxWidth="md"
+            apiEndPoint="/"
+          />
         </div>
       </div>
     </div>

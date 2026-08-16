@@ -25,7 +25,10 @@ interface ProjectState {
   addProject: (project: Project) => void;
   setProjects: (projects: Project[]) => void;
   deleteProject: (id: string) => Promise<void>;
-  downloadProject: (id: string) => Promise<void>;
+  downloadProject: (
+    id: string,
+    onProgress?: (progress: { percent: number | null; loaded: number }) => void,
+  ) => Promise<void>;
   setSelectedProject: (project: Project | null) => void;
   updateProject: (id: string, data: Partial<Project>) => Promise<void>;
   deleteProjects: (ids: string[]) => Promise<void>;
@@ -69,19 +72,13 @@ export const useProjectStore = create<ProjectState>((set) => ({
   },
 
   /** DOWNLOAD */
-  // downloadProject: async (id) => {
-  //   await apiService.get(`/files/download/project/${id}`);
-  //   set((state) => ({
-  //     projects: state.projects.filter((p) => p.id !== id),
-  //   }));
-  // },
-
-  downloadProject: async (id) => {
+  downloadProject: async (id, onProgress) => {
     try {
-      // 1. Pass responseType inside the config object
-      const data = await apiService.get<Blob>(`/files/download/project/${id}`, {
-        responseType: "blob",
-      });
+      const data = await apiService.getWithProgress<Blob>(
+        `/files/download/project/${id}`,
+        onProgress ?? (() => {}),
+        { responseType: "blob" },
+      );
 
       // 2. 'data' is now the Blob itself because apiService returns res.data
       if (!(data instanceof Blob)) {

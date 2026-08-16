@@ -54,6 +54,7 @@ export type FieldDefinition = {
   helperText?: string;
   row?: number;
   freeSolo?: boolean; // For dropdown
+  disabled?: boolean;
 };
 
 export type ExternalLink = {
@@ -281,6 +282,7 @@ const FormField = React.memo(
                 label={field.label}
                 error={!!error}
                 helperText={error?.message || field.helperText}
+                disabled={field.disabled}
               />
             )}
           />

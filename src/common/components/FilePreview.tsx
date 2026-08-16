@@ -24,6 +24,7 @@ import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import { useProjectStore, type FileObject } from "../../store/useProjectStore";
 import Skeleton from "../../ui/Skeleton";
+import { apiService } from "../../api/service";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 const PREVIEW_HEIGHT = 240;
@@ -90,9 +91,11 @@ const FilePreview = () => {
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isImageLoading, setIsImageLoading] = useState(false);
-  const [downloadingFiles, setDownloadingFiles] = useState<Set<string>>(
-    new Set(),
-  );
+  // Maps filename -> download percent (0-99 while streaming, 100 on
+  // completion). A missing entry means that file isn't downloading.
+  const [downloadProgress, setDownloadProgress] = useState<
+    Record<string, number>
+  >({});
   const [searchTerm, setSearchTerm] = useState("");
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
@@ -150,41 +153,36 @@ const FilePreview = () => {
   }, [totalFiles]);
 
   const handleDownload = useCallback(async (filename: string) => {
-    // Add to downloading set immediately (non-blocking)
-    setDownloadingFiles((prev) => new Set(prev).add(filename));
+    setDownloadProgress((prev) => ({ ...prev, [filename]: 0 }));
 
-    // Run download in background
-    (async () => {
-      try {
-        const response = await fetch(
-          `${API_BASE_URL}/files/download/${encodeURIComponent(filename)}`,
-          { credentials: "include" },
-        );
+    try {
+      const blob = await apiService.getWithProgress<Blob>(
+        `/files/download/${encodeURIComponent(filename)}`,
+        ({ percent }) => {
+          if (percent === null) return; // no Content-Length; keep last known value
+          setDownloadProgress((prev) => ({ ...prev, [filename]: percent }));
+        },
+        { responseType: "blob" },
+      );
 
-        if (!response.ok) throw new Error("Download failed");
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
 
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-
-        link.remove();
-        URL.revokeObjectURL(url);
-      } catch (err) {
-        console.error("Download error:", err);
-      } finally {
-        // Remove from downloading set
-        setDownloadingFiles((prev) => {
-          const newSet = new Set(prev);
-          newSet.delete(filename);
-          return newSet;
-        });
-      }
-    })();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Download error:", err);
+    } finally {
+      setDownloadProgress((prev) => {
+        const next = { ...prev };
+        delete next[filename];
+        return next;
+      });
+    }
   }, []);
 
   /* ------------------ keyboard navigation ------------------ */
@@ -509,7 +507,7 @@ const FilePreview = () => {
                     {fileName}
                   </Typography>
 
-                  {downloadingFiles.has(fileName) ? (
+                  {fileName in downloadProgress ? (
                     <Box
                       sx={{
                         position: "absolute",
@@ -520,7 +518,12 @@ const FilePreview = () => {
                         justifyContent: "center",
                       }}
                     >
-                      <CircularProgress size={20} thickness={5} />
+                      <CircularProgress
+                        variant="determinate"
+                        value={downloadProgress[fileName]}
+                        size={20}
+                        thickness={5}
+                      />
                     </Box>
                   ) : (
                     <IconButton
@@ -668,9 +671,20 @@ const FilePreview = () => {
               size="small"
               onClick={() => handleDownload(currentFileName)}
               aria-label="Download"
+              disabled={currentFileName in downloadProgress}
               sx={{ color: "#fff" }}
             >
-              <FileDownloadRounded fontSize="small" />
+              {currentFileName in downloadProgress ? (
+                <CircularProgress
+                  variant="determinate"
+                  value={downloadProgress[currentFileName]}
+                  size={16}
+                  thickness={5}
+                  sx={{ color: "#fff" }}
+                />
+              ) : (
+                <FileDownloadRounded fontSize="small" />
+              )}
             </IconButton>
           </Stack>
         </Box>
