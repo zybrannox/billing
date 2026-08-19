@@ -9,19 +9,20 @@ import { SemanticSelectEditCell } from "../../ui/Select";
 import Dialog from "../../ui/Dialog";
 import { useDialogStore } from "../../store/useDialogStore";
 import { useConfirmDialogStore } from "../../hooks/useconfirmDialogStore";
-import AddProject from "../../common/pages/AddProject";
-import AddCustomer from "../../common/pages/AddCustomer";
-import GenerateInvoice from "../../common/pages/GenerateInvoice";
+import { useAppStore } from "../../store/useAppStore";
+import AddProject from "./AddProject";
+import AddCustomer from "./AddCustomer";
+import GenerateInvoice from "./GenerateInvoice";
 import Button from "../../ui/Button";
 import { getRowClassName } from "../../utils/appSupport";
 import { formatDateTime } from "../../utils/dateFormatter";
-import Table from "../../common/components/Table";
-import FilePreview from "../../common/components/FilePreview";
-import TableSearchBar from "../../common/components/TableSearchBar";
+import Table from "../components/Table";
+import FilePreview from "../components/FilePreview";
+import TableSearchBar from "../components/TableSearchBar";
 import FilterMenu, {
   type FilterFieldDefinition,
-} from "../../common/components/FilterMenu";
-import BulkDeleteButton from "../../common/components/BulkDeleteButton";
+} from "../components/FilterMenu";
+import BulkDeleteButton from "../components/BulkDeleteButton";
 
 const priorityOrder: Record<string, number> = {
   Urgent: 1,
@@ -61,93 +62,13 @@ const filterFields: FilterFieldDefinition[] = [
   },
 ];
 
-const columns: GridColDef[] = [
-  {
-    field: "project_type",
-    headerName: "Project Type",
-    flex: 1,
-    editable: true,
-  },
-  { field: "assigned_to", headerName: "Assignee", flex: 1, editable: true },
-  {
-    field: "delivery_date",
-    headerName: "Delivery Date",
-    flex: 1.5,
-    editable: true,
-    valueFormatter: (value) => formatDateTime(value),
-  },
-  {
-    field: "priority",
-    headerName: "Priority",
-    flex: 1.5,
-    editable: true,
-    type: "singleSelect",
-    valueOptions: ["Normal", "High", "Urgent"],
-    // Lets a user re-sort the *current page* by clicking the column header.
-    // The default (no header sort applied) order comes from the server.
-    sortComparator: (v1, v2) => {
-      const order1 = priorityOrder[v1 as string] || 5;
-      const order2 = priorityOrder[v2 as string] || 5;
-      return order1 - order2;
-    },
-    renderCell: ({ value }) => (
-      <Chip
-        label={value}
-        sx={semanticChipSx(getSemanticColor("priority", value))}
-      />
-    ),
-    renderEditCell: (params) => (
-      <SemanticSelectEditCell {...params} semantic="priority" />
-    ),
-  },
-  {
-    field: "client_status",
-    headerName: "Client Status",
-    flex: 1.5,
-    editable: true,
-    type: "singleSelect",
-    valueOptions: ["Confirmed", "Correction"],
-    renderCell: ({ value }) => (
-      <Chip
-        label={value}
-        sx={semanticChipSx(getSemanticColor("clientStatus", value))}
-      />
-    ),
-    renderEditCell: (params) => (
-      <SemanticSelectEditCell {...params} semantic="clientStatus" />
-    ),
-  },
-  {
-    field: "print_status",
-    headerName: "Print Status",
-    flex: 1.5,
-    editable: true,
-    type: "singleSelect",
-    // "Completed" only becomes selectable once the design phase is marked
-    // done - keeps the impossible state from ever being offered, rather
-    // than letting the user pick it and bouncing off a server error.
-    valueOptions: ({ row }) =>
-      row?.design_completed_at
-        ? ["Pending", "In Progress", "Completed"]
-        : ["Pending", "In Progress"],
-    sortComparator: (v1, v2) => {
-      const order1 = printStatusOrder[v1 as string] || 4;
-      const order2 = printStatusOrder[v2 as string] || 4;
-      return order1 - order2;
-    },
-    renderCell: ({ value }) => (
-      <Chip
-        label={value}
-        sx={semanticChipSx(getSemanticColor("printStatus", value))}
-      />
-    ),
-    renderEditCell: (params) => (
-      <SemanticSelectEditCell {...params} semantic="printStatus" />
-    ),
-  },
-];
+const Projects = () => {
+  const { user } = useAppStore();
+  // Bulk delete and invoice generation stay admin-only - project deletion at
+  // scale and billing are admin-level operations, unlike search/filter/add
+  // customer which are just as useful day-to-day for employees.
+  const isAdmin = user?.role === "admin";
 
-const AdminProjects = () => {
   const { openDialog } = useDialogStore();
   const projects = useProjectStore((s) => s.projects);
   const projectsTotal = useProjectStore((s) => s.projectsTotal);
@@ -155,6 +76,110 @@ const AdminProjects = () => {
   const fetchProjects = useProjectStore((s) => s.fetchProjects);
   const { updateProject, deleteProjects, markDesignCompleted, markDelivered } =
     useProjectStore();
+
+  const columns: GridColDef[] = useMemo(
+    () => [
+      {
+        field: "project_type",
+        headerName: "Project Type",
+        flex: 1,
+        editable: true,
+      },
+      {
+        field: "assigned_to",
+        headerName: "Assignee",
+        flex: 1,
+        editable: isAdmin,
+      },
+      {
+        field: "customer_name",
+        headerName: "Customer",
+        flex: 1,
+        editable: false,
+        // Editing which customer a project belongs to needs the same
+        // search-driven picker as the create form, not a plain text edit -
+        // out of scope here, this column is display-only.
+        renderCell: ({ value }) => value || "—",
+      },
+      {
+        field: "delivery_date",
+        headerName: "Delivery Date",
+        flex: 1.5,
+        editable: true,
+        valueFormatter: (value) => formatDateTime(value),
+      },
+      {
+        field: "priority",
+        headerName: "Priority",
+        flex: 1.5,
+        editable: true,
+        type: "singleSelect",
+        valueOptions: ["Normal", "High", "Urgent"],
+        // Lets a user re-sort the *current page* by clicking the column header.
+        // The default (no header sort applied) order comes from the server.
+        sortComparator: (v1, v2) => {
+          const order1 = priorityOrder[v1 as string] || 5;
+          const order2 = priorityOrder[v2 as string] || 5;
+          return order1 - order2;
+        },
+        renderCell: ({ value }) => (
+          <Chip
+            label={value}
+            sx={semanticChipSx(getSemanticColor("priority", value))}
+          />
+        ),
+        renderEditCell: (params) => (
+          <SemanticSelectEditCell {...params} semantic="priority" />
+        ),
+      },
+      {
+        field: "client_status",
+        headerName: "Client Status",
+        flex: 1.5,
+        editable: true,
+        type: "singleSelect",
+        valueOptions: ["Confirmed", "Correction"],
+        renderCell: ({ value }) => (
+          <Chip
+            label={value}
+            sx={semanticChipSx(getSemanticColor("clientStatus", value))}
+          />
+        ),
+        renderEditCell: (params) => (
+          <SemanticSelectEditCell {...params} semantic="clientStatus" />
+        ),
+      },
+      {
+        field: "print_status",
+        headerName: "Print Status",
+        flex: 1.5,
+        editable: true,
+        type: "singleSelect",
+        // "Completed" only becomes selectable once the design phase is marked
+        // done - keeps the impossible state from ever being offered, rather
+        // than letting the user pick it and bouncing off a server error.
+        valueOptions: ({ row }) =>
+          row?.design_completed_at
+            ? ["Pending", "In Progress", "Completed"]
+            : ["Pending", "In Progress"],
+        sortComparator: (v1, v2) => {
+          const order1 = printStatusOrder[v1 as string] || 4;
+          const order2 = printStatusOrder[v2 as string] || 4;
+          return order1 - order2;
+        },
+        renderCell: ({ value }) => (
+          <Chip
+            label={value}
+            sx={semanticChipSx(getSemanticColor("printStatus", value))}
+          />
+        ),
+        renderEditCell: (params) => (
+          <SemanticSelectEditCell {...params} semantic="printStatus" />
+        ),
+      },
+    ],
+    [isAdmin],
+  );
 
   const rows = useMemo(() => {
     return projects.map((p) => ({
@@ -173,6 +198,7 @@ const AdminProjects = () => {
       design_completed_by: p.design_completed_by,
       delivered_at: p.delivered_at,
       delivered_by: p.delivered_by,
+      customer_name: p.customer_name,
     }));
   }, [projects]);
 
@@ -342,10 +368,12 @@ const AdminProjects = () => {
                 }}
               />
 
-              <BulkDeleteButton
-                selectedCount={selectedIds.length}
-                onDelete={handleBulkDelete}
-              />
+              {isAdmin && (
+                <BulkDeleteButton
+                  selectedCount={selectedIds.length}
+                  onDelete={handleBulkDelete}
+                />
+              )}
             </div>
 
             <div className="h-6 w-px bg-slate-200 hidden md:block mx-0.5" />
@@ -377,7 +405,7 @@ const AdminProjects = () => {
             columns={columns}
             processRowUpdate={processRowUpdate}
             getRowClassName={getRowClassName}
-            checkboxSelection={true}
+            checkboxSelection={isAdmin}
             renderActions={(params, handlers) => [
               <CrudActions
                 key="crud"
@@ -385,14 +413,16 @@ const AdminProjects = () => {
                 download
                 delete
                 info
-                invoice
+                invoice={isAdmin}
                 orderMilestones
                 data={params.row}
                 onEdit={handlers.edit}
                 onDelete={handlers.delete}
                 onDownload={handlers.download}
-                onGenerateInvoice={() =>
-                  openDialog("invoice", params.row.id, "add")
+                onGenerateInvoice={
+                  isAdmin
+                    ? () => openDialog("invoice", params.row.id, "add")
+                    : undefined
                 }
                 printStatus={params.row.print_status}
                 designCompletedMeta={
@@ -438,12 +468,14 @@ const AdminProjects = () => {
           children={<AddCustomer />}
           maxWidth="xs"
         />
-        <Dialog
-          type="invoice"
-          title="Invoice"
-          children={<GenerateInvoice />}
-          maxWidth="xs"
-        />
+        {isAdmin && (
+          <Dialog
+            type="invoice"
+            title="Invoice"
+            children={<GenerateInvoice />}
+            maxWidth="xs"
+          />
+        )}
       </div>
       <div className="min-h-[420px] lg:min-h-0 lg:h-full items-center">
         <div className="rounded-3xl bg-blue-50 h-full p-4 shadow">
@@ -454,4 +486,4 @@ const AdminProjects = () => {
   );
 };
 
-export default AdminProjects;
+export default Projects;

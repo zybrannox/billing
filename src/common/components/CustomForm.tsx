@@ -61,6 +61,9 @@ export type FieldDefinition = {
   asyncExtraParams?: Record<string, string | number>;
   getOptionLabel?: (item: any) => string;
   getOptionValue?: (item: any) => string | number;
+  // See AsyncSearchSelect's `initialOption` - lets a caller pre-resolve
+  // `defaultValue` to a visible label without a server round-trip.
+  initialOption?: any;
 };
 
 export type ExternalLink = {
@@ -423,6 +426,7 @@ const FormField = React.memo(
                 value={ctrl.value}
                 onChange={ctrl.onChange}
                 disabled={field.disabled}
+                initialOption={field.initialOption}
                 error={!!error}
                 helperText={error?.message || field.helperText}
               />

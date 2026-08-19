@@ -28,6 +28,8 @@ export interface Project {
   design_completed_by?: string | null;
   delivered_at?: string | null;
   delivered_by?: string | null;
+  customer_id?: number | null;
+  customer_name?: string | null;
 }
 
 export interface ProjectListParams {

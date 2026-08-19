@@ -6,12 +6,11 @@ import Employee from "./admin/pages/Employee";
 import AddEmployee from "./admin/pages/AddEmployee";
 
 import EmployeeLayout from "./employee/Layout";
-import EmployeeProjects from "./employee/pages/Projects";
 
 import ConfirmDialog from "./ui/ConfirmDialog";
 import DownloadProgressIndicator from "./ui/DownloadProgressIndicator";
 import { useConfirmDialogStore } from "./hooks/useconfirmDialogStore";
-import AdminProjects from "./admin/pages/Projects";
+import Projects from "./common/pages/Projects";
 import Customers from "./admin/pages/Customers";
 import Billing from "./admin/pages/Billing";
 import InvoiceView from "./admin/pages/InvoiceView";
@@ -43,7 +42,7 @@ function App() {
             {/* ADMIN ROUTES */}
             <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
               <Route path="/admin" element={<AdminLayout />}>
-                <Route path="projects" element={<AdminProjects />} />
+                <Route path="projects" element={<Projects />} />
                 <Route path="customers" element={<Customers />} />
                 <Route path="employees" element={<Employee />} />
                 <Route path="employees/new" element={<AddEmployee />} />
@@ -57,7 +56,7 @@ function App() {
             {/* USER ROUTES */}
             <Route element={<ProtectedRoute allowedRoles={["user"]} />}>
               <Route path="/" element={<EmployeeLayout />}>
-                <Route index element={<EmployeeProjects />} />
+                <Route index element={<Projects />} />
               </Route>
             </Route>
 

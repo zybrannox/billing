@@ -26,13 +26,23 @@ export default function AddProject() {
   }, []);
 
   // Only admins assign projects to someone else. Everyone else can only be
-  // assigned to themselves, so lock the field to their own name.
+  // assigned to themselves, so lock the field to their own name. `assigned_to`
+  // is an async_select keyed by username (see config/common.ts), and its
+  // options come from GET /users - but the field's single-record hydration
+  // fetch looks up GET /users/{value} expecting a numeric id, so a raw
+  // username there 422s and the field would show blank. initialOption
+  // hands it an already-resolved option so it never needs that lookup.
   const fields = useMemo(() => {
     if (user?.role === "admin") return addProjectFields;
 
     return addProjectFields.map((field) =>
       field.name === "assigned_to"
-        ? { ...field, defaultValue: user?.username ?? "", disabled: true }
+        ? {
+            ...field,
+            defaultValue: user?.username ?? "",
+            disabled: true,
+            initialOption: user ? { username: user.username } : undefined,
+          }
         : field,
     );
   }, [user]);

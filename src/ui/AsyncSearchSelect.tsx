@@ -19,6 +19,12 @@ interface AsyncSearchSelectProps {
   disabled?: boolean;
   className?: string;
   sx?: object;
+  // Pre-resolved option to show for `value` without a server round-trip.
+  // Needed when `value` isn't something `${endpoint}/{value}` can look up
+  // directly - e.g. this field keys options by username, but the users
+  // endpoint's single-record lookup is by numeric id, so that fetch 422s
+  // and the field would otherwise silently show blank forever.
+  initialOption?: any;
 }
 
 export default function AsyncSearchSelect({
@@ -36,6 +42,7 @@ export default function AsyncSearchSelect({
   disabled,
   className,
   sx,
+  initialOption,
 }: AsyncSearchSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [inputValue, setInputValue] = React.useState("");
@@ -61,6 +68,12 @@ export default function AsyncSearchSelect({
       return;
     }
 
+    // Caller already knows what this value resolves to - skip the fetch.
+    if (initialOption && getOptionValue(initialOption) === value) {
+      setSelected(initialOption);
+      return;
+    }
+
     // Attempt single record fetch from server if option is missing
     let active = true;
     (async () => {
@@ -75,7 +88,7 @@ export default function AsyncSearchSelect({
     return () => {
       active = false;
     };
-  }, [value, options, endpoint, getOptionValue, selected]);
+  }, [value, options, endpoint, getOptionValue, selected, initialOption]);
 
   // Debounced search query effect
   React.useEffect(() => {
