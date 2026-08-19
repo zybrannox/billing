@@ -1,23 +1,26 @@
 import CustomForm from "../../common/components/CustomForm";
-import { addEmployeeFields } from "../../config/admin";
+import { changePasswordFields } from "../../config/admin";
 import { useApiRequest } from "../../hooks/useApiRequest";
 import { useDialogStore } from "../../store/useDialogStore";
+import { API } from "../../api/endpoints";
 
-interface AddEmployeeProps {
+interface ChangePasswordProps {
+  userId: number;
   onSuccess?: () => void;
 }
 
-export default function AddEmployee({ onSuccess }: AddEmployeeProps) {
+export default function ChangePassword({ userId, onSuccess }: ChangePasswordProps) {
   const { sendRequest, loading } = useApiRequest();
   const { closeDialog } = useDialogStore();
 
   const handleSubmit = async (formData: any) => {
     const result = await sendRequest({
-      endpoint: "/users/",
-      method: "post",
+      endpoint: API.users.password(String(userId)),
+      method: "patch",
       data: formData,
       onError: (err) => {
-        console.error("Error adding employee", err);
+        console.error("Error changing password", err);
+        alert(err?.detail || "Failed to change password");
       },
     });
 
@@ -29,9 +32,9 @@ export default function AddEmployee({ onSuccess }: AddEmployeeProps) {
 
   return (
     <CustomForm
-      fields={addEmployeeFields}
+      fields={changePasswordFields}
       onSubmit={handleSubmit}
-      buttonName={loading ? "Submitting..." : "Add Employee"}
+      buttonName={loading ? "Updating..." : "Update Password"}
       loading={loading}
     />
   );

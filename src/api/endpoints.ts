@@ -5,5 +5,6 @@ export const API = {
   users: {
     list: "/users",
     detail: (id: string) => `/users/${id}`,
+    password: (id: string) => `/users/${id}/password`,
   },
 }

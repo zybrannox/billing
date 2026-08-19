@@ -26,7 +26,12 @@ function Login() {
       });
 
       // 2. Fetch user AFTER successful login
-      const me = await sendRequest<{ role: string }>({
+      // /auth/me actually returns {username, role} (see
+      // app/auth/dependencies.py's get_current_user) - typing this as just
+      // {role} let `username` silently go missing from the User type
+      // without TypeScript catching it, since the field really is present
+      // at runtime; this pins the request to the real shape instead.
+      const me = await sendRequest<User>({
         endpoint: "/auth/me",
         method: "get",
       });

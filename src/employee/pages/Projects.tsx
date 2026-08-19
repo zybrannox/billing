@@ -1,8 +1,7 @@
 import type { GridColDef } from "@mui/x-data-grid";
 import CrudActions from "../../ui/Actions";
 import { useProjectStore, type Project } from "../../store/useProjectStore";
-import { useEffect } from "react";
-import axios from "axios";
+import { useEffect, useMemo } from "react";
 import Button from "../../ui/Button";
 import Chip from "../../ui/Chip";
 import { semanticChipSx } from "../../ui/chipStyles";
@@ -15,11 +14,9 @@ import { getRowClassName } from "../../utils/appSupport";
 import { formatDateTime } from "../../utils/dateFormatter";
 import Table from "../../common/components/Table";
 import FilePreview from "../../common/components/FilePreview";
+import { useConfirmDialogStore } from "../../hooks/useconfirmDialogStore";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL;
-
-const columns: GridColDef[] = [
-  { field: "id", headerName: "SI.NO", width: 60 },
+const baseColumns: GridColDef[] = [
   {
     field: "project_type",
     headerName: "Project Type",
@@ -47,7 +44,7 @@ const columns: GridColDef[] = [
     flex: 1.5,
     editable: true,
     type: "singleSelect",
-    valueOptions: ["Low", "Normal", "High", "Urgent"],
+    valueOptions: ["Normal", "High", "Urgent"],
     renderCell: ({ value }) => (
       <Chip
         label={value}
@@ -81,7 +78,13 @@ const columns: GridColDef[] = [
     flex: 1.5,
     editable: true,
     type: "singleSelect",
-    valueOptions: ["Pending", "In Progress", "Completed"],
+    // "Completed" only becomes selectable once the design phase is marked
+    // done - keeps the impossible state from ever being offered, rather
+    // than letting the user pick it and bouncing off a server error.
+    valueOptions: ({ row }) =>
+      row?.design_completed_at
+        ? ["Pending", "In Progress", "Completed"]
+        : ["Pending", "In Progress"],
     renderCell: ({ value }) => (
       <Chip
         label={value}
@@ -101,31 +104,92 @@ const columns: GridColDef[] = [
 ];
 
 const EmployeeProjects = () => {
-  const setProjects = useProjectStore((state) => state.setProjects);
   const projects = useProjectStore((s) => s.projects);
-  const rows = projects.map((p) => ({
-    id: p.id,
-    project_type: p.project_type,
-    assigned_to: p.assigned_to,
-    start_date: p.start_date,
-    delivery_date: p.delivery_date,
-    priority: p.priority,
-    client_status: p.client_status,
-    print_status: p.print_status,
-    description: p.description,
-    status: p.client_status,
-    file_paths: p.file_paths || [],
-  }));
+  const fetchProjects = useProjectStore((s) => s.fetchProjects);
+  const rows = useMemo(
+    () =>
+      projects.map((p) => ({
+        id: p.id,
+        project_type: p.project_type,
+        assigned_to: p.assigned_to,
+        start_date: p.start_date,
+        delivery_date: p.delivery_date,
+        priority: p.priority,
+        client_status: p.client_status,
+        print_status: p.print_status,
+        description: p.description,
+        status: p.client_status,
+        file_paths: p.file_paths || [],
+        design_completed_at: p.design_completed_at,
+        design_completed_by: p.design_completed_by,
+        delivered_at: p.delivered_at,
+        delivered_by: p.delivered_by,
+      })),
+    [projects],
+  );
+
+  // This page pulls a single page of up to 100 rows (no pagination UI), so
+  // SI.NO is just the row's position in that list - sequential 1-to-n
+  // regardless of the underlying project id.
+  const columns: GridColDef[] = useMemo(
+    () => [
+      {
+        field: "serialNo",
+        headerName: "SI.NO",
+        width: 60,
+        sortable: false,
+        filterable: false,
+        valueGetter: (_value, row) =>
+          rows.findIndex((r) => r.id === row.id) + 1,
+      },
+      ...baseColumns,
+    ],
+    [rows],
+  );
 
   useEffect(() => {
-    const fetchProjects = async () => {
-      const res = await axios.get(`${API_BASE_URL}/projects/`);
-      setProjects(res.data);
-    };
-    fetchProjects();
-  }, [setProjects]);
-  const { updateProject } = useProjectStore();
+    // This page has no pagination UI yet, so pull a single large page. The
+    // server still applies the default print_status/priority sort.
+    fetchProjects({ pageSize: 100 });
+  }, [fetchProjects]);
+  const { updateProject, markDesignCompleted, markDelivered } = useProjectStore();
   const { openDialog } = useDialogStore();
+  const { showDialog, closeDialog, setLoading } = useConfirmDialogStore();
+
+  const handleMarkDesignCompleted = (id: string) => {
+    showDialog({
+      title: "Mark Design Completed?",
+      description:
+        "This flags the design phase as done for this order. The customer will later be notified automatically when messaging is wired up.",
+      confirmText: "Mark Completed",
+      onConfirm: async () => {
+        try {
+          setLoading(true);
+          await markDesignCompleted(id);
+          closeDialog();
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
+  };
+
+  const handleMarkDelivered = (id: string) => {
+    showDialog({
+      title: "Mark Order Delivered?",
+      description: "This flags the order as delivered to the customer.",
+      confirmText: "Mark Delivered",
+      onConfirm: async () => {
+        try {
+          setLoading(true);
+          await markDelivered(id);
+          closeDialog();
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
+  };
 
   const processRowUpdate = async (newRow: Project, oldRow: Project) => {
     const payload: Partial<Project> = {
@@ -165,6 +229,11 @@ const EmployeeProjects = () => {
           columns={columns}
           processRowUpdate={processRowUpdate}
           getRowClassName={getRowClassName}
+          // This page loads a single large page of up to 100 rows (see the
+          // fetchProjects call above) rather than paginating, so the grid's
+          // own page-size options need to include that number - otherwise
+          // MUI warns that its default page size isn't in the options list.
+          pageSizeOptions={[100]}
           renderActions={(params, handlers) => [
             <CrudActions
               key="crud"
@@ -172,9 +241,28 @@ const EmployeeProjects = () => {
               download
               delete
               info
+              orderMilestones
               data={params.row}
               onEdit={handlers.edit}
               onDelete={handlers.delete}
+              printStatus={params.row.print_status}
+              designCompletedMeta={
+                params.row.design_completed_at
+                  ? {
+                      at: params.row.design_completed_at,
+                      by: params.row.design_completed_by,
+                    }
+                  : null
+              }
+              deliveredMeta={
+                params.row.delivered_at
+                  ? { at: params.row.delivered_at, by: params.row.delivered_by }
+                  : null
+              }
+              onMarkDesignCompleted={() =>
+                handleMarkDesignCompleted(params.row.id)
+              }
+              onMarkDelivered={() => handleMarkDelivered(params.row.id)}
             />,
           ]}
         />
@@ -183,10 +271,10 @@ const EmployeeProjects = () => {
         <div className="rounded-3xl bg-blue-50 h-full p-4 shadow">
           <FilePreview />
           <Dialog
-            title="new Project"
+            type="project"
+            title="Project"
             children={<AddProject />}
             maxWidth="md"
-            apiEndPoint="/"
           />
         </div>
       </div>

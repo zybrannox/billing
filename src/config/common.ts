@@ -1,4 +1,4 @@
-import type { FieldDefinition } from "../common/componets/CustomForm";
+import type { FieldDefinition } from "../common/components/CustomForm";
 
 export const addProjectFields: FieldDefinition[] = [
   {
@@ -11,12 +11,29 @@ export const addProjectFields: FieldDefinition[] = [
     row: 1,
   },
   {
-    name: "assigned_to",
-    label: "Assigned To",
-    type: "text",
-    placeholder: "Enter assignee name",
+    name: "customer_id",
+    label: "Customer Name",
+    type: "async_select",
+    placeholder: "Search customers...",
     required: true,
     row: 1,
+    asyncEndpoint: "/customers",
+    asyncExtraParams: { limit: 20 },
+    getOptionLabel: (c) => `${c.first_name} ${c.last_name}`,
+    getOptionValue: (c) => c.id,
+  },
+  {
+    name: "assigned_to",
+    label: "Assigned To",
+    type: "async_select",
+    placeholder: "Search employees...",
+    required: true,
+    row: 1,
+    asyncEndpoint: "/users",
+    // Admins are excluded - this is for picking who a project is assigned to.
+    asyncExtraParams: { role: "user", limit: 20 },
+    getOptionLabel: (u) => u.username,
+    getOptionValue: (u) => u.username,
   },
   {
     name: "start_date",
@@ -41,11 +58,6 @@ export const addProjectFields: FieldDefinition[] = [
     required: true,
     defaultValue: "Normal",
     options: [
-      {
-        label: "Low",
-        value: "Low",
-        color: "#6B7280", // Muted Gray (low emphasis)
-      },
       {
         label: "Normal",
         value: "Normal",
@@ -84,6 +96,15 @@ export const addProjectFields: FieldDefinition[] = [
     ],
     row: 1,
   },
+    {
+    name: "images",
+    label: "Images",
+    type: "file_upload",
+    multiple: true,
+    placeholder: "Upload project images",
+    required: false,
+    row: 1,
+  },
   {
     name: "description",
     label: "Description",
@@ -92,13 +113,59 @@ export const addProjectFields: FieldDefinition[] = [
     required: false,
     row: 1,
   },
+
+];
+
+export const generateInvoiceFields: FieldDefinition[] = [
   {
-    name: "images",
-    label: "Images",
-    type: "file_upload",
-    multiple: true,
-    placeholder: "Upload project images",
+    name: "amount",
+    label: "Amount (₹)",
+    type: "number",
+    required: true,
+    min: 0,
+    placeholder: "Enter invoice amount",
+    row: 1,
+  },
+  {
+    name: "due_date",
+    label: "Due Date",
+    type: "date_time",
     required: false,
     row: 1,
+  },
+];
+
+export const addCustomerFields: FieldDefinition[] = [
+  {
+    name: "first_name",
+    label: "First Name",
+    type: "text",
+    required: true,
+    placeholder: "Enter first name",
+    row: 1,
+  },
+  {
+    name: "last_name",
+    label: "Last Name",
+    type: "text",
+    required: true,
+    placeholder: "Enter last name",
+    row: 1,
+  },
+  {
+    name: "contact_number",
+    label: "Contact Number",
+    type: "text",
+    required: true,
+    placeholder: "Enter contact number",
+    row: 2,
+  },
+  {
+    name: "email",
+    label: "Email",
+    type: "email",
+    required: true,
+    placeholder: "Enter email address",
+    row: 2,
   },
 ];

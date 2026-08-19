@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-type EditingType =
+export type EditingType =
   | "course"
   | "category"
   | "user"
@@ -16,6 +16,9 @@ type EditingType =
   | "pages"
   | "certificate"
   | "project"
+  | "customer"
+  | "invoice"
+  | "changePassword"
   | null;
 
 type DialogMode = "add" | "edit" | "view";

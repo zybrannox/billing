@@ -10,7 +10,6 @@ import {
 import MuiDrawer from "@mui/material/Drawer";
 import Box from "@mui/material/Box";
 import List from "@mui/material/List";
-import Typography from "@mui/material/Typography";
 import IconButton from "@mui/material/IconButton";
 import ListItem from "@mui/material/ListItem";
 import ListItemIcon from "@mui/material/ListItemIcon";
@@ -100,6 +99,75 @@ const DrawerHeader = styled("div")(({ theme }) => ({
   minHeight: 64,
   boxSizing: "border-box",
 }));
+
+// Same rounded-pill + tinted-hover treatment used everywhere else in the
+// app (ui/Actions.tsx's actionIconSx, ui/Dialog.tsx's close button) -
+// previously this was a bare IconButton with no hover feedback at all.
+const closeButtonSx = {
+  p: 0.625,
+  borderRadius: "100%",
+  color: "#000",
+  transition: "all 0.15s ease-in-out",
+  "&:active": { transform: "scale(0.95)" },
+};
+
+// Desktop and mobile showed different headers entirely (real logo images
+// vs a literal "Logo" text string) - one shared renderer keeps them
+// identical, which is the whole point of the mobile-color fix below.
+const DrawerLogo = ({ showText }: { showText: boolean }) => (
+  <div className="flex gap-1">
+    <Box
+      role="img"
+      aria-label="App logo"
+      sx={{
+        width: 32,
+        height: 24,
+        flexShrink: 0,
+        display: "flex",
+        placeItems: "center",
+        pointerEvents: "none", // branding is not interactive
+      }}
+    >
+      <Box
+        component="img"
+        src="/images/logo.webp"
+        alt=""
+        sx={{
+          width: "100%",
+          height: "100%",
+          objectFit: "contain",
+          display: "block",
+        }}
+      />
+    </Box>
+    {showText && (
+      <Box
+        role="img"
+        aria-label="App logo"
+        sx={{
+          width: 108,
+          height: 24,
+          flexShrink: 0,
+          display: "flex",
+          placeItems: "center",
+          pointerEvents: "none", // branding is not interactive
+        }}
+      >
+        <Box
+          component="img"
+          src="/images/logo_text.webp"
+          alt=""
+          sx={{
+            width: "100%",
+            height: "100%",
+            objectFit: "contain",
+            display: "block",
+          }}
+        />
+      </Box>
+    )}
+  </div>
+);
 
 interface Props {
   open: boolean; // controls desktop permanent collapsed/expanded
@@ -218,66 +286,16 @@ const Drawer: React.FC<Props> = ({ open, onClose, onToggle, navigations }) => {
         onMouseLeave={handleDrawerMouseLeave}
       >
         <DrawerHeader sx={{ px: 2 }}>
-          <div className="flex gap-1">
-            <Box
-              role="img"
-              aria-label="App logo"
-              sx={{
-                width: 32,
-                height: 24,
-                flexShrink: 0,
-                display: "flex",
-                placeItems: "center",
-                pointerEvents: "none", // branding is not interactive
-              }}
-            >
-              <Box
-                component="img"
-                src="/images/logo.webp"
-                alt=""
-                sx={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "contain",
-                  display: "block",
-                }}
-              />
-            </Box>
-            {open && (
-              <Box
-                role="img"
-                aria-label="App logo"
-                sx={{
-                  width: 108,
-                  height: 24,
-                  flexShrink: 0,
-                  display: "flex",
-                  placeItems: "center",
-                  pointerEvents: "none", // branding is not interactive
-                }}
-              >
-                <Box
-                  component="img"
-                  src="/images/logo_text.webp"
-                  alt=""
-                  sx={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "contain",
-                    display: "block",
-                  }}
-                />
-              </Box>
-            )}
-          </div>
+          <DrawerLogo showText={open} />
           <IconButton
             onClick={onToggle}
             size="small"
             sx={{
-              display: open ? "block" : "none",
+              ...closeButtonSx,
+              display: open ? "inline-flex" : "none",
             }}
           >
-            <CloseOutlined sx={{ color: "#fff" }} />
+            <CloseOutlined sx={{ fontSize: "1.2rem" }} />
           </IconButton>
         </DrawerHeader>
 
@@ -298,17 +316,22 @@ const Drawer: React.FC<Props> = ({ open, onClose, onToggle, navigations }) => {
       PaperProps={{
         sx: {
           width: DRAWER_WIDTH,
-          backgroundColor: "var(--admin-body-bg)",
+          // Matches the desktop drawer's own look (white, rounded trailing
+          // corners, drop shadow) instead of the unrelated dark
+          // --admin-body-bg it used before - same component, same theme,
+          // regardless of viewport.
+          backgroundColor: "#fff",
           color: "var(--admin-gray)",
+          borderTopRightRadius: "24px",
+          borderBottomRightRadius: "24px",
+          boxShadow: "-4px 0 12px rgba(0, 0, 0, 0.15)",
         },
       }}
     >
       <DrawerHeader sx={{ px: 2 }}>
-        <Typography variant="h6" sx={{ color: "#fff" }}>
-          Logo
-        </Typography>
-        <IconButton onClick={onClose} size="small">
-          <CloseOutlined sx={{ color: "#fff" }} />
+        <DrawerLogo showText />
+        <IconButton onClick={onClose} size="small" sx={closeButtonSx}>
+          <CloseOutlined sx={{ fontSize: "1.2rem" }} />
         </IconButton>
       </DrawerHeader>
 

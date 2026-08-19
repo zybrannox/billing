@@ -1,10 +1,9 @@
+import React from "react";
 import { TextField, InputAdornment, IconButton, type TextFieldProps } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
 
-type SearchInputProps = Omit<TextFieldProps, "variant" | "size"> & {
-  // Add any custom props here if needed
-};
+type SearchInputProps = Omit<TextFieldProps, "variant" | "size">;
 
 export default function SearchInput({
   placeholder = "Search...",
@@ -12,14 +11,34 @@ export default function SearchInput({
   InputProps,
   value,
   onChange,
+  name,
+  id,
   ...props
 }: SearchInputProps) {
   const hasValue = typeof value === "string" && value.length > 0;
 
-  const handleClear = () => {
-    onChange?.({
-      target: { value: "" },
-    } as React.ChangeEvent<HTMLInputElement>);
+  const handleClear = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    if (!onChange) return;
+
+    // Create a mock change event that maintains full HTMLInputElement contract
+    const mockEvent = {
+      ...e,
+      target: {
+        ...e.target,
+        name: name || "",
+        id: id || "",
+        value: "",
+      },
+      currentTarget: {
+        ...e.currentTarget,
+        name: name || "",
+        id: id || "",
+        value: "",
+      },
+    } as unknown as React.ChangeEvent<HTMLInputElement>;
+
+    onChange(mockEvent);
   };
 
   return (
@@ -27,43 +46,89 @@ export default function SearchInput({
       size="small"
       placeholder={placeholder}
       variant="outlined"
-      value={value}
+      value={value ?? ""}
       onChange={onChange}
+      name={name}
+      id={id}
       {...props}
       InputProps={{
         startAdornment: (
-          <InputAdornment position="start">
-            <SearchIcon sx={{ fontSize: 18, color: "text.secondary" }} />
+          <InputAdornment position="start" sx={{ marginRight: 1 }}>
+            <SearchIcon
+              sx={{
+                fontSize: 18,
+                color: "var(--blue-400, #94a3b8)",
+                transition: "color 0.2s ease",
+              }}
+            />
           </InputAdornment>
         ),
-        endAdornment: hasValue ? (
-          <InputAdornment position="end">
+        // Positioned absolutely to prevent horizontal width shifting when visible
+        endAdornment: (
+          <InputAdornment
+            position="end"
+            sx={{
+              position: "absolute",
+              right: 8,
+              opacity: hasValue ? 1 : 0,
+              pointerEvents: hasValue ? "auto" : "none",
+              transition: "opacity 0.2s ease-in-out, transform 0.2s ease-in-out",
+              transform: hasValue ? "scale(1)" : "scale(0.85)",
+            }}
+          >
             <IconButton
               size="small"
               aria-label="Clear search"
               onClick={handleClear}
-              sx={{ padding: "2px" }}
+              tabIndex={hasValue ? 0 : -1}
+              sx={{
+                padding: "3px",
+                color: "var(--red-600)",
+                borderRadius: "var(--border-radius-sm, 4px)",
+                transition: "background-color 0.15s ease, color 0.15s ease",
+                "&:hover": {
+                  bgcolor: "var(--red-50)",
+                },
+                "&:active": {
+                  transform: "scale(0.92)",
+                },
+              }}
             >
-              <CloseIcon sx={{ fontSize: 16, color: "text.secondary" }} />
+              <CloseIcon sx={{ fontSize: 15 }} />
             </IconButton>
           </InputAdornment>
-        ) : undefined,
+        ),
         ...InputProps,
         sx: {
-          height: 32,
-          fontSize: "0.8rem",
-          borderRadius: 2,
-          bgcolor: "rgba(0,0,0,0.03)",
+          height: 36,
+          fontSize: "0.85rem",
+          borderRadius: "var(--border-radius-md, 6px)",
+          bgcolor: "#ffffff",
+          paddingLeft: "10px",
+          paddingRight: "32px", // Fixed reserve padding so text doesn't overlap the clear button
+          transition: "background-color 0.2s ease, box-shadow 0.2s ease",
+          "& input": {
+            paddingY: 0,
+            textOverflow: "ellipsis",
+          },
           ...InputProps?.sx,
         },
       }}
       sx={{
         ...sx,
-        "& .MuiOutlinedInput-notchedOutline": {
-          borderColor: "rgba(0,0,0,0.1)",
-        },
-        "&:hover .MuiOutlinedInput-notchedOutline": {
-          borderColor: "rgba(0,0,0,0.2)",
+        "& .MuiOutlinedInput-root": {
+          "& fieldset": {
+            borderColor: "rgba(0, 0, 0, 0.12)",
+            transition: "border-color 0.2s ease, box-shadow 0.2s ease",
+          },
+          "&:hover fieldset": {
+            borderColor: "var(--blue-300, #93c5fd)",
+          },
+          "&.Mui-focused fieldset": {
+            borderColor: "var(--blue-500, #3b82f6)",
+            borderWidth: "1px",
+            boxShadow: "0 0 0 3px rgba(59, 130, 246, 0.12)",
+          },
         },
       }}
     />

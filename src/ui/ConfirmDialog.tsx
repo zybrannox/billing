@@ -1,15 +1,8 @@
 "use client";
-import {
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-  Button,
-  IconButton,
-  CircularProgress,
-} from "@mui/material";
-import CloseIcon from "@mui/icons-material/Close";
+import { Typography } from "@mui/material";
+import { GenericDialog } from "./Dialog";
+import Button from "./Button";
+import Loader from "./Loader";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -35,56 +28,46 @@ export default function ConfirmDialog({
   onCancel,
 }: ConfirmDialogProps) {
   return (
-    <Dialog
+    <GenericDialog
       open={open}
-      onClose={loading ? undefined : onCancel}
-      maxWidth="xs"
-      fullWidth
+      onClose={loading ? () => {} : onCancel}
+      title={title}
+      // A confirm dialog's content (one short line + two buttons) doesn't
+      // map to either of GenericDialog's built-in sizing modes: shrinking
+      // to content leaves it cramped, and filling the "xs" breakpoint
+      // (~444px) leaves a lot of dead space around such a short message.
+      // A fixed, snug width fits the actual content instead.
+      width="24rem"
     >
-      <DialogTitle sx={{ m: 0, p: 2 }}>
-        {title}
+      <Typography
+        sx={{
+          fontSize: "0.875rem",
+          color: "var(--slate-500, #64748b)",
+          lineHeight: 1.5,
+        }}
+      >
+        {description}
+      </Typography>
 
-        {/* Close Icon */}
-        {!loading && (
-          <IconButton
-            aria-label="close"
-            onClick={onCancel}
-            sx={{
-              position: "absolute",
-              right: 8,
-              top: 8,
-            }}
-          >
-            <CloseIcon />
-          </IconButton>
-        )}
-      </DialogTitle>
-
-      <DialogContent sx={{ pt: 1 }}>
-        <DialogContentText>{description}</DialogContentText>
-      </DialogContent>
-
-      <DialogActions sx={{ p: 2 }}>
+      <div className="flex justify-end gap-2.5">
         <Button
+          variantColor="outline"
           onClick={onCancel}
-          color="inherit"
           disabled={loading}
-          sx={{ textTransform: "none" }}
         >
           {cancelText}
         </Button>
 
         <Button
+          variantColor={isDestructive ? "pink" : "gradient"}
           onClick={onConfirm}
-          variant="contained"
-          color={isDestructive ? "error" : "primary"}
-          autoFocus
           disabled={loading}
-          sx={{ minWidth: 90, textTransform: "none" }}
+          autoFocus
+          sx={{ minWidth: 90 }}
         >
-          {loading ? <CircularProgress size={20} /> : confirmText}
+          {loading ? <Loader /> : confirmText}
         </Button>
-      </DialogActions>
-    </Dialog>
+      </div>
+    </GenericDialog>
   );
 }

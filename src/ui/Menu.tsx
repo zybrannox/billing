@@ -1,3 +1,4 @@
+import React from "react";
 import {
   Menu as MuiMenu,
   MenuItem,
@@ -11,7 +12,7 @@ import { useAppStore } from "../store/useAppStore";
 import { useNavigate } from "react-router-dom";
 import { LogoutOutlined } from "@mui/icons-material";
 
-const Menu = () => {
+const Menu = React.memo(() => {
   const { menuAnchorEl, closeMenu } = useUiStore();
   const { user, clearUser } = useAppStore();
   const navigate = useNavigate();
@@ -19,14 +20,10 @@ const Menu = () => {
   const open = Boolean(menuAnchorEl);
 
   const handleLogout = () => {
-    // 1. Clear user from Zustand store
     clearUser();
-    // 2. Close the menu
     closeMenu();
-    // 3. Redirect to login page
     navigate("/login");
   };
-  console.log(user);
 
   return (
     <MuiMenu
@@ -46,25 +43,25 @@ const Menu = () => {
       PaperProps={{
         elevation: 0,
         sx: {
-          mt: 1.5,
+          mt: 1,
           minWidth: 220,
-          borderRadius: 2,
+          borderRadius: "10px",
           overflow: "visible",
-          boxShadow:
-            "0px 2px 8px rgba(0, 0, 0, 0.06), " +
-            "0px 8px 24px rgba(0, 0, 0, 0.08)",
-          backgroundColor: "#fff",
+          border: "1px solid #E2E8F0",
+          boxShadow: "0px 4px 16px rgba(15, 23, 42, 0.08)",
+          backgroundColor: "#FFFFFF",
 
           /* V-notch */
           "&::before": {
             content: '""',
             position: "absolute",
             top: -6,
-            right: 20,
+            right: 18,
             width: 10,
             height: 10,
-            boxShadow: "-2px -2px 6px rgba(0, 0, 0, 0.04)",
-            bgcolor: "inherit",
+            borderLeft: "1px solid #E2E8F0",
+            borderTop: "1px solid #E2E8F0",
+            bgcolor: "#FFFFFF",
             transform: "rotate(45deg)",
             zIndex: 0,
           },
@@ -79,7 +76,7 @@ const Menu = () => {
       {/* Header */}
       <Box
         px={2}
-        py={2}
+        py={1.75}
         display="flex"
         flexDirection="column"
         alignItems="center"
@@ -87,51 +84,70 @@ const Menu = () => {
       >
         <Typography
           variant="subtitle2"
-          color="var(--blue-800)"
-          fontWeight={600}
+          sx={{
+            color: "#0F172A",
+            fontWeight: 600,
+            fontSize: "0.875rem",
+          }}
           noWrap
         >
-          {`Welcome, ${user?.username}`}
+          {`Welcome, ${user?.username || "User"}`}
         </Typography>
 
-        <Typography variant="caption" color="var(--blue-600)" noWrap>
-          {user?.role === "user" ? "To Our Operations Portal" : "Administrator"}
+        <Typography
+          variant="caption"
+          sx={{
+            color: "#64748B",
+            fontSize: "0.75rem",
+            mt: 0.25,
+          }}
+          noWrap
+        >
+          {user?.role === "user" ? "Operations Portal" : "Administrator"}
         </Typography>
       </Box>
 
-      <Divider sx={{ borderColor: "var(--border-color)" }} />
+      <Divider sx={{ borderColor: "#F1F5F9" }} />
 
       {/* Actions */}
-
       <MenuItem
         onClick={handleLogout}
         sx={{
-          color: "var(--blue-800)",
-          transition: "color 0.2s ease",
+          mx: 0.5,
+          my: 0.5,
+          px: 1.5,
+          py: 1,
+          borderRadius: "6px",
+          color: "#475569",
+          fontSize: "0.85rem",
+          fontWeight: 500,
+          transition: "all 0.15s ease-in-out",
 
           "&:hover": {
-            color: "var(--blue-900)",
-            backgroundColor: "var(--blue-50)",
+            color: "#EF4444",
+            backgroundColor: "rgba(239, 68, 68, 0.06)",
 
             "& .MuiListItemIcon-root": {
-              color: "var(--blue-900)",
+              color: "#EF4444",
             },
           },
         }}
       >
         <ListItemIcon
           sx={{
-            minWidth: 32,
-            color: "inherit",
-            transition: "color 0.2s ease",
+            minWidth: 28,
+            color: "#64748B",
+            transition: "color 0.15s ease-in-out",
           }}
         >
-          <LogoutOutlined fontSize="small" />
+          <LogoutOutlined sx={{ fontSize: 18 }} />
         </ListItemIcon>
         Logout
       </MenuItem>
     </MuiMenu>
   );
-};
+});
+
+Menu.displayName = "Menu";
 
 export default Menu;

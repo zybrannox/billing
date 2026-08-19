@@ -1,16 +1,15 @@
-import React from "react";
+import React, { useState, useRef, forwardRef, useImperativeHandle } from "react";
 import {
   Box,
   Typography,
   Paper,
   Stack,
   IconButton,
-  Divider,
   Alert,
 } from "@mui/material";
-import { UploadFile, Close, Warning } from "@mui/icons-material";
+import { UploadFile, Close } from "@mui/icons-material";
 
-interface FileUploadFieldProps {
+export interface FileUploadFieldProps {
   label?: string;
   accept?: string;
   multiple?: boolean;
@@ -20,6 +19,7 @@ interface FileUploadFieldProps {
   onBlur?: () => void;
   error?: string;
   helperText?: string;
+  disabled?: boolean;
 }
 
 const formatFileSize = (bytes: number) => {
@@ -30,256 +30,311 @@ const formatFileSize = (bytes: number) => {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 };
 
-const FileUploadField = ({
-  label = "Attachments",
-  accept,
-  multiple = true,
-  value = [],
-  onChange,
-  error,
-  helperText,
-}: FileUploadFieldProps) => {
-  const inputRef = React.useRef<HTMLInputElement>(null);
-  const files = Array.isArray(value) ? value : [];
+const MAX_FILE_SIZE = 1024 * 1024 * 1024; // 1GB
+const MAX_TOTAL_SIZE = 2 * 1024 * 1024 * 1024; // 2GB
 
-  // File size constants - Updated for large files
-  const MAX_FILE_SIZE = 1024 * 1024 * 1024; // 1GB
-  const MAX_TOTAL_SIZE = 2 * 1024 * 1024 * 1024; // 2GB
+const FileUploadField = forwardRef<HTMLInputElement, FileUploadFieldProps>(
+  (
+    {
+      label = "Attachments",
+      accept,
+      multiple = true,
+      value = [],
+      onChange,
+      name,
+      onBlur,
+      error,
+      helperText,
+      disabled = false,
+    },
+    ref
+  ) => {
+    const inputRef = useRef<HTMLInputElement>(null);
+    const [isDragOver, setIsDragOver] = useState(false);
+    const [localError, setLocalError] = useState<string | null>(null);
 
-  // Calculate total size
-  const totalSize = files.reduce((sum, file) => sum + file.size, 0);
-  const hasOversizedFile = files.some((file) => file.size > MAX_FILE_SIZE);
-  const totalSizeExceeded = totalSize > MAX_TOTAL_SIZE;
+    useImperativeHandle(ref, () => inputRef.current as HTMLInputElement);
 
-  const openPicker = () => inputRef.current?.click();
+    const files = Array.isArray(value) ? value : [];
+    const totalSize = files.reduce((sum, file) => sum + file.size, 0);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files) return;
+    const processFiles = (selectedFiles: File[]) => {
+      setLocalError(null);
 
-    const selected = Array.from(e.target.files);
+      const oversized = selectedFiles.filter((file) => file.size > MAX_FILE_SIZE);
+      if (oversized.length > 0) {
+        setLocalError(
+          `File limit exceeded: ${oversized.map((f) => f.name).join(", ")} must be under 1GB.`
+        );
+        return;
+      }
 
-    // Validate file sizes
-    const oversized = selected.filter((file) => file.size > MAX_FILE_SIZE);
-    if (oversized.length > 0) {
-      alert(
-        `The following files exceed 1GB limit:\n${oversized.map((f) => f.name).join("\n")}`,
-      );
+      const newFiles = multiple ? [...files, ...selectedFiles] : selectedFiles;
+      const newTotalSize = newFiles.reduce((sum, file) => sum + file.size, 0);
+
+      if (newTotalSize > MAX_TOTAL_SIZE) {
+        setLocalError(
+          `Total upload size exceeds 2GB limit (Attempted: ${formatFileSize(newTotalSize)}).`
+        );
+        return;
+      }
+
+      onChange?.(newFiles);
+    };
+
+    const openPicker = () => {
+      if (!disabled) {
+        inputRef.current?.click();
+      }
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!e.target.files) return;
+      processFiles(Array.from(e.target.files));
       e.target.value = "";
-      return;
-    }
+    };
 
-    const newFiles = multiple ? [...files, ...selected] : selected;
+    const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      setIsDragOver(false);
+      if (disabled) return;
 
-    // Check total size
-    const newTotalSize = newFiles.reduce((sum, file) => sum + file.size, 0);
-    if (newTotalSize > MAX_TOTAL_SIZE) {
-      alert(
-        `Total file size would exceed 2GB limit. Current: ${formatFileSize(totalSize)}, Adding: ${formatFileSize(selected.reduce((sum, f) => sum + f.size, 0))}`,
-      );
-      e.target.value = "";
-      return;
-    }
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        processFiles(Array.from(e.dataTransfer.files));
+        e.dataTransfer.clearData();
+      }
+    };
 
-    onChange?.(newFiles);
+    const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      if (!disabled) setIsDragOver(true);
+    };
 
-    e.target.value = "";
-  };
+    const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      setIsDragOver(false);
+    };
 
-  const removeFile = (index: number) => {
-    const newFiles = files.filter((_, i) => i !== index);
-    onChange?.(newFiles);
-  };
+    const removeFile = (index: number) => {
+      if (disabled) return;
+      const newFiles = files.filter((_, i) => i !== index);
+      setLocalError(null);
+      onChange?.(newFiles);
+    };
 
-  return (
-    <Box>
-      {label && (
-        <Typography
-          variant="body2"
-          sx={{
-            mb: 1,
-            textAlign: "left",
-            color: "#000",
-          }}
-        >
-          {label}
-        </Typography>
-      )}
+    const displayError = error || localError;
 
-      {/* Upload Field */}
-      <Paper
-        variant="outlined"
-        onClick={openPicker}
-        sx={{
-          px: 2,
-          py: 1.75,
-          borderRadius: 1,
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          gap: 1.5,
-          borderColor: "#D0D5DD",
-          backgroundColor: "#FFF",
-          transition: "border-color 0.15s",
-          "&:hover": {
-            borderColor: "#000",
-          },
-        }}
-      >
-        <UploadFile sx={{ color: "#000" }} />
-
-        <Box>
+    return (
+      <Box>
+        {label && (
           <Typography
             variant="body2"
             sx={{
-              color: "#000",
+              mb: 1,
+              textAlign: "left",
+              color: disabled ? "#98A2B3" : "#000",
               fontWeight: 500,
             }}
           >
-            {files.length
-              ? `${files.length} file${files.length > 1 ? "s" : ""} selected`
-              : "Click to upload files"}
+            {label}
           </Typography>
+        )}
 
-          <Typography
-            variant="caption"
-            sx={{
-              color: "#667085",
-            }}
-          >
-            {multiple ? "Multiple files supported" : "Single file only"}
-          </Typography>
-        </Box>
-      </Paper>
-
-      {/* File size warnings */}
-      {(hasOversizedFile || totalSizeExceeded) && (
-        <Alert severity="error" sx={{ mt: 1 }}>
-          {hasOversizedFile && "Some files exceed 1GB limit. "}
-          {totalSizeExceeded &&
-            `Total size (${formatFileSize(totalSize)}) exceeds 2GB limit.`}
-        </Alert>
-      )}
-
-      {files.length > 0 && !hasOversizedFile && !totalSizeExceeded && (
-        <Typography
-          variant="caption"
-          sx={{ mt: 0.5, display: "block", color: "#667085" }}
-        >
-          Total: {formatFileSize(totalSize)} / 2GB
-        </Typography>
-      )}
-
-      {error && (
-        <Typography
-          variant="caption"
-          sx={{ mt: 0.5, display: "block", color: "#DC3545" }}
-        >
-          {error}
-        </Typography>
-      )}
-
-      {helperText && !error && (
-        <Typography
-          variant="caption"
-          sx={{ mt: 0.5, display: "block", color: "#667085" }}
-        >
-          {helperText}
-        </Typography>
-      )}
-
-      <input
-        ref={inputRef}
-        hidden
-        type="file"
-        multiple={multiple}
-        accept={accept}
-        onChange={handleChange}
-      />
-
-      {/* Selected Files */}
-      {files.length > 0 && (
-        <Stack
-          spacing={0}
+        {/* Upload Field Dropzone */}
+        <Paper
+          variant="outlined"
+          onClick={openPicker}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          tabIndex={disabled ? -1 : 0}
+          role="button"
+          aria-disabled={disabled}
+          onKeyDown={(e) => {
+            if ((e.key === "Enter" || e.key === " ") && !disabled) {
+              e.preventDefault();
+              openPicker();
+            }
+          }}
           sx={{
-            mt: 1,
-            border: "1px solid #E4E7EC",
+            px: 2,
+            py: 2,
             borderRadius: 1,
-            backgroundColor: "#FFF",
-            overflow: "hidden",
+            cursor: disabled ? "not-allowed" : "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: 1.5,
+            borderColor: displayError
+              ? "#DC3545"
+              : isDragOver
+              ? "#2563EB"
+              : "#D0D5DD",
+            backgroundColor: disabled
+              ? "#F2F4F7"
+              : isDragOver
+              ? "#EFF6FF"
+              : "#FFF",
+            transition: "all 0.15s ease-in-out",
+            "&:hover": {
+              borderColor: disabled ? "#D0D5DD" : displayError ? "#DC3545" : "#000",
+            },
+            "&:focus-visible": {
+              outline: "2px solid #2563EB",
+              outlineOffset: "2px",
+            },
           }}
         >
-          {files.map((file, index) => (
-            <Box
-              key={index}
+          <UploadFile sx={{ color: disabled ? "#98A2B3" : "#000" }} />
+
+          <Box>
+            <Typography
+              variant="body2"
               sx={{
-                px: 1.5,
-                py: 1,
-                display: "flex",
-                alignItems: "center",
-                gap: 1.5,
-                transition: "background-color 0.15s",
-                "&:hover": {
-                  backgroundColor: "#F9FAFB",
-                },
-                "&:not(:last-child)": {
-                  borderBottom: "1px solid #E4E7EC",
-                },
+                color: disabled ? "#98A2B3" : "#000",
+                fontWeight: 500,
               }}
             >
-              {/* File Icon */}
-              <UploadFile
+              {files.length
+                ? `${files.length} file${files.length > 1 ? "s" : ""} selected`
+                : "Click or drag & drop files here"}
+            </Typography>
+
+            <Typography
+              variant="caption"
+              sx={{
+                color: disabled ? "#98A2B3" : "#667085",
+              }}
+            >
+              {multiple ? "Multiple files allowed (Up to 1GB per file)" : "Single file allowed"}
+            </Typography>
+          </Box>
+        </Paper>
+
+        {displayError && (
+          <Alert severity="error" sx={{ mt: 1, py: 0.25, px: 1.5, fontSize: "0.8125rem" }}>
+            {displayError}
+          </Alert>
+        )}
+
+        {files.length > 0 && !displayError && (
+          <Typography
+            variant="caption"
+            sx={{ mt: 0.5, display: "block", color: "#667085" }}
+          >
+            Total Size: {formatFileSize(totalSize)} / 2GB
+          </Typography>
+        )}
+
+        {helperText && !displayError && (
+          <Typography
+            variant="caption"
+            sx={{ mt: 0.5, display: "block", color: "#667085" }}
+          >
+            {helperText}
+          </Typography>
+        )}
+
+        <input
+          ref={inputRef}
+          hidden
+          type="file"
+          name={name}
+          multiple={multiple}
+          accept={accept}
+          onChange={handleFileChange}
+          onBlur={onBlur}
+          disabled={disabled}
+        />
+
+        {/* Selected Files List */}
+        {files.length > 0 && (
+          <Stack
+            spacing={0}
+            sx={{
+              mt: 1.5,
+              border: "1px solid #E4E7EC",
+              borderRadius: 1,
+              backgroundColor: "#FFF",
+              overflow: "hidden",
+            }}
+          >
+            {files.map((file, index) => (
+              <Box
+                key={`${file.name}-${index}`}
                 sx={{
-                  fontSize: 20,
-                  color: "#667085",
-                  flexShrink: 0,
-                }}
-              />
-
-              {/* File Info */}
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    color: "#000",
-                    fontWeight: 500,
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
-                >
-                  {file.name}
-                </Typography>
-
-                <Typography
-                  variant="caption"
-                  sx={{
-                    color: "#667085",
-                  }}
-                >
-                  {formatFileSize(file.size)}
-                </Typography>
-              </Box>
-
-              {/* Remove */}
-              <IconButton
-                size="small"
-                onClick={() => removeFile(index)}
-                sx={{
-                  color: "#98A2B3",
+                  px: 1.5,
+                  py: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1.5,
+                  transition: "background-color 0.15s",
                   "&:hover": {
-                    color: "#D92D20",
-                    backgroundColor: "rgba(217,45,32,0.08)",
+                    backgroundColor: "#F9FAFB",
+                  },
+                  "&:not(:last-child)": {
+                    borderBottom: "1px solid #E4E7EC",
                   },
                 }}
               >
-                <Close fontSize="small" />
-              </IconButton>
-            </Box>
-          ))}
-        </Stack>
-      )}
-    </Box>
-  );
-};
+                <UploadFile
+                  sx={{
+                    fontSize: 20,
+                    color: "#667085",
+                    flexShrink: 0,
+                  }}
+                />
+
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "#000",
+                      fontWeight: 500,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    {file.name}
+                  </Typography>
+
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "#667085",
+                    }}
+                  >
+                    {formatFileSize(file.size)}
+                  </Typography>
+                </Box>
+
+                {!disabled && (
+                  <IconButton
+                    size="small"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeFile(index);
+                    }}
+                    sx={{
+                      color: "#98A2B3",
+                      "&:hover": {
+                        color: "#D92D20",
+                        backgroundColor: "rgba(217,45,32,0.08)",
+                      },
+                    }}
+                  >
+                    <Close fontSize="small" />
+                  </IconButton>
+                )}
+              </Box>
+            ))}
+          </Stack>
+        )}
+      </Box>
+    );
+  }
+);
+
+FileUploadField.displayName = "FileUploadField";
 
 export default FileUploadField;

@@ -1,7 +1,6 @@
 
 export const SEMANTIC_COLORS = {
   priority: {
-    Low: "#6B7280",
     Normal: "#2563EB",
     High: "#F59E0B",
     Urgent: "#DC2626",

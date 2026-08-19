@@ -1,9 +1,7 @@
 import type { GridColDef } from "@mui/x-data-grid";
 import CrudActions from "../../ui/Actions";
 import { useProjectStore, type Project } from "../../store/useProjectStore";
-import { useEffect, useState, useMemo } from "react";
-import { Badge, Tooltip } from "@mui/material";
-import axios from "axios";
+import { useEffect, useMemo, useState } from "react";
 import Chip from "../../ui/Chip";
 import { semanticChipSx } from "../../ui/chipStyles";
 import { getSemanticColor } from "../../utils/colors";
@@ -12,22 +10,23 @@ import Dialog from "../../ui/Dialog";
 import { useDialogStore } from "../../store/useDialogStore";
 import { useConfirmDialogStore } from "../../hooks/useconfirmDialogStore";
 import AddProject from "../../common/pages/AddProject";
+import AddCustomer from "../../common/pages/AddCustomer";
+import GenerateInvoice from "../../common/pages/GenerateInvoice";
 import Button from "../../ui/Button";
 import { getRowClassName } from "../../utils/appSupport";
-import DeleteIcon from "@mui/icons-material/Delete";
 import { formatDateTime } from "../../utils/dateFormatter";
 import Table from "../../common/components/Table";
 import FilePreview from "../../common/components/FilePreview";
 import TableSearchBar from "../../common/components/TableSearchBar";
-import { useTableSearch } from "../../hooks/useTableSearch";
-
-const API_BASE_URL = import.meta.env.VITE_API_URL;
+import FilterMenu, {
+  type FilterFieldDefinition,
+} from "../../common/components/FilterMenu";
+import BulkDeleteButton from "../../common/components/BulkDeleteButton";
 
 const priorityOrder: Record<string, number> = {
   Urgent: 1,
   High: 2,
   Normal: 3,
-  Low: 4,
 };
 
 const printStatusOrder: Record<string, number> = {
@@ -35,6 +34,32 @@ const printStatusOrder: Record<string, number> = {
   "In Progress": 2,
   Completed: 3,
 };
+
+const filterFields: FilterFieldDefinition[] = [
+  {
+    type: "select",
+    key: "printStatus",
+    label: "Print Status",
+    placeholder: "All",
+    options: ["Pending", "In Progress", "Completed"],
+  },
+  {
+    type: "select",
+    key: "priority",
+    label: "Priority",
+    placeholder: "All",
+    options: ["Urgent", "High", "Normal"],
+  },
+  {
+    type: "async_select",
+    key: "customer",
+    label: "Customer",
+    endpoint: "/customers",
+    extraParams: { limit: 20 },
+    getOptionLabel: (c) => `${c.first_name} ${c.last_name}`,
+    getOptionValue: (c) => c.id,
+  },
+];
 
 const columns: GridColDef[] = [
   {
@@ -44,13 +69,6 @@ const columns: GridColDef[] = [
     editable: true,
   },
   { field: "assigned_to", headerName: "Assignee", flex: 1, editable: true },
-  {
-    field: "start_date",
-    headerName: "Start Date",
-    flex: 1.5,
-    editable: true,
-    valueFormatter: (value) => formatDateTime(value),
-  },
   {
     field: "delivery_date",
     headerName: "Delivery Date",
@@ -64,10 +82,11 @@ const columns: GridColDef[] = [
     flex: 1.5,
     editable: true,
     type: "singleSelect",
-    valueOptions: ["Low", "Normal", "High", "Urgent"],
-    // Custom sorting logic
+    valueOptions: ["Normal", "High", "Urgent"],
+    // Lets a user re-sort the *current page* by clicking the column header.
+    // The default (no header sort applied) order comes from the server.
     sortComparator: (v1, v2) => {
-      const order1 = priorityOrder[v1 as string] || 5; // Default for unknown values
+      const order1 = priorityOrder[v1 as string] || 5;
       const order2 = priorityOrder[v2 as string] || 5;
       return order1 - order2;
     },
@@ -104,7 +123,13 @@ const columns: GridColDef[] = [
     flex: 1.5,
     editable: true,
     type: "singleSelect",
-    valueOptions: ["Pending", "In Progress", "Completed"],
+    // "Completed" only becomes selectable once the design phase is marked
+    // done - keeps the impossible state from ever being offered, rather
+    // than letting the user pick it and bouncing off a server error.
+    valueOptions: ({ row }) =>
+      row?.design_completed_at
+        ? ["Pending", "In Progress", "Completed"]
+        : ["Pending", "In Progress"],
     sortComparator: (v1, v2) => {
       const order1 = printStatusOrder[v1 as string] || 4;
       const order2 = printStatusOrder[v2 as string] || 4;
@@ -120,18 +145,17 @@ const columns: GridColDef[] = [
       <SemanticSelectEditCell {...params} semantic="printStatus" />
     ),
   },
-  // {
-  //   field: "description",
-  //   headerName: "Description",
-  //   flex: 1,
-  //   editable: true,
-  // },
 ];
 
 const AdminProjects = () => {
   const { openDialog } = useDialogStore();
-  const setProjects = useProjectStore((state) => state.setProjects);
   const projects = useProjectStore((s) => s.projects);
+  const projectsTotal = useProjectStore((s) => s.projectsTotal);
+  const projectsLoading = useProjectStore((s) => s.projectsLoading);
+  const fetchProjects = useProjectStore((s) => s.fetchProjects);
+  const { updateProject, deleteProjects, markDesignCompleted, markDelivered } =
+    useProjectStore();
+
   const rows = useMemo(() => {
     return projects.map((p) => ({
       id: String(p.id),
@@ -145,26 +169,57 @@ const AdminProjects = () => {
       description: p.description,
       status: p.client_status,
       file_paths: p.file_paths || [],
+      design_completed_at: p.design_completed_at,
+      design_completed_by: p.design_completed_by,
+      delivered_at: p.delivered_at,
+      delivered_by: p.delivered_by,
     }));
   }, [projects]);
 
-  useEffect(() => {
-    const fetchProjects = async () => {
-      const res = await axios.get(`${API_BASE_URL}/projects/`);
-      setProjects(res.data);
-    };
-    fetchProjects();
-  }, [setProjects]);
-  const { updateProject, deleteProjects } = useProjectStore();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const { showDialog, closeDialog, setLoading } = useConfirmDialogStore();
-  const { query, setQuery, filteredRows } = useTableSearch(rows, [
-    "project_type",
-    "assigned_to",
-    "priority",
-    "client_status",
-    "print_status",
-    "description",
+
+  // Search/filters are sent to the server rather than applied client-side,
+  // so the browser never has to hold more than one page of projects.
+  const [searchInput, setSearchInput] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [printStatusFilter, setPrintStatusFilter] = useState("");
+  const [priorityFilter, setPriorityFilter] = useState("");
+  const [customerFilter, setCustomerFilter] = useState<string | number | undefined>(
+    undefined,
+  );
+  const [paginationModel, setPaginationModel] = useState({
+    page: 0, // MUI DataGrid pages are 0-indexed; the API is 1-indexed.
+    pageSize: 10,
+  });
+
+  // Debounce the search box so every keystroke doesn't fire a request.
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchInput), 350);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  // Any new search/filter should land back on page 1.
+  useEffect(() => {
+    setPaginationModel((prev) => (prev.page === 0 ? prev : { ...prev, page: 0 }));
+  }, [debouncedSearch, printStatusFilter, priorityFilter, customerFilter]);
+
+  useEffect(() => {
+    fetchProjects({
+      page: paginationModel.page + 1,
+      pageSize: paginationModel.pageSize,
+      search: debouncedSearch,
+      printStatus: printStatusFilter,
+      priority: priorityFilter,
+      customerId: customerFilter,
+    });
+  }, [
+    fetchProjects,
+    paginationModel,
+    debouncedSearch,
+    printStatusFilter,
+    priorityFilter,
+    customerFilter,
   ]);
 
   const processRowUpdate = async (newRow: Project, oldRow: Project) => {
@@ -189,6 +244,41 @@ const AdminProjects = () => {
     return newRow;
   };
 
+  const handleMarkDesignCompleted = (id: string) => {
+    showDialog({
+      title: "Mark Design Completed?",
+      description:
+        "This flags the design phase as done for this order. The customer will later be notified automatically when messaging is wired up.",
+      confirmText: "Mark Completed",
+      onConfirm: async () => {
+        try {
+          setLoading(true);
+          await markDesignCompleted(id);
+          closeDialog();
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
+  };
+
+  const handleMarkDelivered = (id: string) => {
+    showDialog({
+      title: "Mark Order Delivered?",
+      description: "This flags the order as delivered to the customer.",
+      confirmText: "Mark Delivered",
+      onConfirm: async () => {
+        try {
+          setLoading(true);
+          await markDelivered(id);
+          closeDialog();
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
+  };
+
   const handleBulkDelete = () => {
     showDialog({
       title: "Delete Selected?",
@@ -210,79 +300,149 @@ const AdminProjects = () => {
 
   return (
     <div className="h-full grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4 lg:items-center p-4">
-      <div className="h-full p-4 md:p-10 min-w-0 rounded-3xl bg-blue-50 shadow">
-        <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
+      <div className="flex flex-col h-full p-4 sm:p-6 lg:p-8 min-w-0 rounded-2xl sm:rounded-3xl bg-blue-50/50 shadow-xs border border-blue-100/60">
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <h1 className="text-4xl sm:text-5xl lg:text-4xl leading-tight sm:leading-snug lg:leading-snug bg-linear-to-br from-blue-900 via-blue-800 to-slate-900 bg-clip-text text-transparent">
             Ongoing Activities
           </h1>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <TableSearchBar
-              value={query}
-              onChange={setQuery}
-              placeholder="Search projects..."
-            />
-            <Tooltip
-              title={selectedIds.length === 0 ? "Select items to delete" : ""}
-            >
-              <span>
-                <Button
-                  variantColor="transparent"
-                  onClick={handleBulkDelete}
-                  startIcon={
-                    <Badge badgeContent={selectedIds.length} color="error">
-                      <DeleteIcon />
-                    </Badge>
-                  }
-                  sx={{ float: "none" }}
-                  disabled={selectedIds.length === 0}
-                />
-              </span>
-            </Tooltip>
-            <Button
-              onClick={() => openDialog("project")}
-              sx={{ float: "none" }}
-            >
-              + Add Project
-            </Button>
+          {/* Actions Toolbar - on mobile this is two grouped rows (icon
+              controls, then action buttons) instead of one that wraps
+              arbitrarily; a plain flex-wrap let items break apart wherever
+              they happened to run out of space, so the delete icon could
+              end up stranded alone on its own line, disconnected from the
+              search/filter controls it belongs with. Desktop is unaffected
+              - at md+ both rows sit inline exactly as before. */}
+          <div className="flex flex-col gap-2.5 md:flex-row md:items-center">
+            <div className="flex items-center gap-2.5">
+              <TableSearchBar
+                value={searchInput}
+                onChange={setSearchInput}
+                placeholder="Search projects..."
+                sx={{ flex: 1, minWidth: 0 }}
+              />
+
+              <FilterMenu
+                fields={filterFields}
+                values={{
+                  printStatus: printStatusFilter,
+                  priority: priorityFilter,
+                  customer: customerFilter,
+                }}
+                onChange={(key, value) => {
+                  if (key === "printStatus") setPrintStatusFilter((value as string) ?? "");
+                  if (key === "priority") setPriorityFilter((value as string) ?? "");
+                  if (key === "customer") setCustomerFilter(value);
+                }}
+                onClearAll={() => {
+                  setPrintStatusFilter("");
+                  setPriorityFilter("");
+                  setCustomerFilter(undefined);
+                }}
+              />
+
+              <BulkDeleteButton
+                selectedCount={selectedIds.length}
+                onDelete={handleBulkDelete}
+              />
+            </div>
+
+            <div className="h-6 w-px bg-slate-200 hidden md:block mx-0.5" />
+
+            <div className="flex items-center gap-2.5">
+              <Button
+                variantColor="outline"
+                onClick={() => openDialog("customer")}
+                sx={{ float: "none" }}
+                className="flex-1 md:flex-none"
+              >
+                + Add Customer
+              </Button>
+
+              <Button
+                onClick={() => openDialog("project")}
+                sx={{ float: "none" }}
+                className="flex-1 md:flex-none"
+              >
+                + Add Project
+              </Button>
+            </div>
           </div>
-          <Dialog
-            title="new Project"
-            children={<AddProject />}
-            maxWidth="md"
-            apiEndPoint="/"
-          />
         </div>
-        <Table<Project>
-          rows={filteredRows}
-          columns={columns}
-          processRowUpdate={processRowUpdate}
-          getRowClassName={getRowClassName}
-          checkboxSelection={true}
-          renderActions={(params, handlers) => [
-            <CrudActions
-              key="crud"
-              edit
-              download
-              delete
-              info
-              // preview={(params.row.file_paths?.length ?? 0) > 0}
-              data={params.row}
-              onEdit={handlers.edit}
-              onDelete={handlers.delete}
-              onDownload={handlers.download}
-              // onPreview={handlers.preview}
-            />,
-          ]}
-          onSelectionChange={(newSelectionModel) => {
-            setSelectedIds(newSelectionModel as string[]);
-          }}
-          rowSelectionModel={selectedIds}
-          initialState={{
-            sorting: {
-              sortModel: [{ field: "print_status", sort: "asc" }],
-            },
-          }}
+
+        {/* Table Section */}
+          <Table<Project>
+            rows={rows}
+            columns={columns}
+            processRowUpdate={processRowUpdate}
+            getRowClassName={getRowClassName}
+            checkboxSelection={true}
+            renderActions={(params, handlers) => [
+              <CrudActions
+                key="crud"
+                edit
+                download
+                delete
+                info
+                invoice
+                orderMilestones
+                data={params.row}
+                onEdit={handlers.edit}
+                onDelete={handlers.delete}
+                onDownload={handlers.download}
+                onGenerateInvoice={() =>
+                  openDialog("invoice", params.row.id, "add")
+                }
+                printStatus={params.row.print_status}
+                designCompletedMeta={
+                  params.row.design_completed_at
+                    ? {
+                      at: params.row.design_completed_at,
+                      by: params.row.design_completed_by,
+                    }
+                    : null
+                }
+                deliveredMeta={
+                  params.row.delivered_at
+                    ? { at: params.row.delivered_at, by: params.row.delivered_by }
+                    : null
+                }
+                onMarkDesignCompleted={() =>
+                  handleMarkDesignCompleted(params.row.id)
+                }
+                onMarkDelivered={() => handleMarkDelivered(params.row.id)}
+              />,
+            ]}
+            onSelectionChange={(newSelectionModel) => {
+              setSelectedIds(newSelectionModel as string[]);
+            }}
+            rowSelectionModel={selectedIds}
+            paginationMode="server"
+            rowCount={projectsTotal}
+            paginationModel={paginationModel}
+            onPaginationModelChange={setPaginationModel}
+            loading={projectsLoading}
+          />
+
+        {/* Dialog Overlays */}
+        <Dialog
+          type="project"
+          title="Project"
+          children={<AddProject />}
+          maxWidth="md"
+        />
+        <Dialog
+          type="customer"
+          title="Customer"
+          children={<AddCustomer />}
+          maxWidth="xs"
+        />
+        <Dialog
+          type="invoice"
+          title="Invoice"
+          children={<GenerateInvoice />}
+          maxWidth="xs"
         />
       </div>
       <div className="min-h-[420px] lg:min-h-0 lg:h-full items-center">

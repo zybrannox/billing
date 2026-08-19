@@ -4,6 +4,7 @@ interface TableSearchBarProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  sx?: object;
 }
 
 /**
@@ -14,13 +15,14 @@ export default function TableSearchBar({
   value,
   onChange,
   placeholder = "Search...",
+  sx,
 }: TableSearchBarProps) {
   return (
     <SearchInput
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      sx={{ minWidth: 220 }}
+      sx={{ minWidth: 220, ...sx }}
     />
   );
 }

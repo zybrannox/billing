@@ -14,7 +14,12 @@ import {
   useTheme,
 } from "@mui/material";
 import SearchInput from "../../ui/SearchInput";
-import { FileDownloadRounded, ZoomInRounded, Close as CloseIcon } from "@mui/icons-material";
+import {
+  FileDownloadRounded,
+  ZoomInRounded,
+  Close as CloseIcon,
+  CheckCircleRounded,
+} from "@mui/icons-material";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import ArchiveIcon from "@mui/icons-material/Archive";
 import DescriptionIcon from "@mui/icons-material/Description";
@@ -27,7 +32,7 @@ import Skeleton from "../../ui/Skeleton";
 import { apiService } from "../../api/service";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
-const PREVIEW_HEIGHT = 240;
+const PREVIEW_HEIGHT = 260;
 
 /* ------------------------ helpers ------------------------ */
 
@@ -47,19 +52,19 @@ const getFileType = (file: string | FileObject): FileType => {
   return "file";
 };
 
-const FileIcon = ({ type, size = 80 }: { type: FileType; size?: number }) => {
+const FileIcon = ({ type, size = 64 }: { type: FileType; size?: number }) => {
   const iconSx = { fontSize: size };
   switch (type) {
     case "pdf":
-      return <PictureAsPdfIcon sx={{ ...iconSx, color: "#E53935" }} />;
+      return <PictureAsPdfIcon sx={{ ...iconSx, color: "#EF4444" }} />;
     case "archive":
-      return <ArchiveIcon sx={{ ...iconSx, color: "#6D4C41" }} />;
+      return <ArchiveIcon sx={{ ...iconSx, color: "#8B5CF6" }} />;
     case "doc":
-      return <DescriptionIcon sx={{ ...iconSx, color: "#1E88E5" }} />;
+      return <DescriptionIcon sx={{ ...iconSx, color: "#2563EB" }} />;
     case "sheet":
-      return <TableChartIcon sx={{ ...iconSx, color: "#2E7D32" }} />;
+      return <TableChartIcon sx={{ ...iconSx, color: "#10B981" }} />;
     default:
-      return <InsertDriveFileIcon sx={{ ...iconSx, color: "#90caf9" }} />;
+      return <InsertDriveFileIcon sx={{ ...iconSx, color: "#64748B" }} />;
   }
 };
 
@@ -75,7 +80,8 @@ const PreviewContainer = ({ children }: { children: React.ReactNode }) => (
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      bgcolor: "background.default",
+      backgroundColor: "#F8FAFC",
+      borderBottom: "1px solid #E2E8F0",
     }}
   >
     {children}
@@ -85,14 +91,12 @@ const PreviewContainer = ({ children }: { children: React.ReactNode }) => (
 /* ------------------------------ component ------------------------------ */
 
 const FilePreview = () => {
-  const { selectedProject } = useProjectStore();
+  const { selectedProject, refreshProject } = useProjectStore();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isImageLoading, setIsImageLoading] = useState(false);
-  // Maps filename -> download percent (0-99 while streaming, 100 on
-  // completion). A missing entry means that file isn't downloading.
   const [downloadProgress, setDownloadProgress] = useState<
     Record<string, number>
   >({});
@@ -114,6 +118,11 @@ const FilePreview = () => {
     [files, currentIndex],
   );
 
+  const allFilesDownloaded = useMemo(() => {
+    if (totalFiles === 0) return false;
+    return files.every((f) => typeof f !== "string" && !!f.downloaded);
+  }, [files, totalFiles]);
+
   const currentFileType = currentFile ? getFileType(currentFile) : null;
 
   /* ------------------ image preload ------------------ */
@@ -122,8 +131,6 @@ const FilePreview = () => {
     if (!currentFile) return "";
     return typeof currentFile === "string" ? currentFile : currentFile.path;
   }, [currentFile]);
-
-  /* ------------------ image preload ------------------ */
 
   useEffect(() => {
     if (!currentFileName || currentFileType !== "image") {
@@ -152,44 +159,48 @@ const FilePreview = () => {
     setCurrentIndex((prev) => (prev < totalFiles - 1 ? prev + 1 : prev));
   }, [totalFiles]);
 
-  const handleDownload = useCallback(async (filename: string) => {
-    setDownloadProgress((prev) => ({ ...prev, [filename]: 0 }));
+  const handleDownload = useCallback(
+    async (filename: string) => {
+      setDownloadProgress((prev) => ({ ...prev, [filename]: 0 }));
 
-    try {
-      const blob = await apiService.getWithProgress<Blob>(
-        `/files/download/${encodeURIComponent(filename)}`,
-        ({ percent }) => {
-          if (percent === null) return; // no Content-Length; keep last known value
-          setDownloadProgress((prev) => ({ ...prev, [filename]: percent }));
-        },
-        { responseType: "blob" },
-      );
+      try {
+        const blob = await apiService.getWithProgress<Blob>(
+          `/files/download/${encodeURIComponent(filename)}`,
+          ({ percent }) => {
+            if (percent === null) return;
+            setDownloadProgress((prev) => ({ ...prev, [filename]: percent }));
+          },
+          { responseType: "blob" },
+        );
 
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
 
-      link.remove();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error("Download error:", err);
-    } finally {
-      setDownloadProgress((prev) => {
-        const next = { ...prev };
-        delete next[filename];
-        return next;
-      });
-    }
-  }, []);
+        link.remove();
+        URL.revokeObjectURL(url);
+
+        if (selectedProject) await refreshProject(selectedProject.id);
+      } catch (err) {
+        console.error("Download error:", err);
+      } finally {
+        setDownloadProgress((prev) => {
+          const next = { ...prev };
+          delete next[filename];
+          return next;
+        });
+      }
+    },
+    [selectedProject, refreshProject],
+  );
 
   /* ------------------ keyboard navigation ------------------ */
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Only handle keyboard events when FilePreview is visible
       if (!selectedProject) return;
 
       switch (e.key) {
@@ -229,15 +240,26 @@ const FilePreview = () => {
       <Box
         sx={{
           height: "100%",
+          minHeight: 360,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
+          backgroundColor: "#FFFFFF",
+          borderRadius: "12px",
+          border: "1px solid #E2E8F0",
+          p: 4,
         }}
       >
-        <InsertDriveFileIcon sx={{ fontSize: 200, color: "var(--blue-300)" }} />
-        <Typography color="var(--blue-500)">
-          Click a project to see its details.
+        <InsertDriveFileIcon sx={{ fontSize: 72, color: "#94A3B8", mb: 1.5 }} />
+        <Typography
+          variant="subtitle1"
+          sx={{ fontWeight: 600, color: "#0F172A" }}
+        >
+          No Project Selected
+        </Typography>
+        <Typography variant="body2" sx={{ color: "#64748B", mt: 0.5 }}>
+          Select a project from the grid to preview its files.
         </Typography>
       </Box>
     );
@@ -246,22 +268,32 @@ const FilePreview = () => {
   /* ------------------ render ------------------ */
 
   return (
-    <>
-      {/* ================= FILE PREVIEW ================= */}
+    <Box sx={{ maxWidth: 720, mx: "auto" }}>
+      {/* ================= FILE PREVIEW CARD ================= */}
       <Card
+        elevation={0}
         sx={{
-          maxWidth: 640,
-          mx: "auto",
-          borderRadius: 3,
-          boxShadow: "none",
-          position: "relative",
+          borderRadius: "12px",
+          border: "1px solid #E2E8F0",
+          backgroundColor: "#FFFFFF",
+          overflow: "hidden",
           mb: 2,
         }}
       >
         {!currentFile && (
-          <Typography align="center" sx={{ py: 6 }}>
-            No files available
-          </Typography>
+          <Box
+            sx={{
+              height: PREVIEW_HEIGHT,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: "#F8FAFC",
+            }}
+          >
+            <Typography variant="body2" sx={{ color: "#64748B", fontWeight: 500 }}>
+              No files available in this project
+            </Typography>
+          </Box>
         )}
 
         {/* Preview */}
@@ -294,6 +326,7 @@ const FilePreview = () => {
                     height: "100%",
                     width: "100%",
                     objectFit: "contain",
+                    p: 1.5,
                   }}
                   loading="lazy"
                 />
@@ -305,91 +338,138 @@ const FilePreview = () => {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    bgcolor: "rgba(0,0,0,0.25)",
+                    backgroundColor: "rgba(15, 23, 42, 0.4)",
+                    backdropFilter: "blur(2px)",
                     opacity: 0,
-                    transition: "opacity 0.15s",
+                    transition: "all 0.2s ease-in-out",
                   }}
                 >
-                  <ZoomInRounded sx={{ color: "#fff", fontSize: 40 }} />
+                  <Box
+                    sx={{
+                      p: 1.25,
+                      borderRadius: "50%",
+                      backgroundColor: "rgba(255, 255, 255, 0.2)",
+                      display: "flex",
+                    }}
+                  >
+                    <ZoomInRounded sx={{ color: "#FFFFFF", fontSize: 28 }} />
+                  </Box>
                 </Box>
               </Box>
             )}
 
             {/* Non-image */}
             {currentFileType && currentFileType !== "image" && (
-              <Stack spacing={1.5} alignItems="center" sx={{ width: "100%" }}>
-                <FileIcon type={currentFileType} />
+              <Stack spacing={1.5} alignItems="center" sx={{ width: "100%", px: 2 }}>
+                <FileIcon type={currentFileType} size={56} />
                 <Tooltip title={currentFileName}>
                   <Typography
-                    variant="body2"
+                    variant="subtitle2"
                     align="center"
                     sx={{
                       maxWidth: "90%",
                       whiteSpace: "nowrap",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
+                      fontWeight: 600,
+                      color: "#0F172A",
                     }}
                   >
                     {currentFileName}
                   </Typography>
                 </Tooltip>
 
-                <Typography variant="caption" color="text.secondary">
-                  Preview not available
+                <Typography variant="caption" sx={{ color: "#64748B", fontWeight: 500 }}>
+                  Preview non-supported format
                 </Typography>
               </Stack>
             )}
           </PreviewContainer>
         )}
+
+        {/* Navigation Bar inside card */}
+        {totalFiles > 1 && (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              px: 2,
+              py: 1,
+              backgroundColor: "#FFFFFF",
+              borderBottom: "1px solid #F1F5F9",
+            }}
+          >
+            <IconButton
+              onClick={handlePrev}
+              disabled={currentIndex === 0}
+              size="small"
+              sx={{
+                border: "1px solid #E2E8F0",
+                borderRadius: "8px",
+                color: "#475569",
+                "&:hover": { backgroundColor: "#F8FAFC" },
+                "&.Mui-disabled": { borderColor: "#F1F5F9", color: "#CBD5E1" },
+              }}
+            >
+              <ChevronLeftIcon fontSize="small" />
+            </IconButton>
+
+            <Typography
+              variant="caption"
+              sx={{ color: "#475569", fontWeight: 600, fontSize: "0.75rem" }}
+            >
+              {currentIndex + 1} of {totalFiles}
+            </Typography>
+
+            <IconButton
+              onClick={handleNext}
+              disabled={currentIndex === totalFiles - 1}
+              size="small"
+              sx={{
+                border: "1px solid #E2E8F0",
+                borderRadius: "8px",
+                color: "#475569",
+                "&:hover": { backgroundColor: "#F8FAFC" },
+                "&.Mui-disabled": { borderColor: "#F1F5F9", color: "#CBD5E1" },
+              }}
+            >
+              <ChevronRightIcon fontSize="small" />
+            </IconButton>
+          </Box>
+        )}
       </Card>
 
-      {/* ================= NAVIGATION ================= */}
-      {totalFiles > 1 && (
-        <Stack
-          direction="row"
-          alignItems="center"
-          justifyContent="space-between"
-          sx={{ maxWidth: 640, mx: "auto", mb: 2, px: 1 }}
-        >
-          <IconButton
-            onClick={handlePrev}
-            disabled={currentIndex === 0}
-            size="small"
-            sx={{ border: "1px solid", borderColor: "divider" }}
-          >
-            <ChevronLeftIcon fontSize="small" />
-          </IconButton>
-
-          <Typography variant="caption" color="text.secondary">
-            {currentIndex + 1} of {totalFiles}
-          </Typography>
-
-          <IconButton
-            onClick={handleNext}
-            disabled={currentIndex === totalFiles - 1}
-            size="small"
-            sx={{ border: "1px solid", borderColor: "divider" }}
-          >
-            <ChevronRightIcon fontSize="small" />
-          </IconButton>
-        </Stack>
-      )}
-
-      {/* ================= FILE LIST ================= */}
-      <CardContent sx={{ pt: 0, px: 2, pb: 2 }}>
-        <Box sx={{ mb: 2, display: "flex", alignItems: "center", gap: 2 }}>
+      {/* ================= VERTICAL FILE LIST SECTION ================= */}
+      <Box
+        sx={{
+          borderRadius: "12px",
+          border: "1px solid #E2E8F0",
+          backgroundColor: "#FFFFFF",
+          p: 2,
+        }}
+      >
+        <Box sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1.5 }}>
           <Typography
             variant="subtitle2"
             sx={{
               fontWeight: 700,
-              color: "var(--blue-800)",
-              fontSize: "0.85rem",
+              color: "#334155",
+              fontSize: "0.75rem",
+              letterSpacing: "0.05em",
               textTransform: "uppercase",
               minWidth: "fit-content",
             }}
           >
             Files
           </Typography>
+
+          {allFilesDownloaded && (
+            <Tooltip title="All files downloaded">
+              <CheckCircleRounded sx={{ color: "#10B981", fontSize: 18 }} />
+            </Tooltip>
+          )}
+
           <SearchInput
             placeholder="Search files..."
             value={searchTerm}
@@ -398,18 +478,20 @@ const FilePreview = () => {
           />
         </Box>
 
-        <Box
+        {/* Vertical Stack Container */}
+        <Stack
+          spacing={1}
           sx={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 1.5,
-            overflowX: "auto",
-            overflowY: "hidden",
-            pb: 1,
-            "::-webkit-scrollbar": { height: "6px" },
+            maxHeight: 320,
+            overflowY: "auto",
+            pr: 0.5,
+            "::-webkit-scrollbar": { width: "6px" },
             "::-webkit-scrollbar-thumb": {
-              bgcolor: "rgba(0,0,0,0.1)",
+              backgroundColor: "#CBD5E1",
               borderRadius: "10px",
+            },
+            "::-webkit-scrollbar-track": {
+              backgroundColor: "#F1F5F9",
             },
           }}
         >
@@ -418,60 +500,67 @@ const FilePreview = () => {
             const originalIndex = files.indexOf(file);
             const isCurrent = originalIndex === currentIndex;
             const type = getFileType(file);
+            const isDownloaded = typeof file !== "string" && !!file.downloaded;
 
             return (
-              <Tooltip
+              <Box
                 key={originalIndex}
-                title={
-                  <Box>
-                    <Typography variant="caption" sx={{ display: "block" }}>
-                      {fileName}
-                    </Typography>
-                    {typeof file === "object" &&
-                      (file.width || file.height) && (
-                        <Typography
-                          variant="caption"
-                          sx={{ fontStyle: "italic", opacity: 0.8 }}
-                        >
-                          {file.width || "?"}" x {file.height || "?"}"
-                        </Typography>
-                      )}
-                  </Box>
-                }
-                arrow
+                onClick={() => {
+                  setCurrentIndex(originalIndex);
+                  if (type === "image") setLightboxOpen(true);
+                }}
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 1.5,
+                  p: 1.25,
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                  backgroundColor: isDownloaded
+                    ? "#F0FDF4"
+                    : isCurrent
+                      ? "#EFF6FF"
+                      : "#FFFFFF",
+                  border: "1px solid",
+                  borderColor: isDownloaded
+                    ? "#A7F3D0"
+                    : isCurrent
+                      ? "#93C5FD"
+                      : "#E2E8F0",
+                  transition: "all 150ms ease-in-out",
+                  "&:hover": {
+                    borderColor: isDownloaded
+                      ? "#34D399"
+                      : isCurrent
+                        ? "#3B82F6"
+                        : "#CBD5E1",
+                    backgroundColor: isDownloaded
+                      ? "#DCFCE7"
+                      : isCurrent
+                        ? "#DBEAFE"
+                        : "#F8FAFC",
+                  },
+                }}
               >
+                {/* Left Side: Thumbnail/Icon + File Details */}
                 <Box
-                  onClick={() => {
-                    setCurrentIndex(originalIndex);
-                    if (type === "image") setLightboxOpen(true);
-                  }}
                   sx={{
                     display: "flex",
                     alignItems: "center",
-                    gap: 1,
-                    p: 1,
-                    minWidth: 100,
-                    borderRadius: 2,
-                    cursor: "pointer",
-                    bgcolor: isCurrent ? "rgba(13, 110, 253, 0.08)" : "#f8f9fa",
-                    border: "2px solid",
-                    borderColor: isCurrent ? "primary.main" : "#e0e0e0",
-                    transition: "all 0.2s",
-                    position: "relative",
-                    "&:hover": {
-                      borderColor: "primary.light",
-                      bgcolor: "rgba(13, 110, 253, 0.04)",
-                      boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-                    },
+                    gap: 1.5,
+                    minWidth: 0,
+                    flexGrow: 1,
                   }}
                 >
                   <Box
                     sx={{
-                      width: 24,
-                      height: 24,
+                      width: 32,
+                      height: 32,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
+                      flexShrink: 0,
                     }}
                   >
                     {type === "image" ? (
@@ -480,87 +569,104 @@ const FilePreview = () => {
                         src={`${API_BASE_URL}/files/thumbnail/${encodeURIComponent(fileName)}`}
                         loading="lazy"
                         sx={{
-                          width: 24,
-                          height: 24,
-                          borderRadius: 0.5,
+                          width: 32,
+                          height: 32,
+                          borderRadius: "4px",
                           objectFit: "cover",
+                          border: "1px solid #E2E8F0",
                         }}
                         alt=""
                       />
                     ) : (
-                      <FileIcon type={type} size={24} />
+                      <FileIcon type={type} size={28} />
                     )}
                   </Box>
-                  <Typography
-                    variant="caption"
-                    noWrap
-                    sx={{
-                      width: "100%",
-                      textAlign: "left",
-                      mt: 0.5,
-                      fontSize: "0.7rem",
-                      color: isCurrent ? "primary.main" : "text.secondary",
-                      fontWeight: isCurrent ? 700 : 500,
-                      maxWidth: 90,
-                    }}
-                  >
-                    {fileName}
-                  </Typography>
 
-                  {fileName in downloadProgress ? (
-                    <Box
+                  <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+                    <Typography
+                      variant="body2"
+                      noWrap
                       sx={{
-                        position: "absolute",
-                        top: 4,
-                        right: 4,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
+                        fontSize: "0.8125rem",
+                        color: isDownloaded
+                          ? "#065F46"
+                          : isCurrent
+                            ? "#1E40AF"
+                            : "#0F172A",
+                        fontWeight: isCurrent || isDownloaded ? 600 : 500,
                       }}
                     >
+                      {fileName}
+                    </Typography>
+
+                    {typeof file === "object" &&
+                      (file.width || file.height) && (
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            display: "block",
+                            color: "#64748B",
+                            fontSize: "0.7rem",
+                          }}
+                        >
+                          {file.width || "?"}" × {file.height || "?"}"
+                        </Typography>
+                      )}
+                  </Box>
+                </Box>
+
+                {/* Right Side: Download Progress / Action Button */}
+                <Box sx={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
+                  {fileName in downloadProgress ? (
+                    <Box sx={{ display: "flex", alignItems: "center", px: 0.5 }}>
                       <CircularProgress
                         variant="determinate"
                         value={downloadProgress[fileName]}
                         size={20}
                         thickness={5}
+                        sx={{ color: "#2563EB" }}
                       />
                     </Box>
                   ) : (
-                    <IconButton
-                      size="small"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDownload(fileName);
-                      }}
-                      sx={{
-                        ml: "auto",
-                        width: 24,
-                        height: 24,
-                        padding: 0.5,
-                        bgcolor: "rgba(255,255,255,0.9)",
-                        border: "1px solid rgba(0,0,0,0.1)",
-                        opacity: 0.7,
-                        transition: "all 0.2s",
-                        ".MuiBox-root:hover &": { opacity: 1 },
-                        "&:hover": {
-                          opacity: "1 !important",
-                          bgcolor: "primary.main",
-                          color: "white",
-                          transform: "scale(1.1)",
-                        },
-                      }}
-                    >
-                      <FileDownloadRounded sx={{ fontSize: 16 }} />
-                    </IconButton>
+                    <Tooltip title={isDownloaded ? "Downloaded again" : "Download"}>
+                      <IconButton
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownload(fileName);
+                        }}
+                        sx={{
+                          width: 28,
+                          height: 28,
+                          padding: 0,
+                          backgroundColor: isDownloaded ? "#10B981" : "#F1F5F9",
+                          color: isDownloaded ? "#FFFFFF" : "#475569",
+                          border: "1px solid",
+                          borderColor: isDownloaded ? "#059669" : "#E2E8F0",
+                          transition: "all 150ms ease-in-out",
+                          "&:hover": {
+                            backgroundColor: isDownloaded ? "#059669" : "#2563EB",
+                            color: "#FFFFFF",
+                            borderColor: isDownloaded ? "#047857" : "#1D4ED8",
+                          },
+                        }}
+                      >
+                        {isDownloaded ? (
+                          <CheckCircleRounded sx={{ fontSize: 16 }} />
+                        ) : (
+                          <FileDownloadRounded sx={{ fontSize: 16 }} />
+                        )}
+                      </IconButton>
+                    </Tooltip>
                   )}
                 </Box>
-              </Tooltip>
+              </Box>
             );
           })}
-        </Box>
-      </CardContent>
+        </Stack>
+      </Box>
 
-      {/* ================= BIG IMAGE PREVIEW (LIGHTBOX) ================= */}
+      {/* ================= LIGHTBOX DIALOG ================= */}
       <MuiDialog
         open={lightboxOpen && currentFileType === "image"}
         onClose={() => setLightboxOpen(false)}
@@ -569,9 +675,11 @@ const FilePreview = () => {
         fullScreen={isMobile}
         sx={{
           "& .MuiPaper-root": {
-            backgroundColor: "rgba(15, 15, 20, 0.97)",
+            backgroundColor: "rgba(15, 23, 42, 0.98)",
             boxShadow: "none",
-            borderRadius: isMobile ? 0 : 2,
+            borderRadius: isMobile ? 0 : "12px",
+            border: isMobile ? "none" : "1px solid #334155",
+            backgroundImage: "none",
           },
         }}
       >
@@ -589,11 +697,12 @@ const FilePreview = () => {
             aria-label="Close preview"
             sx={{
               position: "absolute",
-              top: 12,
-              right: 12,
-              color: "#fff",
-              bgcolor: "rgba(255,255,255,0.1)",
-              "&:hover": { bgcolor: "rgba(255,255,255,0.2)" },
+              top: 16,
+              right: 16,
+              color: "#F8FAFC",
+              backgroundColor: "rgba(255, 255, 255, 0.1)",
+              border: "1px solid rgba(255, 255, 255, 0.15)",
+              "&:hover": { backgroundColor: "rgba(255, 255, 255, 0.2)" },
             }}
           >
             <CloseIcon />
@@ -606,11 +715,12 @@ const FilePreview = () => {
               aria-label="Previous file"
               sx={{
                 position: "absolute",
-                left: 12,
-                color: "#fff",
-                bgcolor: "rgba(255,255,255,0.1)",
-                "&:hover": { bgcolor: "rgba(255,255,255,0.2)" },
-                "&.Mui-disabled": { opacity: 0.3 },
+                left: 16,
+                color: "#F8FAFC",
+                backgroundColor: "rgba(255, 255, 255, 0.1)",
+                border: "1px solid rgba(255, 255, 255, 0.15)",
+                "&:hover": { backgroundColor: "rgba(255, 255, 255, 0.2)" },
+                "&.Mui-disabled": { opacity: 0.3, borderColor: "transparent" },
               }}
             >
               <ChevronLeftIcon />
@@ -623,8 +733,8 @@ const FilePreview = () => {
               src={`${API_BASE_URL}/files/view/${encodeURIComponent(currentFileName)}`}
               alt={currentFileName}
               sx={{
-                maxHeight: "100%",
-                maxWidth: "100%",
+                maxHeight: "90%",
+                maxWidth: "90%",
                 objectFit: "contain",
               }}
             />
@@ -637,11 +747,12 @@ const FilePreview = () => {
               aria-label="Next file"
               sx={{
                 position: "absolute",
-                right: 12,
-                color: "#fff",
-                bgcolor: "rgba(255,255,255,0.1)",
-                "&:hover": { bgcolor: "rgba(255,255,255,0.2)" },
-                "&.Mui-disabled": { opacity: 0.3 },
+                right: 16,
+                color: "#F8FAFC",
+                backgroundColor: "rgba(255, 255, 255, 0.1)",
+                border: "1px solid rgba(255, 255, 255, 0.15)",
+                "&:hover": { backgroundColor: "rgba(255, 255, 255, 0.2)" },
+                "&.Mui-disabled": { opacity: 0.3, borderColor: "transparent" },
               }}
             >
               <ChevronRightIcon />
@@ -654,25 +765,28 @@ const FilePreview = () => {
             spacing={2}
             sx={{
               position: "absolute",
-              bottom: 12,
+              bottom: 16,
               left: "50%",
               transform: "translateX(-50%)",
-              px: 2,
-              py: 0.5,
-              borderRadius: 2,
-              bgcolor: "rgba(255,255,255,0.1)",
+              px: 2.5,
+              py: 0.75,
+              borderRadius: "9999px",
+              backgroundColor: "rgba(30, 41, 59, 0.8)",
+              border: "1px solid rgba(255, 255, 255, 0.15)",
+              backdropFilter: "blur(8px)",
             }}
           >
-            <Typography variant="caption" sx={{ color: "#fff" }}>
+            <Typography variant="caption" sx={{ color: "#F8FAFC", fontWeight: 500 }}>
               {currentFileName}
               {totalFiles > 1 && ` • ${currentIndex + 1} of ${totalFiles}`}
             </Typography>
+
             <IconButton
               size="small"
               onClick={() => handleDownload(currentFileName)}
               aria-label="Download"
               disabled={currentFileName in downloadProgress}
-              sx={{ color: "#fff" }}
+              sx={{ color: "#F8FAFC" }}
             >
               {currentFileName in downloadProgress ? (
                 <CircularProgress
@@ -680,7 +794,7 @@ const FilePreview = () => {
                   value={downloadProgress[currentFileName]}
                   size={16}
                   thickness={5}
-                  sx={{ color: "#fff" }}
+                  sx={{ color: "#3B82F6" }}
                 />
               ) : (
                 <FileDownloadRounded fontSize="small" />
@@ -689,7 +803,7 @@ const FilePreview = () => {
           </Stack>
         </Box>
       </MuiDialog>
-    </>
+    </Box>
   );
 };
 

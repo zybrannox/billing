@@ -14,7 +14,9 @@ export interface Invoice {
 interface InvoiceState {
   invoices: Invoice[];
   fetchInvoices: () => Promise<void>;
-  addInvoice: (data: Omit<Invoice, "id" | "created_at">) => Promise<Invoice>;
+  addInvoice: (
+    data: Omit<Invoice, "id" | "created_at" | "invoice_number">,
+  ) => Promise<Invoice>;
   updateInvoice: (id: number, data: Partial<Invoice>) => Promise<void>;
   deleteInvoice: (id: number) => Promise<void>;
 }

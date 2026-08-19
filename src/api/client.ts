@@ -12,8 +12,12 @@ axiosClient.interceptors.response.use(
   (res) => res,
   (err) => {
     const status = err?.response?.status;
+    // A 401 from the login call itself just means "wrong password" - it
+    // isn't a session expiry, so redirecting would reload the page the
+    // user is already on instead of showing the credentials error.
+    const isLoginRequest = err?.config?.url?.includes("/auth/login");
 
-    if (status === 401) {
+    if (status === 401 && !isLoginRequest) {
       window.location.href = "/login";
     }
 

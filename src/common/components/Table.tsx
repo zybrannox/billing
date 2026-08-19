@@ -9,8 +9,12 @@ import {
   type GridRowClassNameParams,
   type GridInitialState,
   type GridRowSelectionModel,
+  type GridPaginationModel,
+  type GridSortModel,
+  type GridEventListener,
 } from "@mui/x-data-grid";
 import React from "react";
+import GlobalStyles from "@mui/material/GlobalStyles";
 import { useConfirmDialogStore } from "../../hooks/useconfirmDialogStore";
 import { useProjectStore } from "../../store/useProjectStore";
 import { useDownloadProgressStore } from "../../store/useDownloadProgressStore";
@@ -40,7 +44,10 @@ interface TableProps<T extends GridRowModel> {
     },
   ) => React.ReactElement[];
   onSave?: (row: GridRowModel) => void;
-  onDelete?: (id: GridRowId) => void;
+  // When provided, the built-in Delete action calls this instead of
+  // deleting a project — use it for tables that show a different entity
+  // (e.g. employees) so Delete hits the right endpoint.
+  onDelete?: (id: GridRowId) => void | Promise<void>;
   onEdit?: (id: GridRowId) => void;
   onDownload?: (id: GridRowId) => void;
   onCancel?: (id: GridRowId) => void;
@@ -51,6 +58,18 @@ interface TableProps<T extends GridRowModel> {
   rowSelectionModel?: GridRowId[]; // Keep as GridRowId[] for compatibility
   initialState?: GridInitialState;
   checkboxSelection?: boolean;
+  // Server-side pagination/sorting (opt-in). When omitted, the grid behaves
+  // exactly as before: client-side pagination/sorting over the full `rows`.
+  paginationMode?: "client" | "server";
+  rowCount?: number;
+  paginationModel?: GridPaginationModel;
+  onPaginationModelChange?: (model: GridPaginationModel) => void;
+  sortingMode?: "client" | "server";
+  sortModel?: GridSortModel;
+  onSortModelChange?: (model: GridSortModel) => void;
+  loading?: boolean;
+  pageSizeOptions?: number[];
+  actionsWidth?: number;
 }
 
 export default function Table<T extends GridRowModel>({
@@ -70,138 +89,185 @@ export default function Table<T extends GridRowModel>({
   rowSelectionModel,
   checkboxSelection,
   initialState,
+  paginationMode,
+  rowCount,
+  paginationModel,
+  onPaginationModelChange,
+  sortingMode,
+  sortModel,
+  onSortModelChange,
+  loading,
+  pageSizeOptions,
+  actionsWidth,
 }: TableProps<T>) {
-  // Memoize SX to avoid creating a new object on every render
-  const gridSx = React.useMemo(
-    () => ({
-      borderRadius: "var(--border-radius-lg)",
-      color: "#000",
-      boxShadow: "0 0 15px rgba(255, 255, 255, 0.2)",
-      border: "none",
-      "--DataGrid-rowBorderColor": "var(--border-color)",
-      "& .MuiCheckbox-root": { color: "var(--blue-300) !important" },
-      "& .MuiDataGrid-main": {
-        borderTopLeftRadius: "var(--border-radius-sm)",
-        borderTopRightRadius: "var(--border-radius-sm)",
-        overflow: "hidden",
-      },
-      "& .MuiDataGrid-columnHeader .MuiDataGrid-columnHeaderTitleContainer .MuiCheckbox-root":
-        {
-          color: "var(--blue-800) !important",
-        },
-      "& .MuiDataGrid-columnHeader .Mui-checked": {
-        color: "var(--blue-600) !important",
-      },
-      "& .Mui-checked": {
-        color: "var(--blue-800) !important",
-      },
-      "& .MuiCheckbox-root:hover": {
-        backgroundColor: "rgba(255,255,255,0.1) !important",
-      },
-      "& .Mui-focusVisible": { outline: "none" },
-      "& .MuiDataGrid-row:last-of-type": {
-        borderBottom: "1px solid var(--DataGrid-rowBorderColor)",
-      },
-      "& .MuiDataGrid-row.Mui-selected": {
-        backgroundColor: "var(--white-10)",
-      },
-      "& .MuiDataGrid-row.Mui-selected:hover": {
-        backgroundColor: "var(--white-20)",
-      },
-      "& .MuiDataGrid-row:hover": { backgroundColor: "transparent" },
-      "& .MuiDataGrid-columnHeader": { color: "#000" },
-      "& .MuiDataGrid-columnHeaderTitle": {
-        color: "var(--blue-800)",
-        fontWeight: 700,
-        fontSize: "0.8rem",
-        textTransform: "uppercase",
-      },
-      "& .MuiDataGrid-columnHeaders": {
-        backgroundColor: "#ffffff",
-      },
-      "& .MuiDataGrid-footerContainer": {
-        borderTop: "none !important",
-        // backgroundImage: "var(--blue-gradient)",
-        // backgroundColor:"var(--blue-100)"
-      },
-      "& .MuiDataGrid-footerContainer .MuiDataGrid-pagination": {
-        borderTop: "none !important",
-        color: "var(--admin-text-white)",
-      },
-      "& .MuiTablePagination-title": { color: "#fff" },
-      "& .MuiTablePagination-displayedRows": { color: "#fff" },
-      "& .MuiTablePagination-selectLabel": { color: "#fff" },
-      "& .MuiTablePagination-select": { color: "#fff" },
-      "& .MuiTablePagination-actions svg": { fill: "#fff" },
-      "& .MuiDataGrid-virtualScroller": {
-        // paddingBottom: "10px",
-      },
-      // Highest-specificity selector for editing row
-      "& .MuiDataGrid-virtualScrollerRenderZone > div.MuiDataGrid-row.MuiDataGrid-row--editing":
-        {
-          backgroundColor: "var(--blue-100) !important",
-          transition: "all 300ms ease-out",
-          color: "#fff !important",
-        },
-      "& .MuiDataGrid-virtualScrollerRenderZone > div.MuiDataGrid-row.MuiDataGrid-row--editing:hover":
-        {
-          backgroundColor: "var(--white-10) !important",
-        },
-      "& .MuiOutlinedInput-notchedOutline": {
-        border: "none",
-      },
-      "&:hover .MuiOutlinedInput-notchedOutline": {
-        border: "none",
-      },
-      "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-        border: "none",
-      },
-      // Also fix each cell inside edit row (needed in dark themes)
-      "& .MuiDataGrid-virtualScrollerRenderZone > div.MuiDataGrid-row.MuiDataGrid-row--editing .MuiDataGrid-cell":
-        {
-          backgroundColor: "var(--white-20) !important",
-          color: "#fff !important",
-        },
+const gridSx = React.useMemo(
+  () => ({
+    borderRadius: "12px",
+    color: "#0F172A",
+    boxShadow: "none",
+    border: "1px solid #E2E8F0",
+    backgroundColor: "#FFFFFF",
+    "--DataGrid-rowBorderColor": "#F1F5F9",
 
-      "& .MuiDataGrid-footerContainer .MuiTablePagination-root": {
-        color: "#000",
+    "& .MuiCheckbox-root": {
+      color: "#64748B !important",
+      p: 0.75,
+    },
+    "& .MuiDataGrid-main": {
+      borderTopLeftRadius: "12px",
+      borderTopRightRadius: "12px",
+      overflow: "hidden",
+    },
+    "& .MuiDataGrid-columnHeader .MuiDataGrid-columnHeaderTitleContainer .MuiCheckbox-root":
+      {
+        color: "#475569 !important",
+      },
+    "& .MuiDataGrid-columnHeader .Mui-checked": {
+      color: "#2563EB !important",
+    },
+    "& .Mui-checked": {
+      color: "#2563EB !important",
+    },
+    "& .MuiCheckbox-root:hover": {
+      backgroundColor: "rgba(37, 99, 235, 0.04) !important",
+    },
+    "& .Mui-focusVisible": { outline: "none" },
+    "& .MuiDataGrid-cell:focus, & .MuiDataGrid-cell:focus-within": {
+      outline: "none !important",
+    },
+    "& .MuiDataGrid-row:last-of-type": {
+      borderBottom: "none",
+    },
+    "& .MuiDataGrid-row.Mui-selected": {
+      backgroundColor: "rgba(37, 99, 235, 0.04)",
+    },
+    "& .MuiDataGrid-row.Mui-selected:hover": {
+      backgroundColor: "rgba(37, 99, 235, 0.08)",
+    },
+    "& .MuiDataGrid-row:hover": {
+      backgroundColor: "#F8FAFC",
+    },
+    "& .MuiDataGrid-columnHeader": {
+      color: "#475569",
+      backgroundColor: "#F8FAFC",
+    },
+    "& .MuiDataGrid-columnHeaderTitle": {
+      color: "#334155",
+      fontWeight: 700,
+      fontSize: "0.75rem",
+      letterSpacing: "0.05em",
+      textTransform: "uppercase",
+    },
+    "& .MuiDataGrid-columnHeaders": {
+      backgroundColor: "#F8FAFC",
+      borderBottom: "1px solid #E2E8F0",
+    },
+    "& .MuiDataGrid-footerContainer": {
+      borderTop: "1px solid #E2E8F0 !important",
+      backgroundColor: "#FFFFFF",
+    },
+    "& .MuiDataGrid-footerContainer .MuiDataGrid-pagination": {
+      color: "#475569",
+    },
+    "& .MuiTablePagination-title": { color: "#475569" },
+    "& .MuiTablePagination-displayedRows": { color: "#475569" },
+    "& .MuiTablePagination-selectLabel": { color: "#475569", fontSize: "0.8125rem" },
+    // Minimal, matching the pagination prev/next buttons right next to it
+    // (transparent by default, a soft hover pill, no persistent border/box)
+    // rather than a fully outlined input - this is a footer control, not a
+    // form field.
+    "& .MuiTablePagination-select": {
+      display: "flex",
+      alignItems: "center",
+      color: "#334155",
+      fontSize: "0.8125rem",
+      fontWeight: 500,
+      borderRadius: "8px",
+      padding: "4px 22px 4px 8px",
+      transition: "background-color 0.15s ease",
+      "&:hover, &:focus": {
+        backgroundColor: "rgba(100, 116, 139, 0.08)",
+      },
+    },
+    "& .MuiTablePagination-selectIcon": {
+      color: "#64748B",
+      right: "2px",
+    },
+    "& .MuiTablePagination-actions svg": { fill: "#64748B" },
+    "& .MuiTablePagination-actions button": {
+      borderRadius: "8px",
+      transition: "background-color 0.15s ease",
+      "&:hover": { backgroundColor: "rgba(100, 116, 139, 0.08)" },
+    },
+
+    // Editing row styles
+    "& .MuiDataGrid-virtualScrollerRenderZone > div.MuiDataGrid-row.MuiDataGrid-row--editing":
+      {
+        backgroundColor: "#EFF6FF !important",
+        transition: "all 200ms ease-in-out",
+      },
+    "& .MuiOutlinedInput-notchedOutline": {
+      border: "1px solid #CBD5E1",
+    },
+    "&:hover .MuiOutlinedInput-notchedOutline": {
+      border: "1px solid #94A3B8",
+    },
+    "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+      border: "2px solid #2563EB",
+    },
+    "& .MuiDataGrid-virtualScrollerRenderZone > div.MuiDataGrid-row.MuiDataGrid-row--editing .MuiDataGrid-cell":
+      {
+        backgroundColor: "transparent !important",
+        color: "#0F172A !important",
       },
 
-      "& .MuiDataGrid-footerContainer .MuiTablePagination-displayedRows": {
-        color: "#000",
+    // Save/Cancel row-edit actions - rounded pill + tinted hover, matching
+    // every other row action (ui/Actions.tsx's actionIconSx). Targeted by
+    // aria-label since GridActionsCellItem's MUI X v8 types don't expose
+    // an `sx` prop to style these directly.
+    '& button[aria-label="Save"]': {
+      padding: "5px",
+      borderRadius: "8px",
+      color: "#059669",
+      backgroundColor: "rgba(5, 150, 105, 0.06)",
+      transition: "all 0.15s ease-in-out",
+    },
+    '& button[aria-label="Save"]:hover': {
+      backgroundColor: "rgba(5, 150, 105, 0.12)",
+    },
+    '& button[aria-label="Cancel"]': {
+      padding: "5px",
+      borderRadius: "8px",
+      color: "#E11D48",
+      backgroundColor: "rgba(225, 29, 72, 0.06)",
+      transition: "all 0.15s ease-in-out",
+    },
+    '& button[aria-label="Cancel"]:hover': {
+      backgroundColor: "rgba(225, 29, 72, 0.12)",
+    },
+    '& button[aria-label="Save"]:active, & button[aria-label="Cancel"]:active':
+      {
+        transform: "scale(0.95)",
       },
 
-      "& .MuiDataGrid-footerContainer .MuiTablePagination-selectLabel": {
-        color: "#000",
-      },
-
-      "& .MuiDataGrid-footerContainer .MuiTablePagination-select": {
-        color: "#000",
-      },
-
-      "& .MuiDataGrid-footerContainer .MuiTablePagination-actions svg": {
-        fill: "#000",
-      },
-      // If Print Status is set to Completed makes the row green
-      "& .MuiDataGrid-row.row-print-completed": {
-        backgroundColor: "rgba(46, 125, 50, 0.15)", // soft green
-      },
-
-      "& .MuiDataGrid-row.row-print-completed:hover": {
-        backgroundColor: "rgba(46, 125, 50, 0.25)",
-      },
-
-      "& .MuiDataGrid-row.row-print-completed.Mui-selected": {
-        backgroundColor: "rgba(46, 125, 50, 0.35)",
-      },
-    }),
-    [],
-  );
+    // Status indicator rows
+    "& .MuiDataGrid-row.row-print-completed": {
+      backgroundColor: "rgba(16, 185, 129, 0.05)",
+    },
+    "& .MuiDataGrid-row.row-print-completed:hover": {
+      backgroundColor: "rgba(16, 185, 129, 0.1)",
+    },
+    "& .MuiDataGrid-row.row-print-completed.Mui-selected": {
+      backgroundColor: "rgba(16, 185, 129, 0.15)",
+    },
+  }),
+  [],
+);
 
   const apiRef = useGridApiRef();
   // Pull dialog methods once to avoid repeated getter calls.
   const { showDialog, closeDialog, setLoading } = useConfirmDialogStore();
-  const { deleteProject, setSelectedProject, downloadProject } =
+  const { deleteProject, setSelectedProject, downloadProject, refreshProject } =
     useProjectStore();
   const [rowModesModel, setRowModesModel] = React.useState<GridRowModesModel>(
     {},
@@ -266,20 +332,21 @@ export default function Table<T extends GridRowModel>({
 
   const handleSaveClick = React.useCallback(
     (id: GridRowId) => () => {
-      showDialog({
-        title: "Save Changes?",
-        description: "Do you want to update this record?",
-        confirmText: "Save",
-        onConfirm: () => {
-          apiRef.current.stopRowEditMode({
-            id,
-            ignoreModifications: false, // 🔥 THIS triggers processRowUpdate
-          });
-          closeDialog();
-        },
+      // Save/Cancel act immediately, no confirmation dialog - editing a row
+      // is already an explicit, reversible-until-you-click-Save action, so
+      // a second "are you sure?" step is just friction, not safety.
+      //
+      // apiRef.current is only null before the grid has mounted, which
+      // can't happen here - this only runs after a user has already
+      // clicked Edit/Save on a rendered row. Guard anyway rather than
+      // asserting, so a stray call can't throw.
+      if (!apiRef.current) return;
+      apiRef.current.stopRowEditMode({
+        id,
+        ignoreModifications: false, // 🔥 THIS triggers processRowUpdate
       });
     },
-    [apiRef, showDialog, closeDialog],
+    [apiRef],
   );
 
   const handleDeleteClick = React.useCallback(
@@ -291,8 +358,11 @@ export default function Table<T extends GridRowModel>({
         isDestructive: true,
         onConfirm: async () => {
           setLoading(true);
-          await deleteProject(id as string);
-          onDeleteRef.current?.(id);
+          if (onDeleteRef.current) {
+            await onDeleteRef.current(id);
+          } else {
+            await deleteProject(id as string);
+          }
           setLoading(false);
           closeDialog();
         },
@@ -316,7 +386,11 @@ export default function Table<T extends GridRowModel>({
           const { start, update, finish } = useDownloadProgressStore.getState();
           start("Downloading project files…");
           try {
-            await downloadProject(id as string, update);
+            const success = await downloadProject(id as string, update);
+            // The backend flips `downloaded` on every file in the project as
+            // part of serving the zip - refetch so the FilePreview sidebar
+            // (and anyone else looking at this project) picks up the change.
+            if (success) await refreshProject(id as string);
             onDownloadRef.current?.(id);
           } finally {
             finish();
@@ -324,7 +398,7 @@ export default function Table<T extends GridRowModel>({
         },
       });
     },
-    [showDialog, closeDialog, downloadProject], // include deleteProject here
+    [showDialog, closeDialog, downloadProject, refreshProject],
   );
 
   const handlePreviewClick = React.useCallback(
@@ -341,18 +415,11 @@ export default function Table<T extends GridRowModel>({
 
       showDialog({
         title: isActive ? "Deactivate Item?" : "Activate Item?",
-        description: `Do you want to ${
-          isActive ? "deactivate" : "activate"
-        } this item?`,
+        description: `Do you want to ${isActive ? "deactivate" : "activate"
+          } this item?`,
         confirmText: isActive ? "Deactivate" : "Activate",
         onConfirm: async () => {
           setLoading(true);
-
-          // setData((prev) =>
-          //   prev.map((item) =>
-          //     item.id === id ? { ...item, isActive: !isActive } : item
-          //   )
-          // );
 
           onToggleRef.current?.(id, !isActive);
 
@@ -364,23 +431,29 @@ export default function Table<T extends GridRowModel>({
     [showDialog, closeDialog, setLoading],
   );
 
-  // getActions separated and memoized to avoid regenerating entire columns array
-
   const getActions = React.useCallback(
     (params: GridRowParams) => {
       const isEditing = rowModesModel[params.id]?.mode === GridRowModes.Edit;
 
       if (isEditing) {
+        // GridActionsCellItem's typed props (MUI X v8) don't expose `sx` -
+        // its underlying IconButton is styled here instead via the grid's
+        // own sx block (see the "button[aria-label=...]" rules below),
+        // matching the rounded-pill + tinted-hover treatment every other
+        // row action already has (see ui/Actions.tsx's actionIconSx). The
+        // old code put a hover sx on the *icon* prop instead of the button
+        // - the icon isn't what receives the hover event, so it never did
+        // anything.
         return [
           <GridActionsCellItem
             key="save"
-            icon={<SaveIcon />}
+            icon={<SaveIcon sx={{ fontSize: "1.125rem" }} />}
             label="Save"
             onClick={handleSaveClick(params.id)}
           />,
           <GridActionsCellItem
             key="cancel"
-            icon={<CancelIcon />}
+            icon={<CancelIcon sx={{ fontSize: "1.125rem" }} />}
             label="Cancel"
             onClick={handleCancelClick(params.id)}
           />,
@@ -389,14 +462,14 @@ export default function Table<T extends GridRowModel>({
 
       return renderActions
         ? renderActions(params, {
-            edit: handleEditClick(params.id),
-            delete: handleDeleteClick(params.id),
-            download: handleDownloadClick(params.id),
-            save: handleSaveClick(params.id),
-            cancel: handleCancelClick(params.id),
-            toggle: handleToggleClick(params),
-            preview: handlePreviewClick(params.row as T),
-          })
+          edit: handleEditClick(params.id),
+          delete: handleDeleteClick(params.id),
+          download: handleDownloadClick(params.id),
+          save: handleSaveClick(params.id),
+          cancel: handleCancelClick(params.id),
+          toggle: handleToggleClick(params),
+          preview: handlePreviewClick(params.row as T),
+        })
         : [];
     },
     [
@@ -419,82 +492,164 @@ export default function Table<T extends GridRowModel>({
         field: "actions",
         type: "actions",
         headerName: "Actions",
-        width: 160,
+        width: actionsWidth ?? 180,
         getActions,
       },
     ];
   }, [columns, getActions]);
+
+  // A fresh {type, ids} object (and fresh Set) on every render makes the
+  // DataGrid think selection changed even when it didn't - memoize it so it
+  // only changes when the caller's selection actually does.
+  const selectionModel = React.useMemo(
+    () => ({
+      type: "include" as const,
+      ids: new Set(rowSelectionModel || []),
+    }),
+    [rowSelectionModel],
+  );
+
+  const getRowId = React.useCallback((row: T) => row.id, []);
+
+  const handleSelectionModelChange = React.useCallback(
+    (newSelectionModel: GridRowSelectionModel) => {
+      if (!onSelectionChange) return;
+      if (newSelectionModel.type === "include") {
+        onSelectionChange(Array.from(newSelectionModel.ids));
+      } else {
+        // Handle "exclude" (select everything except these IDs)
+        const excludedIds = newSelectionModel.ids;
+        const selectedIds = rows
+          .map((r) => r.id)
+          .filter((id) => !excludedIds.has(id));
+        onSelectionChange(selectedIds as GridRowId[]);
+      }
+    },
+    [onSelectionChange, rows],
+  );
+
+  const handleRowEditStop = React.useCallback<GridEventListener<"rowEditStop">>(
+    (params, event) => {
+      // Prevent auto save on focus loss
+      if (params.reason === "rowFocusOut") {
+        event.defaultMuiPrevented = true;
+      }
+    },
+    [],
+  );
+
+  const handleProcessRowUpdateError = React.useCallback((error: unknown) => {
+    console.error(error);
+    // The row already reverts itself (MUI's own behavior when
+    // processRowUpdate rejects) - this just tells the user *why*, e.g. the
+    // backend rejecting an invalid print-status transition.
+    const message =
+      (error as { response?: { data?: { detail?: string } } })?.response
+        ?.data?.detail;
+    if (message) alert(message);
+  }, []);
+
+  // NOTE: there used to be an onCellClick handler here that unconditionally
+  // set event.defaultMuiPrevented = true. MUI's grid checks that flag after
+  // publishing "cellClick" and, if set, never publishes "rowClick" at all -
+  // so handleRowClick below (and the FilePreview sidebar it drives) silently
+  // never fired for a normal click anywhere in the row. Removed; only
+  // cellDoubleClick still suppresses its default (blocks double-click auto
+  // edit, which this app deliberately keeps explicit via the Edit action).
+  const handleRowClick = React.useCallback<GridEventListener<"rowClick">>(
+    (params, event) => {
+      // Don't trigger row selection if clicking on checkbox
+      const target = event.target as HTMLElement;
+      const isCheckbox =
+        target.closest(".MuiCheckbox-root") ||
+        target.closest('[data-field="__check__"]');
+
+      if (!isCheckbox) {
+        setSelectedProject(params.row);
+      }
+    },
+    [setSelectedProject],
+  );
+
+  const preventDefaultCellDoubleClick = React.useCallback<
+    GridEventListener<"cellDoubleClick">
+  >((_params, event) => {
+    event.defaultMuiPrevented = true;
+  }, []);
+
+  // Only used as the *uncontrolled* starting page size (client-mode tables
+  // with no paginationModel prop, e.g. Employee/Billing) - server-mode
+  // tables already control the displayed page size via their own
+  // paginationModel prop, which takes precedence over this regardless.
+  // Without it, MUI's uncontrolled default (100) wouldn't match our first
+  // pageSizeOptions entry and would trigger its own console warning.
+  const resolvedInitialState = React.useMemo(
+    () => ({
+      ...initialState,
+      pagination: {
+        paginationModel: { pageSize: 10, page: 0 },
+        ...initialState?.pagination,
+      },
+    }),
+    [initialState],
+  );
+
   return (
     <div
       style={{
         boxShadow: "0 0 15px rgba(255, 255, 255, 0.2)",
         borderRadius: "12px",
-        overflow: "visible", // allow shadow to show
       }}
-      className="w-full overflow-x-auto rounded-x"
+      className="w-full overflow-x-auto"
     >
+      {/* The rows-per-page dropdown's option list is a MUI Menu that
+          portals straight to document.body, outside this component's DOM
+          - a component-scoped sx (like gridSx below) can never reach it.
+          It was rendering MUI's raw default elevation-8 shadow (a heavy,
+          triple-layer Material shadow) while every other menu in the app
+          (ui/Menu.tsx, ui/Actions.tsx's "more actions" menu) already
+          overrides that to something much lighter. This targets only that
+          unstyled default - anything with its own PaperProps/sx override
+          (i.e. every other menu) already wins over a plain class rule. */}
+      <GlobalStyles
+        styles={{
+          ".MuiPopover-paper.MuiMenu-paper.MuiPaper-elevation8": {
+            boxShadow:
+              "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.05)",
+          },
+        }}
+      />
       <DataGrid<T>
         apiRef={apiRef}
         rows={rows}
         columns={mergedColumns}
-        getRowId={(row) => row.id}
+        getRowId={getRowId}
         sx={gridSx}
         disableRowSelectionOnClick
-        initialState={initialState}
+        initialState={resolvedInitialState}
         disableColumnFilter
-        checkboxSelection={checkboxSelection??false}
-        rowSelectionModel={{
-          type: "include",
-          ids: new Set(rowSelectionModel || []),
-        }}
-        onRowSelectionModelChange={(
-          newSelectionModel: GridRowSelectionModel,
-        ) => {
-          if (onSelectionChange) {
-            if (newSelectionModel.type === "include") {
-              onSelectionChange(Array.from(newSelectionModel.ids));
-            } else {
-              // Handle "exclude" (Project everything except these IDs)
-              const excludedIds = newSelectionModel.ids;
-              const selectedIds = rows
-                .map((r) => r.id)
-                .filter((id) => !excludedIds.has(id));
-              onSelectionChange(selectedIds as GridRowId[]);
-            }
-          }
-        }}
+        disableColumnMenu
+        checkboxSelection={checkboxSelection ?? false}
+        rowSelectionModel={selectionModel}
+        onRowSelectionModelChange={handleSelectionModelChange}
         editMode="row" // enable editing
         rowModesModel={rowModesModel}
         onRowModesModelChange={setRowModesModel}
         processRowUpdate={processRowUpdate}
         getRowClassName={getRowClassName}
-        onRowEditStop={(params, event) => {
-          // 🔒 Prevent auto save on focus loss
-          if (params.reason === "rowFocusOut") {
-            event.defaultMuiPrevented = true;
-          }
-        }}
-        onProcessRowUpdateError={(error) => {
-          console.error(error);
-        }}
-        onRowClick={(params, event) => {
-          // Don't trigger row selection if clicking on checkbox
-          const target = event.target as HTMLElement;
-          const isCheckbox =
-            target.closest(".MuiCheckbox-root") ||
-            target.closest('[data-field="__check__"]');
-
-          if (!isCheckbox) {
-            setSelectedProject(params.row);
-          }
-        }}
-        onCellDoubleClick={(params, event) => {
-          event.defaultMuiPrevented = true;
-        }}
-        onCellClick={(params, event) => {
-          event.defaultMuiPrevented = true;
-        }}
-        pageSizeOptions={[10]}
+        onRowEditStop={handleRowEditStop}
+        onProcessRowUpdateError={handleProcessRowUpdateError}
+        onRowClick={handleRowClick}
+        onCellDoubleClick={preventDefaultCellDoubleClick}
+        pageSizeOptions={pageSizeOptions ?? [10, 20, 30, 50, 100]}
+        paginationMode={paginationMode ?? "client"}
+        rowCount={paginationMode === "server" ? rowCount : undefined}
+        paginationModel={paginationModel}
+        onPaginationModelChange={onPaginationModelChange}
+        sortingMode={sortingMode ?? "client"}
+        sortModel={sortModel}
+        onSortModelChange={onSortModelChange}
+        loading={loading}
       />
     </div>
   );

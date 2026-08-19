@@ -6,8 +6,6 @@ import IconButton from "@mui/material/IconButton";
 import { AppBar as MuiAppBar, Toolbar as MuiToolbar } from "@mui/material";
 import { MenuOutlined } from "@mui/icons-material";
 import { employeeNavigations } from "../config/employee";
-// import Menu from "../ui/Menu";
-// import Avatar from "../ui/Avatar";
 import NotificationsIcon from "@mui/icons-material/Notifications";
 import Badge from "@mui/material/Badge";
 import Menu from "../ui/Menu";
@@ -22,16 +20,6 @@ const theme = createTheme({
 
 export default function EmployeeLayout() {
   const [open, setOpen] = React.useState(false);
-  const [anchorEl, setAnchorEl] = React.useState(null);
-  const opens = Boolean(anchorEl);
-
-  const handleOpens = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
 
   const handleDrawerToggle = () => setOpen((p) => !p);
   const handleDrawerClose = () => setOpen(false);
@@ -74,10 +62,7 @@ export default function EmployeeLayout() {
                     <NotificationsIcon sx={{ color: "#000" }} />
                   </Badge>
                 </IconButton>
-                {/* <Avatar /> */}
-                <IconButton onClick={handleOpens}>
-                  <Avatar />
-                </IconButton>
+                <Avatar />
                 <Menu />
               </div>
             </MuiToolbar>

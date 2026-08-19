@@ -28,66 +28,141 @@ const RadioField = React.memo(
     // ---- GROUP RADIO ---- //
     if (isGroup) {
       return (
-        <FormControl error={!!error} component="fieldset">
-          {label && <p style={{ marginBottom: 6 }}>{label}</p>}
+        <FormControl error={!!error} component="fieldset" sx={{ width: "100%" }}>
+          {label && (
+            <label
+              className={`text-xs font-medium mb-1.5 block text-left transition-colors ${
+                error ? "text-red-500" : "text-gray-700"
+              }`}
+            >
+              {label}
+            </label>
+          )}
 
           <RadioGroup
             row
             value={value}
             onChange={(e) => onChange(e.target.value)}
+            sx={{
+              gap: "12px",
+              flexWrap: "wrap",
+            }}
           >
-            {options?.map((opt) => (
-              <FormControlLabel
-                key={opt.value}
-                value={opt.value}
-                sx={{
-                  "& .MuiFormControlLabel-label": {
-                    color: "#000",
-                    fontSize: "0.875rem",
-                  },
-                }}
-                control={
-                  <MuiRadio
-                    sx={{
-                      color: opt.color ?? "#64748B",
-                      "&.Mui-checked": {
-                        color: opt.color ?? "#64748B",
-                      },
-                    }}
-                  />
-                }
-                label={opt.label}
-              />
-            ))}
+            {options?.map((opt) => {
+              const activeColor = opt.color ?? "#334155";
+
+              return (
+                <FormControlLabel
+                  key={opt.value}
+                  value={opt.value}
+                  label={opt.label}
+                  sx={{
+                    margin: 0,
+                    marginRight: "4px",
+                    "& .MuiFormControlLabel-label": {
+                      color: value === opt.value ? "#0f172a" : "#475569",
+                      fontSize: "0.85rem",
+                      fontWeight: value === opt.value ? 500 : 400,
+                      transition: "color 0.15s ease",
+                      userSelect: "none",
+                    },
+                  }}
+                  control={
+                    <MuiRadio
+                      size="small"
+                      sx={{
+                        padding: "4px",
+                        marginRight: "4px",
+                        color: "#cbd5e1",
+                        transition: "color 0.15s ease",
+                        "&:hover": {
+                          backgroundColor: "rgba(0, 0, 0, 0.04)",
+                        },
+                        "&.Mui-checked": {
+                          color: activeColor,
+                        },
+                        "& .MuiSvgIcon-root": {
+                          fontSize: 18,
+                        },
+                      }}
+                    />
+                  }
+                />
+              );
+            })}
           </RadioGroup>
 
-          {error && <FormHelperText>{error}</FormHelperText>}
+          {error && (
+            <FormHelperText
+              sx={{
+                marginLeft: 0,
+                marginTop: "4px",
+                fontSize: "0.75rem",
+                color: "#ef4444",
+              }}
+            >
+              {error}
+            </FormHelperText>
+          )}
         </FormControl>
       );
     }
 
     // ---- SINGLE RADIO ---- //
+    const isSingleChecked = value === "true";
+
     return (
       <FormControl error={!!error}>
         <FormControlLabel
           label={label}
-           sx={{
-    "& .MuiFormControlLabel-label": {
-      color: "#000",
-      fontSize: "0.875rem",
-    },
-  }}
+          sx={{
+            margin: 0,
+            "& .MuiFormControlLabel-label": {
+              color: error ? "#ef4444" : isSingleChecked ? "#0f172a" : "#475569",
+              fontSize: "0.85rem",
+              fontWeight: isSingleChecked ? 500 : 400,
+              transition: "color 0.15s ease",
+              userSelect: "none",
+            },
+          }}
           control={
             <MuiRadio
-              checked={value === "true"}
+              size="small"
+              checked={isSingleChecked}
               onChange={(e) => onChange(e.target.checked ? "true" : "false")}
+              sx={{
+                padding: "4px",
+                marginRight: "4px",
+                color: error ? "#fca5a5" : "#cbd5e1",
+                transition: "color 0.15s ease",
+                "&:hover": {
+                  backgroundColor: "rgba(0, 0, 0, 0.04)",
+                },
+                "&.Mui-checked": {
+                  color: error ? "#ef4444" : "#334155",
+                },
+                "& .MuiSvgIcon-root": {
+                  fontSize: 18,
+                },
+              }}
             />
           }
         />
-        {error && <FormHelperText>{error}</FormHelperText>}
+        {error && (
+          <FormHelperText
+            sx={{
+              marginLeft: 0,
+              marginTop: "4px",
+              fontSize: "0.75rem",
+              color: "#ef4444",
+            }}
+          >
+            {error}
+          </FormHelperText>
+        )}
       </FormControl>
     );
-  },
+  }
 );
 
 RadioField.displayName = "RadioField";

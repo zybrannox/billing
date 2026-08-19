@@ -1,18 +1,17 @@
-import React, { useCallback, useMemo, useRef } from "react";
-import { useForm, Controller, type SubmitHandler } from "react-hook-form";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import { useForm, useWatch, Controller, type SubmitHandler } from "react-hook-form";
 import { z, ZodType, ZodObject, ZodString } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Button from "../../ui/Button";
 import TextField from "../../ui/TextField";
 import { Link } from "react-router-dom";
-import { MenuItem } from "@mui/material";
 import FileField from "../.././ui/FileField";
 import GmailFileUploader from "../.././ui/GmailFileUploader";
-import { useAppStore } from "../../store/useAppStore";
 import { type SxProps, type Theme } from "@mui/material/styles";
 import CheckboxField, { type Option } from "../.././ui/Checkbox";
 import RadioField from "../../ui/RadioField";
-import Dropdown from "../../ui/Dropdown";
+import Dropdown, { type DropdownOption } from "../../ui/Dropdown";
+import AsyncSearchSelect from "../../ui/AsyncSearchSelect";
 import Loader from "../../ui/Loader";
 import DateTimePicker from "../../ui/DateTimePicker";
 
@@ -25,6 +24,7 @@ export type FieldType =
   | "password"
   | "textarea"
   | "select"
+  | "async_select"
   | "number"
   | "file"
   | "file_upload"
@@ -55,6 +55,12 @@ export type FieldDefinition = {
   row?: number;
   freeSolo?: boolean; // For dropdown
   disabled?: boolean;
+  // For type: "async_select" - server-searched dropdown (see ui/AsyncSearchSelect).
+  asyncEndpoint?: string;
+  asyncSearchParam?: string;
+  asyncExtraParams?: Record<string, string | number>;
+  getOptionLabel?: (item: any) => string;
+  getOptionValue?: (item: any) => string | number;
 };
 
 export type ExternalLink = {
@@ -63,7 +69,7 @@ export type ExternalLink = {
   destination?: "above" | "below";
 };
 
-export type CustomFormProps<T extends ZodType = ZodType> = {
+export type CustomFormProps = {
   title?: string;
   fields: FieldDefinition[];
   onSubmit: (data: any) => Promise<void> | void;
@@ -72,6 +78,11 @@ export type CustomFormProps<T extends ZodType = ZodType> = {
   externalLink?: ExternalLink[] | [];
   buttonSx?: SxProps<Theme>;
   loading?: boolean;
+  // Fires on every field change with the form's current (unvalidated)
+  // values - lets a parent track in-progress state (e.g. files already
+  // uploaded to storage) that it needs to act on before submit happens,
+  // such as cleaning up orphaned uploads if the form is cancelled.
+  onValuesChange?: (values: any) => void;
 };
 
 // -----------------------------
@@ -126,6 +137,9 @@ const buildZodSchema = (fields: FieldDefinition[]) => {
           schema = z.union([z.string(), z.number()]);
         }
         break;
+      case "async_select":
+        schema = z.union([z.string(), z.number()]);
+        break;
       case "file":
         if (f.multiple) {
           schema = z
@@ -137,9 +151,13 @@ const buildZodSchema = (fields: FieldDefinition[]) => {
         break;
       case "file_upload":
         // Items are upload-tracking objects ({status, path, ...}), not raw Files.
-        schema = f.multiple
-          ? z.array(z.any()).min(1, `${f.label || name} is required`)
-          : z.array(z.any());
+        // min(1) only applies when the field is actually required - this
+        // used to be forced on for any multi-file field, which blocked
+        // submitting forms with optional attachments left empty.
+        schema =
+          f.multiple && required
+            ? z.array(z.any()).min(1, `${f.label || name} is required`)
+            : z.array(z.any());
         break;
       case "checkbox":
         if (f.options && Array.isArray(f.options) && f.options.length > 0) {
@@ -185,14 +203,12 @@ const FormField = React.memo(
   ({
     field,
     control,
-    register,
     errors,
     inputRefs,
     handleEnterFocus,
   }: {
     field: FieldDefinition;
     control: any;
-    register: any;
     errors: any;
     inputRefs: React.MutableRefObject<Record<string, HTMLElement | null>>;
     handleEnterFocus: (e: React.KeyboardEvent, name: string) => void;
@@ -257,7 +273,8 @@ const FormField = React.memo(
                 value={ctrl.value}
                 onChange={ctrl.onChange}
                 error={!!error}
-                helperText={error?.message}
+                helperText={error?.message || field.helperText}
+                disabled={field.disabled}
               />
             )}
           />
@@ -301,8 +318,8 @@ const FormField = React.memo(
                 label={field.label}
                 accept={field.acceptFileType}
                 multiple={field.multiple}
-                error={!!error}
-                helperText={error?.message || field.helperText}
+                error={error?.message}
+                helperText={field.helperText}
               />
             )}
           />
@@ -373,13 +390,41 @@ const FormField = React.memo(
             render={({ field: ctrl }) => (
               <Dropdown
                 label={field.label}
-                options={field.options as string[]}
+                options={field.options as DropdownOption[]}
                 multiple={field.multiple}
                 value={ctrl.value}
                 onChange={ctrl.onChange}
                 placeholder={field.placeholder}
                 freeSolo={field.freeSolo}
+                disabled={field.disabled}
+                error={!!error}
+                helperText={error?.message || field.helperText}
                 sx={{ width: "100%" }}
+              />
+            )}
+          />
+        );
+
+      case "async_select":
+        return (
+          <Controller
+            name={name}
+            control={control}
+            defaultValue={field.defaultValue ?? ""}
+            render={({ field: ctrl }) => (
+              <AsyncSearchSelect
+                label={field.label}
+                placeholder={field.placeholder}
+                endpoint={field.asyncEndpoint!}
+                searchParam={field.asyncSearchParam}
+                extraParams={field.asyncExtraParams}
+                getOptionLabel={field.getOptionLabel!}
+                getOptionValue={field.getOptionValue!}
+                value={ctrl.value}
+                onChange={ctrl.onChange}
+                disabled={field.disabled}
+                error={!!error}
+                helperText={error?.message || field.helperText}
               />
             )}
           />
@@ -397,11 +442,11 @@ export default function CustomForm({
   onSubmit,
   buttonName = "Submit",
   externalLink,
-  buttonSx = "",
+  buttonSx,
   zodSchema = null,
   loading,
+  onValuesChange,
 }: CustomFormProps) {
-  const { setTost } = useAppStore();
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const renderLinks = useCallback(
@@ -452,7 +497,7 @@ export default function CustomForm({
 
   type SchemaType = z.infer<typeof schema>;
 
-  const { control, handleSubmit, register, formState } = useForm<SchemaType>({
+  const { control, handleSubmit, formState } = useForm<SchemaType>({
     resolver: zodResolver(schema as any),
     defaultValues: useMemo(
       () =>
@@ -471,6 +516,15 @@ export default function CustomForm({
       console.log("Form Validation Errors:", errors);
     }
   }, [errors]);
+
+  const watchedValues = useWatch({ control });
+  useEffect(() => {
+    onValuesChange?.(watchedValues);
+    // onValuesChange isn't included - it's expected to be a stable
+    // callback (e.g. writing into a ref), and including it would re-fire
+    // this on every parent re-render rather than only on value changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchedValues]);
 
   const handleEnterFocus = (e: React.KeyboardEvent, name: string) => {
     if (e.key !== "Enter") return;
@@ -506,7 +560,7 @@ export default function CustomForm({
 
   return (
     <form onSubmit={handleSubmit(submitHandler)}>
-      <div className="">
+      <div className="p-5">
         <div className="flex flex-col gap-4">
           {fields.map((field) => {
             // If field is part of a row group, skip here (we will render it later)
@@ -517,7 +571,6 @@ export default function CustomForm({
                 key={field.name}
                 field={field}
                 control={control}
-                register={register}
                 errors={errors}
                 inputRefs={inputRefs}
                 handleEnterFocus={handleEnterFocus}
@@ -533,7 +586,6 @@ export default function CustomForm({
                   key={field.name}
                   field={field}
                   control={control}
-                  register={register}
                   errors={errors}
                   inputRefs={inputRefs}
                   handleEnterFocus={handleEnterFocus}
@@ -544,15 +596,17 @@ export default function CustomForm({
         </div>
       </div>
       {renderLinks("above")}
-      <Button
-        sx={{ buttonSx }}
-        type="submit"
-        disabled={isSubmitting}
-        size="medium"
-        variant="contained"
-      >
-        {isSubmitting || loading ? <Loader /> : buttonName}
-      </Button>
+      <div className="flex justify-end px-5 pb-5">
+        <Button
+          sx={buttonSx}
+          type="submit"
+          disabled={isSubmitting}
+          size="medium"
+          variant="contained"
+        >
+          {isSubmitting || loading ? <Loader /> : buttonName}
+        </Button>
+      </div>
       {renderLinks("below")}
     </form>
   );

@@ -1,23 +1,23 @@
-import CustomForm from "../../common/components/CustomForm";
-import { addEmployeeFields } from "../../config/admin";
+import CustomForm from "../components/CustomForm";
+import { addCustomerFields } from "../../config/common";
 import { useApiRequest } from "../../hooks/useApiRequest";
 import { useDialogStore } from "../../store/useDialogStore";
 
-interface AddEmployeeProps {
+interface AddCustomerProps {
   onSuccess?: () => void;
 }
 
-export default function AddEmployee({ onSuccess }: AddEmployeeProps) {
+export default function AddCustomer({ onSuccess }: AddCustomerProps) {
   const { sendRequest, loading } = useApiRequest();
   const { closeDialog } = useDialogStore();
 
   const handleSubmit = async (formData: any) => {
     const result = await sendRequest({
-      endpoint: "/users/",
+      endpoint: "/customers/",
       method: "post",
       data: formData,
       onError: (err) => {
-        console.error("Error adding employee", err);
+        console.error("Error adding customer", err);
       },
     });
 
@@ -29,9 +29,9 @@ export default function AddEmployee({ onSuccess }: AddEmployeeProps) {
 
   return (
     <CustomForm
-      fields={addEmployeeFields}
+      fields={addCustomerFields}
       onSubmit={handleSubmit}
-      buttonName={loading ? "Submitting..." : "Add Employee"}
+      buttonName={loading ? "Submitting..." : "Add Customer"}
       loading={loading}
     />
   );

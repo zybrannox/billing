@@ -29,6 +29,27 @@
   --blue-600: oklch(54.6% 0.245 262.881);
   --blue-800: oklch(42.4% 0.199 265.638);
   --blue-900: oklch(37.9% 0.146 265.522);
+
+  /* --- Red Palette (Errors, Destructive actions, Statuses) --- */
+  --red-50: oklch(97.1% 0.013 17.38);
+  --red-100: oklch(93.6% 0.032 17.71);
+  --red-200: oklch(88.5% 0.062 18.33);
+  --red-300: oklch(80.8% 0.114 19.58);
+  --red-400: oklch(70.4% 0.191 22.22);
+  --red-500: oklch(63.7% 0.237 25.33);
+  --red-600: oklch(57.7% 0.245 27.32);
+  --red-700: oklch(50.5% 0.213 27.52);
+
+  /* --- Green Palette (Success, Active states, Confirmed) --- */
+  --green-50: oklch(97.9% 0.021 166.11);
+  --green-100: oklch(95% 0.052 163.05);
+  --green-200: oklch(90.5% 0.093 164.15);
+  --green-300: oklch(83.2% 0.143 163.22);
+  --green-400: oklch(74% 0.177 162.48);
+  --green-500: oklch(62.7% 0.194 149.21);
+  --green-600: oklch(52.7% 0.173 150.07);
+  --green-700: oklch(44.8% 0.141 150.34);
+
   --admin-body-bg: oklch(37.9% 0.146 265.522);
   --admin-body-bg-2: #0f1535;
   --gray-300: oklch(87.2% 0.01 258.338);
@@ -99,6 +120,27 @@ td {
 .total {
   font-family: "Roboto", "Noto Sans", monospace;
   font-weight: 500;
+}
+
+/* Modern Status & Badge Classes */
+.text-error {
+  color: var(--red-500);
+}
+
+.text-success {
+  color: var(--green-600);
+}
+
+.bg-error-light {
+  background-color: var(--red-50);
+  color: var(--red-600);
+  border: 1px solid var(--red-200);
+}
+
+.bg-success-light {
+  background-color: var(--green-50);
+  color: var(--green-700);
+  border: 1px solid var(--green-200);
 }
 
 /* @media (prefers-color-scheme: light) {

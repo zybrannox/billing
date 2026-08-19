@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Box,
   Typography,
@@ -6,7 +6,11 @@ import {
   Stack,
   IconButton,
   LinearProgress,
-  Alert,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import {
   UploadFile,
@@ -14,6 +18,7 @@ import {
   CheckCircle,
   ErrorOutline,
   Replay,
+  FolderZipOutlined,
 } from "@mui/icons-material";
 import { apiService } from "../api/service";
 import { compressImage } from "../utils/imageCompression";
@@ -71,10 +76,9 @@ const GmailFileUploader = ({
   helperText,
 }: GmailFileUploaderProps) => {
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const [modalOpen, setModalOpen] = useState(false);
   const items = Array.isArray(value) ? value : [];
 
-  // Kept in sync with `value` so async upload callbacks always merge
-  // against the latest list instead of a stale closure.
   const itemsRef = React.useRef(items);
   React.useEffect(() => {
     itemsRef.current = items;
@@ -129,7 +133,7 @@ const GmailFileUploader = ({
     } catch (err: any) {
       const wasCancelled =
         err?.code === "ERR_CANCELED" || err?.name === "CanceledError";
-      if (wasCancelled) return; // item was already removed by removeFile
+      if (wasCancelled) return;
 
       patchItem(item.id, {
         status: "error",
@@ -185,9 +189,7 @@ const GmailFileUploader = ({
       controllersRef.current[id]?.abort();
       delete controllersRef.current[id];
     } else if (item?.status === "done" && item.path) {
-      apiService.delete(`/files/${encodeURIComponent(item.path)}`).catch(() => {
-        // best-effort cleanup; nothing actionable if this fails
-      });
+      apiService.delete(`/files/${encodeURIComponent(item.path)}`).catch(() => {});
     }
 
     const next = itemsRef.current.filter((it) => it.id !== id);
@@ -203,41 +205,124 @@ const GmailFileUploader = ({
   };
 
   const totalSize = items.reduce((sum, it) => sum + it.size, 0);
+  const hasErrors = items.some((it) => it.status === "error");
+
+  const handleOpenDialog = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevents opening the file picker
+    setModalOpen(true);
+  };
 
   return (
     <Box>
       {label && (
-        <Typography variant="body2" sx={{ mb: 1, textAlign: "left", color: "#000" }}>
+        <label className="text-xs font-medium text-gray-700 mb-1.5 block text-left">
           {label}
-        </Typography>
+        </label>
       )}
 
+      {/* Unified Input Container */}
       <Paper
-        variant="outlined"
+        elevation={0}
         onClick={openPicker}
         sx={{
           px: 2,
-          py: 1.75,
-          borderRadius: 1,
+          py: 1.5,
+          borderRadius: "8px",
           cursor: "pointer",
           display: "flex",
           alignItems: "center",
           gap: 1.5,
-          borderColor: "#D0D5DD",
-          backgroundColor: "#FFF",
-          transition: "border-color 0.15s",
-          "&:hover": { borderColor: "#000" },
+          border: "1px dashed",
+          borderColor: error ? "#EF4444" : "#E2E8F0",
+          backgroundColor: "#F8FAFC",
+          transition: "all 0.15s ease-in-out",
+          "&:hover": {
+            borderColor: error ? "#EF4444" : "#CBD5E1",
+            backgroundColor: "#F1F5F9",
+          },
         }}
       >
-        <UploadFile sx={{ color: "#000" }} />
-        <Box>
-          <Typography variant="body2" sx={{ color: "#000", fontWeight: 500 }}>
-            {items.length
-              ? `${items.length} file${items.length > 1 ? "s" : ""} attached`
-              : "Click to upload files"}
+        <UploadFile sx={{ color: "#64748B", fontSize: 20, flexShrink: 0 }} />
+
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: "#0F172A",
+              fontWeight: 500,
+              fontSize: "0.85rem",
+              lineHeight: 1.2,
+            }}
+          >
+            Click to upload files
           </Typography>
-          <Typography variant="caption" sx={{ color: "#667085" }}>
-            {multiple ? "Files upload immediately" : "Single file only"}
+          <Typography
+            variant="caption"
+            sx={{
+              color: "#64748B",
+              fontSize: "0.725rem",
+              display: "block",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {multiple ? "Multiple attachments allowed" : "Single file limit"}
+          </Typography>
+        </Box>
+
+        {/* View All Trigger - Rendered Always */}
+        <Box
+          onClick={handleOpenDialog}
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            px: 1.25,
+            py: 0.5,
+            borderRadius: "6px",
+            backgroundColor: "#FFFFFF",
+            border: "1px solid #E2E8F0",
+            transition: "all 0.15s ease-in-out",
+            flexShrink: 0,
+            opacity: items.length === 0 ? 0.75 : 1,
+            "&:hover": {
+              borderColor: "#94A3B8",
+              backgroundColor: "#F8FAFC",
+              opacity: 1,
+            },
+          }}
+        >
+          <FolderZipOutlined
+            sx={{
+              fontSize: 16,
+              color: hasErrors ? "#EF4444" : items.length === 0 ? "#94A3B8" : "#475569",
+            }}
+          />
+          <Typography
+            variant="caption"
+            sx={{
+              color: items.length === 0 ? "#64748B" : "#334155",
+              fontWeight: 600,
+              fontSize: "0.75rem",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {items.length} file{items.length === 1 ? "" : "s"}
+          </Typography>
+
+          <Typography
+            variant="caption"
+            sx={{
+              color: "#64748B",
+              fontSize: "0.725rem",
+              fontWeight: 500,
+              borderLeft: "1px solid #CBD5E1",
+              pl: 1,
+              ml: 0.25,
+            }}
+          >
+            View all
           </Typography>
         </Box>
       </Paper>
@@ -251,133 +336,181 @@ const GmailFileUploader = ({
         onChange={handleChange}
       />
 
-      {items.length > 0 && (
-        <>
-          <Typography variant="caption" sx={{ mt: 0.5, display: "block", color: "#667085" }}>
-            Total: {formatFileSize(totalSize)}
-          </Typography>
-
-          <Stack
-            spacing={0}
-            sx={{
-              mt: 1,
-              border: "1px solid #E4E7EC",
-              borderRadius: 1,
-              backgroundColor: "#FFF",
-              overflow: "hidden",
-            }}
-          >
-            {items.map((item) => (
-              <Box
-                key={item.id}
-                sx={{
-                  px: 1.5,
-                  py: 1,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1.5,
-                  "&:hover": { backgroundColor: "#F9FAFB" },
-                  "&:not(:last-child)": { borderBottom: "1px solid #E4E7EC" },
-                }}
-              >
-                {item.status === "done" && (
-                  <CheckCircle sx={{ fontSize: 20, color: "#16A34A", flexShrink: 0 }} />
-                )}
-                {item.status === "error" && (
-                  <ErrorOutline sx={{ fontSize: 20, color: "#DC2626", flexShrink: 0 }} />
-                )}
-                {item.status === "uploading" && (
-                  <UploadFile sx={{ fontSize: 20, color: "#667085", flexShrink: 0 }} />
-                )}
-
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      color: "#000",
-                      fontWeight: 500,
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                    }}
-                  >
-                    {item.name}
-                  </Typography>
-
-                  {item.status === "uploading" && (
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 0.5 }}>
-                      <LinearProgress
-                        variant="determinate"
-                        value={item.progress}
-                        sx={{
-                          flex: 1,
-                          height: 4,
-                          borderRadius: 2,
-                          backgroundColor: "#E4E7EC",
-                        }}
-                      />
-                      <Typography variant="caption" sx={{ color: "#667085", minWidth: 32 }}>
-                        {Math.round(item.progress)}%
-                      </Typography>
-                    </Box>
-                  )}
-
-                  {item.status === "done" && (
-                    <Typography variant="caption" sx={{ color: "#667085" }}>
-                      {formatFileSize(item.size)} · Uploaded
-                    </Typography>
-                  )}
-
-                  {item.status === "error" && (
-                    <Typography variant="caption" sx={{ color: "#DC2626" }}>
-                      {item.errorMessage || "Upload failed"}
-                    </Typography>
-                  )}
-                </Box>
-
-                {item.status === "error" && (
-                  <IconButton
-                    size="small"
-                    onClick={() => retryItem(item.id)}
-                    sx={{ color: "#667085", "&:hover": { color: "#000" } }}
-                  >
-                    <Replay fontSize="small" />
-                  </IconButton>
-                )}
-
-                <IconButton
-                  size="small"
-                  onClick={() => removeItem(item.id)}
-                  sx={{
-                    color: "#98A2B3",
-                    "&:hover": { color: "#D92D20", backgroundColor: "rgba(217,45,32,0.08)" },
-                  }}
-                >
-                  <Close fontSize="small" />
-                </IconButton>
-              </Box>
-            ))}
-          </Stack>
-        </>
-      )}
-
       {error && (
-        <Typography variant="caption" sx={{ mt: 0.5, display: "block", color: "#DC3545" }}>
+        <Typography variant="caption" sx={{ mt: 0.75, display: "block", color: "#EF4444", fontSize: "0.75rem" }}>
           {error}
         </Typography>
       )}
 
       {helperText && !error && (
-        <Typography variant="caption" sx={{ mt: 0.5, display: "block", color: "#667085" }}>
+        <Typography variant="caption" sx={{ mt: 0.75, display: "block", color: "#64748B", fontSize: "0.75rem" }}>
           {helperText}
         </Typography>
       )}
 
-      {items.some((it) => it.status === "error") && (
-        <Alert severity="error" sx={{ mt: 1 }}>
-          Some files failed to upload. Retry or remove them before submitting.
-        </Alert>
-      )}
+      {/* Attachments Popup Dialog */}
+      <Dialog
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          elevation: 4,
+          sx: {
+            borderRadius: "10px",
+            border: "1px solid #E2E8F0",
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            py: 1.5,
+            px: 2,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            borderBottom: "1px solid #F1F5F9",
+          }}
+        >
+          <Typography variant="body2" sx={{ fontWeight: 600, color: "#0F172A", fontSize: "0.9rem" }}>
+            Attached Files ({items.length})
+          </Typography>
+          <IconButton size="small" onClick={() => setModalOpen(false)} sx={{ color: "#94A3B8" }}>
+            <Close sx={{ fontSize: 18 }} />
+          </IconButton>
+        </DialogTitle>
+
+        <DialogContent sx={{ p: 0, maxHeight: "360px" }}>
+          {items.length === 0 ? (
+            <Box sx={{ py: 5, px: 2, textAlign: "center" }}>
+              <FolderZipOutlined sx={{ fontSize: 36, color: "#CBD5E1", mb: 1 }} />
+              <Typography variant="body2" sx={{ color: "#475569", fontWeight: 500, fontSize: "0.85rem" }}>
+                No files attached yet
+              </Typography>
+              <Typography variant="caption" sx={{ color: "#94A3B8", fontSize: "0.75rem", display: "block", mt: 0.5 }}>
+                Click below to select and upload files.
+              </Typography>
+            </Box>
+          ) : (
+            <Stack spacing={0}>
+              {items.map((item) => (
+                <Box
+                  key={item.id}
+                  sx={{
+                    px: 2,
+                    py: 1.25,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1.5,
+                    "&:hover": { backgroundColor: "#F8FAFC" },
+                    "&:not(:last-child)": { borderBottom: "1px solid #F1F5F9" },
+                  }}
+                >
+                  {item.status === "done" && (
+                    <CheckCircle sx={{ fontSize: 18, color: "#10B981", flexShrink: 0 }} />
+                  )}
+                  {item.status === "error" && (
+                    <ErrorOutline sx={{ fontSize: 18, color: "#EF4444", flexShrink: 0 }} />
+                  )}
+                  {item.status === "uploading" && (
+                    <UploadFile sx={{ fontSize: 18, color: "#64748B", flexShrink: 0 }} />
+                  )}
+
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: "#0F172A",
+                        fontWeight: 500,
+                        fontSize: "0.825rem",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
+                      {item.name}
+                    </Typography>
+
+                    {item.status === "uploading" && (
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 0.5 }}>
+                        <LinearProgress
+                          variant="determinate"
+                          value={item.progress}
+                          sx={{
+                            flex: 1,
+                            height: 3,
+                            borderRadius: 2,
+                            backgroundColor: "#E2E8F0",
+                            "& .MuiLinearProgress-bar": { backgroundColor: "#334155" },
+                          }}
+                        />
+                        <Typography variant="caption" sx={{ color: "#64748B", minWidth: 28, fontSize: "0.7rem" }}>
+                          {Math.round(item.progress)}%
+                        </Typography>
+                      </Box>
+                    )}
+
+                    {item.status === "done" && (
+                      <Typography variant="caption" sx={{ color: "#64748B", fontSize: "0.75rem" }}>
+                        {formatFileSize(item.size)} · Uploaded
+                      </Typography>
+                    )}
+
+                    {item.status === "error" && (
+                      <Typography variant="caption" sx={{ color: "#EF4444", fontSize: "0.75rem" }}>
+                        {item.errorMessage || "Upload failed"}
+                      </Typography>
+                    )}
+                  </Box>
+
+                  {item.status === "error" && (
+                    <IconButton
+                      size="small"
+                      onClick={() => retryItem(item.id)}
+                      sx={{ color: "#64748B", "&:hover": { color: "#0F172A" } }}
+                    >
+                      <Replay sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  )}
+
+                  <IconButton
+                    size="small"
+                    onClick={() => removeItem(item.id)}
+                    sx={{
+                      color: "#94A3B8",
+                      "&:hover": { color: "#EF4444", backgroundColor: "rgba(239, 68, 68, 0.06)" },
+                    }}
+                  >
+                    <Close sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </Box>
+              ))}
+            </Stack>
+          )}
+        </DialogContent>
+
+        <DialogActions sx={{ px: 2, py: 1.25, borderTop: "1px solid #F1F5F9", justifyContent: "space-between" }}>
+          <Typography variant="caption" sx={{ color: "#64748B", fontSize: "0.75rem" }}>
+            Total: {formatFileSize(totalSize)}
+          </Typography>
+          <Box sx={{ display: "flex", gap: 1 }}>
+            <Button
+              size="small"
+              onClick={openPicker}
+              sx={{ textTransform: "none", fontSize: "0.75rem", color: "#334155", fontWeight: 500 }}
+            >
+              + Add files
+            </Button>
+            <Button
+              size="small"
+              onClick={() => setModalOpen(false)}
+              sx={{ textTransform: "none", fontSize: "0.75rem", color: "#64748B" }}
+            >
+              Close
+            </Button>
+          </Box>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
