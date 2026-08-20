@@ -43,8 +43,8 @@ function Login() {
         case "admin":
           navigate("/admin/projects");
           break;
-        case "modurator":
-          navigate("/modurator/projects");
+        case "moderator":
+          navigate("/");
           break;
         default:
           navigate("/");

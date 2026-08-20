@@ -6,6 +6,7 @@ import { useAppStore } from "../../store/useAppStore";
 import { apiService } from "../../api/service";
 import CustomForm from "../components/CustomForm";
 import type { UploadItem } from "../../ui/GmailFileUploader";
+import { addProjectSchema } from "../../schemas/addProject.schema";
 
 export default function AddProject() {
   const { sendRequest, loading } = useApiRequest();
@@ -115,6 +116,7 @@ export default function AddProject() {
       onSubmit={handleSubmit}
       buttonName="Add Project"
       loading={loading}
+      zodSchema={addProjectSchema}
       onValuesChange={(values) => {
         imagesRef.current = values.images || [];
       }}

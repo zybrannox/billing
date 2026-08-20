@@ -1,7 +1,16 @@
+const isSameCalendarDay = (a: Date, b: Date) =>
+  a.getFullYear() === b.getFullYear() &&
+  a.getMonth() === b.getMonth() &&
+  a.getDate() === b.getDate();
+
 /**
  * Format an ISO datetime string to a readable format
  * @param isoString - ISO 8601 datetime string (e.g., "2026-02-01T14:30:00")
- * @returns Formatted datetime string (e.g., "Feb 1, 2026 2:30 PM")
+ * @returns Formatted datetime string (e.g., "Feb 1, 2026, 2:30 PM"), or
+ * "Today"/"Yesterday" in place of the date for values that land on those
+ * calendar days (compared in the viewer's local time, same as the time
+ * portion itself, so a value close to midnight doesn't say "Today" while
+ * displaying yesterday's date right next to it).
  */
 export function formatDateTime(isoString: string | null | undefined): string {
   if (!isoString) return "—";
@@ -12,7 +21,20 @@ export function formatDateTime(isoString: string | null | undefined): string {
     // Check if date is valid
     if (isNaN(date.getTime())) return isoString;
 
-    // Format: "Feb 1, 2026 2:30 PM"
+    const time = date.toLocaleString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+
+    const now = new Date();
+    if (isSameCalendarDay(date, now)) return `Today, ${time}`;
+
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    if (isSameCalendarDay(date, yesterday)) return `Yesterday, ${time}`;
+
+    // Format: "Feb 1, 2026, 2:30 PM"
     return date.toLocaleString("en-US", {
       month: "short",
       day: "numeric",

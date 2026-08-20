@@ -2,7 +2,7 @@ import { Navigate, Outlet } from "react-router-dom";
 import { useAppStore } from "../../../store/useAppStore";
 
 type Props = {
-  allowedRoles: Array<"admin" | "modurator" | "user">;
+  allowedRoles: Array<"admin" | "moderator" | "user">;
 };
 
 export default function ProtectedRoute({ allowedRoles }: Props) {

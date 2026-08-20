@@ -4,7 +4,7 @@ import { devtools, persist } from "zustand/middleware";
 
 export type User = {
   username: string;
-  role: "admin" | "modurator" | "user";
+  role: "admin" | "moderator" | "user";
 };
 
 type AppState = {

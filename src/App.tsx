@@ -54,7 +54,7 @@ function App() {
             </Route>
 
             {/* USER ROUTES */}
-            <Route element={<ProtectedRoute allowedRoles={["user"]} />}>
+            <Route element={<ProtectedRoute allowedRoles={["user", "moderator"]} />}>
               <Route path="/" element={<EmployeeLayout />}>
                 <Route index element={<Projects />} />
               </Route>

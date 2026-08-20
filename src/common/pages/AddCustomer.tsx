@@ -2,6 +2,7 @@ import CustomForm from "../components/CustomForm";
 import { addCustomerFields } from "../../config/common";
 import { useApiRequest } from "../../hooks/useApiRequest";
 import { useDialogStore } from "../../store/useDialogStore";
+import { addCustomerSchema } from "../../schemas/addCustomer.schema";
 
 interface AddCustomerProps {
   onSuccess?: () => void;
@@ -33,6 +34,7 @@ export default function AddCustomer({ onSuccess }: AddCustomerProps) {
       onSubmit={handleSubmit}
       buttonName={loading ? "Submitting..." : "Add Customer"}
       loading={loading}
+      zodSchema={addCustomerSchema}
     />
   );
 }

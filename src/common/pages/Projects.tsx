@@ -17,7 +17,7 @@ import Button from "../../ui/Button";
 import { getRowClassName } from "../../utils/appSupport";
 import { formatDateTime } from "../../utils/dateFormatter";
 import Table from "../components/Table";
-import FilePreview from "../components/FilePreview";
+import ProjectFilesList from "../components/ProjectFilesList";
 import TableSearchBar from "../components/TableSearchBar";
 import FilterMenu, {
   type FilterFieldDefinition,
@@ -325,7 +325,7 @@ const Projects = () => {
   };
 
   return (
-    <div className="h-full grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4 lg:items-center p-4">
+    <div className="h-full p-4">
       <div className="flex flex-col h-full p-4 sm:p-6 lg:p-8 min-w-0 rounded-2xl sm:rounded-3xl bg-blue-50/50 shadow-xs border border-blue-100/60">
         {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
@@ -453,6 +453,12 @@ const Projects = () => {
             paginationModel={paginationModel}
             onPaginationModelChange={setPaginationModel}
             loading={projectsLoading}
+            // Clicking a row expands its files inline (accordion-style) as
+            // a compact Gmail-attachments-style chip row, not the old
+            // side-by-side big-preview panel - ProjectFilesList still
+            // reads the clicked row from useProjectStore. The row's height
+            // auto-fits whatever it renders (see Table.tsx's getRowHeight).
+            renderDetailPanel={() => <ProjectFilesList />}
           />
 
         {/* Dialog Overlays */}
@@ -476,11 +482,6 @@ const Projects = () => {
             maxWidth="xs"
           />
         )}
-      </div>
-      <div className="min-h-[420px] lg:min-h-0 lg:h-full items-center">
-        <div className="rounded-3xl bg-blue-50 h-full p-4 shadow">
-          <FilePreview />
-        </div>
       </div>
     </div>
   );

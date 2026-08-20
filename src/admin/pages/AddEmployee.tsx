@@ -2,6 +2,7 @@ import CustomForm from "../../common/components/CustomForm";
 import { addEmployeeFields } from "../../config/admin";
 import { useApiRequest } from "../../hooks/useApiRequest";
 import { useDialogStore } from "../../store/useDialogStore";
+import { addEmployeeSchema } from "../../schemas/addEmployee.schema";
 
 interface AddEmployeeProps {
   onSuccess?: () => void;
@@ -33,6 +34,7 @@ export default function AddEmployee({ onSuccess }: AddEmployeeProps) {
       onSubmit={handleSubmit}
       buttonName={loading ? "Submitting..." : "Add Employee"}
       loading={loading}
+      zodSchema={addEmployeeSchema}
     />
   );
 }

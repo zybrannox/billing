@@ -70,6 +70,15 @@ interface TableProps<T extends GridRowModel> {
   loading?: boolean;
   pageSizeOptions?: number[];
   actionsWidth?: number;
+  // Opt-in accordion-style row expansion: clicking a row spans a full-width
+  // panel underneath it instead of (or as well as) driving some external
+  // preview. Only one row is ever expanded at a time - clicking a second
+  // row collapses the first, matching standard accordion behavior. Built
+  // on the grid's real "column spanning" feature (a synthetic row inserted
+  // after the expanded one, whose first cell spans every column) rather
+  // than MUI X's row-detail-panel API, which is Pro-only and not available
+  // on the Community package this app uses.
+  renderDetailPanel?: (row: T) => React.ReactNode;
 }
 
 export default function Table<T extends GridRowModel>({
@@ -99,6 +108,7 @@ export default function Table<T extends GridRowModel>({
   loading,
   pageSizeOptions,
   actionsWidth,
+  renderDetailPanel,
 }: TableProps<T>) {
 const gridSx = React.useMemo(
   () => ({
@@ -260,6 +270,26 @@ const gridSx = React.useMemo(
     "& .MuiDataGrid-row.row-print-completed.Mui-selected": {
       backgroundColor: "rgba(16, 185, 129, 0.15)",
     },
+
+    // Accordion detail-panel row (see renderDetailPanel) - a plain content
+    // area, not another data row, so it shouldn't pick up row hover/click
+    // affordances. The checkbox column sits outside the columns we control
+    // (MUI adds it internally for checkboxSelection), so isRowSelectable
+    // only disables it - it still rendered a visible grayed-out checkbox.
+    // Hiding it here removes it from view entirely instead.
+    "& .MuiDataGrid-row.row-detail-panel": {
+      backgroundColor: "#FAFBFC",
+      cursor: "default",
+    },
+    "& .MuiDataGrid-row.row-detail-panel:hover": {
+      backgroundColor: "#FAFBFC",
+    },
+    "& .MuiDataGrid-row.row-detail-panel .MuiDataGrid-cell": {
+      cursor: "default",
+    },
+    "& .MuiDataGrid-row.row-detail-panel .MuiDataGrid-cellCheckbox": {
+      visibility: "hidden",
+    },
   }),
   [],
 );
@@ -271,6 +301,9 @@ const gridSx = React.useMemo(
     useProjectStore();
   const [rowModesModel, setRowModesModel] = React.useState<GridRowModesModel>(
     {},
+  );
+  const [expandedRowId, setExpandedRowId] = React.useState<GridRowId | null>(
+    null,
   );
 
   // Refs for callbacks to avoid stale closures and unnecessary deps
@@ -388,7 +421,7 @@ const gridSx = React.useMemo(
           try {
             const success = await downloadProject(id as string, update);
             // The backend flips `downloaded` on every file in the project as
-            // part of serving the zip - refetch so the FilePreview sidebar
+            // part of serving the zip - refetch so the accordion file list
             // (and anyone else looking at this project) picks up the change.
             if (success) await refreshProject(id as string);
             onDownloadRef.current?.(id);
@@ -486,8 +519,40 @@ const gridSx = React.useMemo(
   );
 
   const mergedColumns: GridColDef[] = React.useMemo(() => {
+    // Inserted right after the expanded row (see handleRowClick) - the
+    // first data column's colSpan grows to cover every column for just
+    // this one synthetic row, so its renderCell can paint a single
+    // full-width panel instead of the grid trying to lay this row out like
+    // a normal one.
+    const totalColumnSpan = columns.length + 1; // +1 for the appended "actions" column
+    const dataColumns = renderDetailPanel
+      ? columns.map((col, idx) => {
+        if (idx !== 0) return col;
+        return {
+          ...col,
+          colSpan: ((_value: unknown, row: any) =>
+            row?.__detailPanelFor !== undefined
+              ? totalColumnSpan
+              : undefined) as GridColDef["colSpan"],
+          renderCell: (params: any) => {
+            if (params.row?.__detailPanelFor !== undefined) {
+              const parentRow = (rows as any[]).find(
+                (r) => r.id === params.row.__detailPanelFor,
+              );
+              return (
+                <div className="w-full px-4 py-3 animate-detail-panel-in">
+                  {parentRow ? renderDetailPanel(parentRow as T) : null}
+                </div>
+              );
+            }
+            return col.renderCell ? col.renderCell(params) : params.value;
+          },
+        };
+      })
+      : columns;
+
     return [
-      ...columns,
+      ...dataColumns,
       {
         field: "actions",
         type: "actions",
@@ -496,7 +561,46 @@ const gridSx = React.useMemo(
         getActions,
       },
     ];
-  }, [columns, getActions]);
+  }, [columns, getActions, actionsWidth, renderDetailPanel, rows]);
+
+  // The synthetic detail row is spliced in right after its parent so it
+  // renders adjacent to it, same as any accordion panel - only ever one at
+  // a time (true accordion, not independently-expandable rows).
+  const rowsWithDetail = React.useMemo(() => {
+    if (!renderDetailPanel || expandedRowId == null) return rows;
+    const result: any[] = [];
+    for (const row of rows as any[]) {
+      result.push(row);
+      if (row.id === expandedRowId) {
+        result.push({ id: `${row.id}__detail`, __detailPanelFor: row.id });
+      }
+    }
+    return result;
+  }, [rows, renderDetailPanel, expandedRowId]);
+
+  // "auto" measures the panel's actual rendered content height instead of
+  // guessing a fixed number - correct regardless of what a given
+  // renderDetailPanel puts in it, and it's a genuine Community-edition
+  // DataGrid feature (unlike the Pro-only detail-panel API this whole
+  // accordion is standing in for).
+  const getRowHeight = React.useCallback(
+    (params: { id: GridRowId; model: any }) =>
+      params.model?.__detailPanelFor !== undefined ? "auto" : null,
+    [],
+  );
+
+  const isRowSelectable = React.useCallback(
+    (params: { row: any }) => params.row?.__detailPanelFor === undefined,
+    [],
+  );
+
+  const wrappedGetRowClassName = React.useCallback(
+    (params: GridRowClassNameParams<any>) => {
+      if (params.row?.__detailPanelFor !== undefined) return "row-detail-panel";
+      return getRowClassName ? getRowClassName(params) : "";
+    },
+    [getRowClassName],
+  );
 
   // A fresh {type, ids} object (and fresh Set) on every render makes the
   // DataGrid think selection changed even when it didn't - memoize it so it
@@ -552,10 +656,11 @@ const gridSx = React.useMemo(
   // NOTE: there used to be an onCellClick handler here that unconditionally
   // set event.defaultMuiPrevented = true. MUI's grid checks that flag after
   // publishing "cellClick" and, if set, never publishes "rowClick" at all -
-  // so handleRowClick below (and the FilePreview sidebar it drives) silently
-  // never fired for a normal click anywhere in the row. Removed; only
-  // cellDoubleClick still suppresses its default (blocks double-click auto
-  // edit, which this app deliberately keeps explicit via the Edit action).
+  // so handleRowClick below (and the accordion expand/select it drives)
+  // silently never fired for a normal click anywhere in the row. Removed;
+  // only cellDoubleClick still suppresses its default (blocks double-click
+  // auto edit, which this app deliberately keeps explicit via the Edit
+  // action).
   const handleRowClick = React.useCallback<GridEventListener<"rowClick">>(
     (params, event) => {
       // Don't trigger row selection if clicking on checkbox
@@ -564,11 +669,21 @@ const gridSx = React.useMemo(
         target.closest(".MuiCheckbox-root") ||
         target.closest('[data-field="__check__"]');
 
-      if (!isCheckbox) {
+      if (isCheckbox) return;
+
+      if (renderDetailPanel) {
+        // Clicks land inside the detail panel too (it's rendered as this
+        // row's content) - a click there hits the synthetic detail row's
+        // id, not a real one, so this just no-ops instead of toggling.
+        if ((params.row as any)?.__detailPanelFor !== undefined) return;
+        setExpandedRowId((prev) => (prev === params.id ? null : params.id));
         setSelectedProject(params.row);
+        return;
       }
+
+      setSelectedProject(params.row);
     },
-    [setSelectedProject],
+    [setSelectedProject, renderDetailPanel],
   );
 
   const preventDefaultCellDoubleClick = React.useCallback<
@@ -617,11 +732,28 @@ const gridSx = React.useMemo(
             boxShadow:
               "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.05)",
           },
+          // Fades + slides the accordion panel's content in on mount. Only
+          // opacity/transform are animated (never height) - those don't
+          // affect layout, so the "auto" row-height measurement (see
+          // getRowHeight below) stays correct on the very first frame
+          // instead of racing an in-progress height animation, and it
+          // can't fight the DataGrid virtualizer's own row positioning the
+          // way animating height directly would.
+          "@keyframes detailPanelIn": {
+            from: { opacity: 0, transform: "translateY(-6px)" },
+            to: { opacity: 1, transform: "translateY(0)" },
+          },
+          ".animate-detail-panel-in": {
+            animation: "detailPanelIn 220ms ease-out",
+          },
+          "@media (prefers-reduced-motion: reduce)": {
+            ".animate-detail-panel-in": { animation: "none" },
+          },
         }}
       />
       <DataGrid<T>
         apiRef={apiRef}
-        rows={rows}
+        rows={rowsWithDetail as GridRowsProp<T>}
         columns={mergedColumns}
         getRowId={getRowId}
         sx={gridSx}
@@ -632,11 +764,13 @@ const gridSx = React.useMemo(
         checkboxSelection={checkboxSelection ?? false}
         rowSelectionModel={selectionModel}
         onRowSelectionModelChange={handleSelectionModelChange}
+        isRowSelectable={renderDetailPanel ? isRowSelectable : undefined}
         editMode="row" // enable editing
         rowModesModel={rowModesModel}
         onRowModesModelChange={setRowModesModel}
         processRowUpdate={processRowUpdate}
-        getRowClassName={getRowClassName}
+        getRowClassName={wrappedGetRowClassName}
+        getRowHeight={renderDetailPanel ? getRowHeight : undefined}
         onRowEditStop={handleRowEditStop}
         onProcessRowUpdateError={handleProcessRowUpdateError}
         onRowClick={handleRowClick}
