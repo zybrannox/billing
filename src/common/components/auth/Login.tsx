@@ -3,8 +3,6 @@ import { useApiRequest } from "../../../hooks/useApiRequest";
 import { useNavigate } from "react-router-dom";
 import { useAppStore, type User } from "../../../store/useAppStore";
 
-const API_URL = import.meta.env.VITE_API_URL;
-
 function Login() {
   const { sendRequest, loading } = useApiRequest();
   const { setUser } = useAppStore();
@@ -12,46 +10,51 @@ function Login() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
 
-    try {
-      // 1. Login
-      await sendRequest({
-        endpoint: "/auth/login",
-        method: "post",
-        data: { email, password },
-        redirectTo: "/",
-      });
+    // sendRequest swallows failures internally (returns undefined instead
+    // of throwing) so a wrapping try/catch here never actually catches a
+    // failed login - it only ever caught the unrelated "User not found"
+    // thrown below, which is why a wrong password used to surface that
+    // message instead of the real "Invalid credentials" one. onError below
+    // captures the real backend error for each call instead.
+    let loginError: any = null;
+    const loginResult = await sendRequest({
+      endpoint: "/auth/login",
+      method: "post",
+      data: { email, password },
+      onError: (err) => {
+        loginError = err;
+      },
+    });
 
-      // 2. Fetch user AFTER successful login
-      // /auth/me actually returns {username, role} (see
-      // app/auth/dependencies.py's get_current_user) - typing this as just
-      // {role} let `username` silently go missing from the User type
-      // without TypeScript catching it, since the field really is present
-      // at runtime; this pins the request to the real shape instead.
-      const me = await sendRequest<User>({
-        endpoint: "/auth/me",
-        method: "get",
-      });
-
-      if (!me) throw new Error("User not found");
-      setUser(me);
-      // 3. Role-based navigation
-      switch (me.role) {
-        case "admin":
-          navigate("/admin/projects");
-          break;
-        case "moderator":
-          navigate("/");
-          break;
-        default:
-          navigate("/");
-      }
-    } catch (err: any) {
-      alert(err?.detail || "Login failed");
+    if (!loginResult) {
+      setErrorMessage(loginError?.detail || "Invalid email or password.");
+      return;
     }
+
+    let meError: any = null;
+    const me = await sendRequest<User>({
+      endpoint: "/auth/me",
+      method: "get",
+      onError: (err) => {
+        meError = err;
+      },
+    });
+
+    if (!me) {
+      setErrorMessage(
+        meError?.detail || "Could not load your account. Please try again.",
+      );
+      return;
+    }
+
+    setUser(me);
+    navigate(me.role === "admin" ? "/admin/projects" : "/");
   };
 
   return (
@@ -81,6 +84,12 @@ function Login() {
 
           {/* Login Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
+            {errorMessage && (
+              <div className="px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
+                {errorMessage}
+              </div>
+            )}
+
             {/* Email Input */}
             <div>
               <label className="block text-sm text-gray-600 mb-2">Email</label>
@@ -90,7 +99,10 @@ function Login() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Zahra.uix@gmail.com"
-                  className="w-full px-4 py-3 border border-gray-300 text-black rounded-lg focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-all"
+                  autoComplete="username"
+                  required
+                  disabled={loading}
+                  className="w-full px-4 py-3 border border-gray-300 text-black rounded-lg focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
                 />
               </div>
             </div>
@@ -106,7 +118,10 @@ function Login() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full px-4 py-3 border border-gray-300 text-black rounded-lg focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-all"
+                  autoComplete="current-password"
+                  required
+                  disabled={loading}
+                  className="w-full px-4 py-3 border border-gray-300 text-black rounded-lg focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
                 />
               </div>
             </div>
@@ -124,9 +139,10 @@ function Login() {
             {/* Sign In Button */}
             <button
               type="submit"
-              className="w-full bg-black text-white py-4 rounded-lg font-medium hover:bg-gray-800 transition-colors"
+              disabled={loading}
+              className="w-full bg-black text-white py-4 rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Sign in
+              {loading ? "Signing in..." : "Sign in"}
             </button>
           </form>
         </div>

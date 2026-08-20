@@ -290,6 +290,24 @@ const gridSx = React.useMemo(
     "& .MuiDataGrid-row.row-detail-panel .MuiDataGrid-cellCheckbox": {
       visibility: "hidden",
     },
+
+    // Loading state - the default MUI skeleton/progress-bar overlay reads
+    // as an unstyled placeholder (flat mid-gray, no relation to the app's
+    // palette). Recoloring it to the same slate/blue tokens as the rest of
+    // the grid (see column headers, hover states above) makes it read as
+    // an intentional part of the table rather than a generic fallback.
+    "& .MuiDataGrid-overlay": {
+      backgroundColor: "rgba(255, 255, 255, 0.7)",
+    },
+    "& .MuiDataGrid-rowSkeleton .MuiSkeleton-root": {
+      backgroundColor: "rgba(37, 99, 235, 0.1)",
+    },
+    "& .MuiLinearProgress-root": {
+      backgroundColor: "rgba(37, 99, 235, 0.12)",
+    },
+    "& .MuiLinearProgress-bar": {
+      backgroundColor: "#2563EB",
+    },
   }),
   [],
 );
@@ -784,6 +802,12 @@ const gridSx = React.useMemo(
         sortModel={sortModel}
         onSortModelChange={onSortModelChange}
         loading={loading}
+        slotProps={{
+          loadingOverlay: {
+            variant: "skeleton",
+            noRowsVariant: "skeleton",
+          },
+        }}
       />
     </div>
   );

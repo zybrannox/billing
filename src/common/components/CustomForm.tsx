@@ -238,7 +238,7 @@ const FormField = React.memo(
                 inputRef={setRef}
                 onKeyDown={onKeyDown}
                 type={field.type}
-                label={field.label}
+                label={renderLabel(field)}
                 multiline
                 error={!!error}
                 helperText={error?.message || field.helperText}
@@ -257,7 +257,7 @@ const FormField = React.memo(
               <TextField
                 {...ctrl}
                 type="date"
-                label={field.label}
+                label={renderLabel(field)}
                 error={!!error}
                 helperText={error?.message}
               />
@@ -272,7 +272,7 @@ const FormField = React.memo(
             control={control}
             render={({ field: ctrl }) => (
               <DateTimePicker
-                label={field.label}
+                label={renderLabel(field)}
                 value={ctrl.value}
                 onChange={ctrl.onChange}
                 error={!!error}
@@ -299,7 +299,7 @@ const FormField = React.memo(
                 onKeyDown={onKeyDown}
                 placeholder={field.placeholder}
                 type={field.type}
-                label={field.label}
+                label={renderLabel(field)}
                 error={!!error}
                 helperText={error?.message || field.helperText}
                 disabled={field.disabled}
@@ -318,7 +318,7 @@ const FormField = React.memo(
               <FileField
                 {...ctrlField}
                 ref={setRef}
-                label={field.label}
+                label={renderLabel(field)}
                 accept={field.acceptFileType}
                 multiple={field.multiple}
                 error={error?.message}
@@ -338,7 +338,7 @@ const FormField = React.memo(
               <GmailFileUploader
                 value={ctrlField.value}
                 onChange={ctrlField.onChange}
-                label={field.label}
+                label={renderLabel(field)}
                 accept={field.acceptFileType}
                 multiple={field.multiple}
                 error={error?.message}
@@ -357,7 +357,7 @@ const FormField = React.memo(
             render={({ field: ctrl }) => (
               <CheckboxField
                 value={ctrl.value}
-                label={field.label}
+                label={renderLabel(field)}
                 options={field.options as Option[]}
                 error={errors?.[name]?.message}
                 onChange={ctrl.onChange}
@@ -375,7 +375,7 @@ const FormField = React.memo(
             render={({ field: ctrl }) => (
               <RadioField
                 value={ctrl.value}
-                label={field.label}
+                label={renderLabel(field)}
                 options={field.options as Option[]}
                 error={errors?.[name]?.message}
                 onChange={ctrl.onChange}
@@ -392,7 +392,7 @@ const FormField = React.memo(
             defaultValue={field.defaultValue ?? (field.multiple ? [] : "")}
             render={({ field: ctrl }) => (
               <Dropdown
-                label={field.label}
+                label={renderLabel(field)}
                 options={field.options as DropdownOption[]}
                 multiple={field.multiple}
                 value={ctrl.value}
@@ -416,7 +416,7 @@ const FormField = React.memo(
             defaultValue={field.defaultValue ?? ""}
             render={({ field: ctrl }) => (
               <AsyncSearchSelect
-                label={field.label}
+                label={renderLabel(field)}
                 placeholder={field.placeholder}
                 endpoint={field.asyncEndpoint!}
                 searchParam={field.asyncSearchParam}
@@ -440,6 +440,16 @@ const FormField = React.memo(
 );
 
 FormField.displayName = "FormField";
+
+const renderLabel = (field: FieldDefinition): React.ReactNode => {
+  if (!field.label) return field.label;
+  if (!field.required) return field.label;
+  return (
+    <>
+      {field.label} <span style={{ color: "#ef4444" }}>*</span>
+    </>
+  );
+};
 
 export default function CustomForm({
   fields,

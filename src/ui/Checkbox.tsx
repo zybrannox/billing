@@ -15,7 +15,7 @@ export interface Option {
 interface CheckboxFieldProps {
   value?: boolean | string[];
   options?: Option[];
-  label?: string;
+  label?: React.ReactNode;
   error?: string;
   helperText?: string;
   direction?: "row" | "column";

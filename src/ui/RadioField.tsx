@@ -16,7 +16,7 @@ export interface Option {
 interface RadioFieldProps {
   value: string;
   options?: Option[];
-  label?: string;
+  label?: React.ReactNode;
   error?: string;
   onChange: (val: string) => void;
 }

@@ -5,7 +5,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import { apiService } from "../api/service";
 
 interface AsyncSearchSelectProps {
-  label?: string;
+  label?: React.ReactNode;
   placeholder?: string;
   endpoint: string;
   searchParam?: string;

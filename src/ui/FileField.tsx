@@ -10,7 +10,7 @@ import {
 import { UploadFile, Close } from "@mui/icons-material";
 
 export interface FileUploadFieldProps {
-  label?: string;
+  label?: React.ReactNode;
   accept?: string;
   multiple?: boolean;
   value?: File[];

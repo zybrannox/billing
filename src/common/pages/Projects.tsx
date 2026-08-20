@@ -79,19 +79,7 @@ const Projects = () => {
 
   const columns: GridColDef[] = useMemo(
     () => [
-      {
-        field: "project_type",
-        headerName: "Project Type",
-        flex: 1,
-        editable: true,
-      },
-      {
-        field: "assigned_to",
-        headerName: "Assignee",
-        flex: 1,
-        editable: isAdmin,
-      },
-      {
+           {
         field: "customer_name",
         headerName: "Customer",
         flex: 1,
@@ -101,6 +89,19 @@ const Projects = () => {
         // out of scope here, this column is display-only.
         renderCell: ({ value }) => value || "—",
       },
+      {
+        field: "assigned_to",
+        headerName: "Assignee",
+        flex: 1,
+        editable: isAdmin,
+      },
+      {
+        field: "project_type",
+        headerName: "Project Type",
+        flex: 1,
+        editable: true,
+      },
+      
       {
         field: "delivery_date",
         headerName: "Delivery Date",

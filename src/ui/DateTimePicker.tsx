@@ -8,7 +8,7 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 
 export type DateTimePickerProps = {
-  label?: string;
+  label?: React.ReactNode;
   value?: string | null;
   onChange: (value: string | null) => void;
   error?: boolean;

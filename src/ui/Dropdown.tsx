@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import TextField from "@mui/material/TextField";
 import { Autocomplete, Checkbox, Chip, Typography } from "@mui/material";
 import CheckBoxOutlineBlankIcon from "@mui/icons-material/CheckBoxOutlineBlank";
@@ -13,7 +14,7 @@ type NormalizedOption = { label: string; value: string | number };
 
 type DropdownProps = {
   options?: DropdownOption[];
-  label?: string;
+  label?: ReactNode;
   placeholder?: string;
   multiple?: boolean;
   value?: string | number | (string | number)[];
@@ -91,7 +92,6 @@ export default function Dropdown({
         </label>
       )}
       <Autocomplete
-        id={label}
         multiple={multiple}
         disablePortal
         disabled={disabled}

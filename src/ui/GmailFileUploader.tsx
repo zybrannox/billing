@@ -47,7 +47,7 @@ interface UploadResponse {
 }
 
 interface GmailFileUploaderProps {
-  label?: string;
+  label?: React.ReactNode;
   accept?: string;
   multiple?: boolean;
   value?: UploadItem[];

@@ -164,8 +164,8 @@ export const addCustomerFields: FieldDefinition[] = [
     name: "email",
     label: "Email",
     type: "email",
-    required: true,
-    placeholder: "Enter email address",
+    required: false,
+    placeholder: "Enter email address (optional)",
     row: 2,
   },
 ];

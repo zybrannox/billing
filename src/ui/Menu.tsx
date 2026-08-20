@@ -11,6 +11,7 @@ import { useUiStore } from "../store/useUiStore";
 import { useAppStore } from "../store/useAppStore";
 import { useNavigate } from "react-router-dom";
 import { LogoutOutlined } from "@mui/icons-material";
+import { apiService } from "../api/service";
 
 const Menu = React.memo(() => {
   const { menuAnchorEl, closeMenu } = useUiStore();
@@ -19,7 +20,16 @@ const Menu = React.memo(() => {
 
   const open = Boolean(menuAnchorEl);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // The access token is an httpOnly cookie - JS can't clear it directly,
+    // so without this call it stays valid and the "logged out" user (or
+    // anyone else on the same browser) is still authenticated server-side
+    // until it naturally expires, no matter what local state says.
+    try {
+      await apiService.post("/auth/logout");
+    } catch (err) {
+      console.error("Logout request failed", err);
+    }
     clearUser();
     closeMenu();
     navigate("/login");
