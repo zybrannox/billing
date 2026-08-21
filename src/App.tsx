@@ -1,4 +1,5 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+  import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import "./App.css";
 
 import AdminLayout from "./admin/Layout";
@@ -10,6 +11,9 @@ import EmployeeLayout from "./employee/Layout";
 import ConfirmDialog from "./ui/ConfirmDialog";
 import DownloadProgressIndicator from "./ui/DownloadProgressIndicator";
 import { useConfirmDialogStore } from "./hooks/useconfirmDialogStore";
+import { useAppStore, type User } from "./store/useAppStore";
+import { apiService } from "./api/service";
+import { API } from "./api/endpoints";
 import Projects from "./common/pages/Projects";
 import Customers from "./admin/pages/Customers";
 import Billing from "./admin/pages/Billing";
@@ -31,6 +35,39 @@ function App() {
     onCancel,
   } = useConfirmDialogStore();
 
+  const setUser = useAppStore((s) => s.setUser);
+  const clearUser = useAppStore((s) => s.clearUser);
+  const [sessionChecked, setSessionChecked] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const me = await apiService.get<User>(API.auth.me);
+        if (!cancelled && me) setUser(me);
+        else if (!cancelled) clearUser();
+      } catch {
+        if (!cancelled) clearUser();
+      } finally {
+        if (!cancelled) setSessionChecked(true);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (!sessionChecked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <>
       <Router>
@@ -49,7 +86,7 @@ function App() {
                 <Route path="billing" element={<Billing />} />
               </Route>
               {/* Rendered outside AdminLayout - a full-page printable
-                  document shouldn't include the sidebar/app chrome. */}
+                  document shouldn't include the sidebar/app chrome. TODO */}
               <Route path="/admin/invoices/:id" element={<InvoiceView />} />
             </Route>
 
@@ -59,11 +96,6 @@ function App() {
                 <Route index element={<Projects />} />
               </Route>
             </Route>
-
-            {/* "+ Add Project" now opens a dialog on "/" instead of navigating,
-                but this route is kept as a redirect in case it's bookmarked
-                or was shared from before that change. */}
-            <Route path="/add-project" element={<Navigate to="/" replace />} />
 
             {/* Catch-all: send any unmatched path back to the app instead of
                 rendering a blank page. */}

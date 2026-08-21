@@ -793,6 +793,17 @@ const gridSx = React.useMemo(
         onProcessRowUpdateError={handleProcessRowUpdateError}
         onRowClick={handleRowClick}
         onCellDoubleClick={preventDefaultCellDoubleClick}
+        // Without this, the grid fills whatever height its flex parent
+        // computes and scrolls its rows in its own internal
+        // .MuiDataGrid-virtualScroller - a second, separately-scrolling
+        // region nested inside the page. That's why the table felt
+        // "stuck"/heavy to scroll (touch and wheel gestures both have to
+        // fight over which container owns the scroll) while the outer
+        // page scrolled fine. autoHeight sizes the grid to exactly fit
+        // its current page's rows instead, so there's only ever one
+        // scroll surface - the page itself, which already scrolls
+        // smoothly natively.
+        autoHeight
         pageSizeOptions={pageSizeOptions ?? [10, 20, 30, 50, 100]}
         paginationMode={paginationMode ?? "client"}
         rowCount={paginationMode === "server" ? rowCount : undefined}

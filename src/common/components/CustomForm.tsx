@@ -237,6 +237,7 @@ const FormField = React.memo(
                 {...ctrlField}
                 inputRef={setRef}
                 onKeyDown={onKeyDown}
+                placeholder={field.placeholder}
                 type={field.type}
                 label={renderLabel(field)}
                 multiline

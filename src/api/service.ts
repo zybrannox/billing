@@ -1,12 +1,7 @@
-// src/api/apiService.ts
 import type { AxiosRequestConfig } from "axios";
 import axiosClient from "./client";
 
 export const apiService = {
-  // get: async <T>(url: string, params?: any): Promise<T> => {
-  //   const res = await axiosClient.get(url, { params });
-  //   return res.data;
-  // },
   get: async <T>(url: string, config?: AxiosRequestConfig): Promise<T> => {
     const res = await axiosClient.get(url, config);
     return res.data;
@@ -39,13 +34,6 @@ export const apiService = {
     const res = await axiosClient.get(url, {
       ...config,
       onDownloadProgress: (event) => {
-        // event.total is only present when the server sends Content-Length
-        // (e.g. single-file downloads). Streamed responses like zip
-        // generation don't know their final size upfront, so we fall back
-        // to reporting bytes downloaded instead of a percentage.
-        // Clamp to 99% — a gzip-compressed response reports Content-Length
-        // as the compressed size, but the browser delivers decompressed
-        // bytes, so loaded/total can slightly overshoot 100 before done.
         const percent = event.total
           ? Math.min(99, Math.round((event.loaded / event.total) * 100))
           : null;

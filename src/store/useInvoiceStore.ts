@@ -11,9 +11,30 @@ export interface Invoice {
   due_date: string | null;
 }
 
+export interface InvoiceListParams {
+  page?: number;
+  pageSize?: number;
+}
+
+interface InvoiceListResponse {
+  items: Invoice[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
 interface InvoiceState {
   invoices: Invoice[];
-  fetchInvoices: () => Promise<void>;
+  invoicesTotal: number;
+  invoicesPage: number;
+  invoicesPageSize: number;
+  invoicesTotalPages: number;
+  invoicesLoading: boolean;
+  /** GET (server-side paginated - see backend GET /invoices/). Previously
+   * fetched every invoice unpaginated; billing history only ever grows, so
+   * that response got slower and larger forever instead of staying flat. */
+  fetchInvoices: (params?: InvoiceListParams) => Promise<void>;
   addInvoice: (
     data: Omit<Invoice, "id" | "created_at" | "invoice_number">,
   ) => Promise<Invoice>;
@@ -21,17 +42,50 @@ interface InvoiceState {
   deleteInvoice: (id: number) => Promise<void>;
 }
 
-export const useInvoiceStore = create<InvoiceState>((set) => ({
+export const useInvoiceStore = create<InvoiceState>((set, get) => ({
   invoices: [],
+  invoicesTotal: 0,
+  invoicesPage: 1,
+  invoicesPageSize: 20,
+  invoicesTotalPages: 0,
+  invoicesLoading: false,
 
-  fetchInvoices: async () => {
-    const invoices = await apiService.get<Invoice[]>("/invoices");
-    set({ invoices });
+  fetchInvoices: async (params = {}) => {
+    set({ invoicesLoading: true });
+    try {
+      const res = await apiService.get<InvoiceListResponse>("/invoices", {
+        params: {
+          page: params.page ?? 1,
+          page_size: params.pageSize ?? 20,
+        },
+      });
+      set({
+        invoices: res.items,
+        invoicesTotal: res.total,
+        invoicesPage: res.page,
+        invoicesPageSize: res.page_size,
+        invoicesTotalPages: res.total_pages,
+      });
+    } finally {
+      set({ invoicesLoading: false });
+    }
   },
 
   addInvoice: async (data) => {
     const newInvoice = await apiService.post<Invoice>("/invoices", data);
-    set((state) => ({ invoices: [...state.invoices, newInvoice] }));
+    // Re-fetch the current page rather than appending locally - a new
+    // invoice may not belong on the page the user is currently viewing
+    // (sorted newest-first, so it usually lands on page 1). The invoice
+    // itself is already created at this point, so a refetch hiccup here
+    // shouldn't surface as "creating the invoice failed" to the caller.
+    try {
+      await get().fetchInvoices({
+        page: get().invoicesPage,
+        pageSize: get().invoicesPageSize,
+      });
+    } catch (err) {
+      console.error("Failed to refresh invoice list after creating invoice", err);
+    }
     return newInvoice;
   },
 
@@ -51,6 +105,7 @@ export const useInvoiceStore = create<InvoiceState>((set) => ({
     await apiService.delete(`/invoices/${id}`);
     set((state) => ({
       invoices: state.invoices.filter((inv) => inv.id !== id),
+      invoicesTotal: Math.max(0, state.invoicesTotal - 1),
     }));
   },
 }));

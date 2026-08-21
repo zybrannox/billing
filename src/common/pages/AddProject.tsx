@@ -64,6 +64,7 @@ export default function AddProject() {
       .filter((item) => item.status === "done" && item.path)
       .map((item) => ({
         path: item.path,
+        original_name: item.name,
         width: item.width ?? null,
         height: item.height ?? null,
       }));

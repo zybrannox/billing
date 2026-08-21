@@ -37,8 +37,8 @@ const MAX_VISIBLE_CHIPS = 4;
 type FileType = "image" | "pdf" | "archive" | "doc" | "sheet" | "file";
 
 const getFileType = (file: string | FileObject): FileType => {
-  const fileName = typeof file === "string" ? file : file.path;
-  const ext = fileName.split(".").pop()?.toLowerCase();
+  const path = typeof file === "string" ? file : file.path;
+  const ext = path.split(".").pop()?.toLowerCase();
 
   if (!ext) return "file";
   if (["jpg", "jpeg", "png", "webp", "gif"].includes(ext)) return "image";
@@ -66,7 +66,15 @@ const FileIcon = ({ type, size = 28 }: { type: FileType; size?: number }) => {
   }
 };
 
-const fileName = (f: string | FileObject) => (typeof f === "string" ? f : f.path);
+// The stored, UUID-based on-disk name - required as-is for every
+// /files/* API call (thumbnail/download/view/delete are all keyed by it).
+const storagePath = (f: string | FileObject) => (typeof f === "string" ? f : f.path);
+
+// What the user actually named the file - what should ever be shown on
+// screen or saved-as on download. Falls back to the storage path only for
+// files uploaded before original_name was tracked.
+const displayName = (f: string | FileObject) =>
+  typeof f === "string" ? f : f.original_name || f.path;
 
 /**
  * Gmail-style compact attachment strip for the project row accordion - a
@@ -89,17 +97,22 @@ const ProjectFilesList = () => {
   const hiddenCount = totalFiles - visibleFiles.length;
 
   const lightboxFile = lightboxIndex !== null ? files[lightboxIndex] : null;
-  const lightboxFileName = lightboxFile ? fileName(lightboxFile) : "";
+  const lightboxStoragePath = lightboxFile ? storagePath(lightboxFile) : "";
+  const lightboxDisplayName = lightboxFile ? displayName(lightboxFile) : "";
   const lightboxFileType = lightboxFile ? getFileType(lightboxFile) : null;
 
-  const handleDownload = async (name: string) => {
-    setDownloadProgress((prev) => ({ ...prev, [name]: 0 }));
+  // `path` addresses the file on the server (must be the real stored
+  // name); `saveAsName` is what the browser names the downloaded file -
+  // keeping these separate is the whole fix, conflating them is what made
+  // every download save as the UUID-based storage name instead.
+  const handleDownload = async (path: string, saveAsName: string) => {
+    setDownloadProgress((prev) => ({ ...prev, [path]: 0 }));
     try {
       const blob = await apiService.getWithProgress<Blob>(
-        `/files/download/${encodeURIComponent(name)}`,
+        `/files/download/${encodeURIComponent(path)}`,
         ({ percent }) => {
           if (percent === null) return;
-          setDownloadProgress((prev) => ({ ...prev, [name]: percent }));
+          setDownloadProgress((prev) => ({ ...prev, [path]: percent }));
         },
         { responseType: "blob" },
       );
@@ -107,7 +120,7 @@ const ProjectFilesList = () => {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = name;
+      link.download = saveAsName;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -119,7 +132,7 @@ const ProjectFilesList = () => {
     } finally {
       setDownloadProgress((prev) => {
         const next = { ...prev };
-        delete next[name];
+        delete next[path];
         return next;
       });
     }
@@ -144,7 +157,8 @@ const ProjectFilesList = () => {
     <Box>
       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
         {visibleFiles.map((file) => {
-          const name = fileName(file);
+          const path = storagePath(file);
+          const name = displayName(file);
           const originalIndex = files.indexOf(file);
           const type = getFileType(file);
           const isDownloaded = typeof file !== "string" && !!file.downloaded;
@@ -176,7 +190,7 @@ const ProjectFilesList = () => {
               {type === "image" ? (
                 <Box
                   component="img"
-                  src={`${API_BASE_URL}/files/thumbnail/${encodeURIComponent(name)}`}
+                  src={`${API_BASE_URL}/files/thumbnail/${encodeURIComponent(path)}`}
                   loading="lazy"
                   sx={{
                     width: 20,
@@ -252,7 +266,8 @@ const ProjectFilesList = () => {
           }}
         >
           {files.map((file, index) => {
-            const name = fileName(file);
+            const path = storagePath(file);
+            const name = displayName(file);
             const type = getFileType(file);
             const isDownloaded = typeof file !== "string" && !!file.downloaded;
 
@@ -292,7 +307,7 @@ const ProjectFilesList = () => {
                     {type === "image" ? (
                       <Box
                         component="img"
-                        src={`${API_BASE_URL}/files/thumbnail/${encodeURIComponent(name)}`}
+                        src={`${API_BASE_URL}/files/thumbnail/${encodeURIComponent(path)}`}
                         loading="lazy"
                         sx={{
                           width: 32,
@@ -333,11 +348,11 @@ const ProjectFilesList = () => {
                 </Box>
 
                 <Box sx={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
-                  {name in downloadProgress ? (
+                  {path in downloadProgress ? (
                     <Box sx={{ display: "flex", alignItems: "center", px: 0.5 }}>
                       <CircularProgress
                         variant="determinate"
-                        value={downloadProgress[name]}
+                        value={downloadProgress[path]}
                         size={20}
                         thickness={5}
                         sx={{ color: "#2563EB" }}
@@ -349,7 +364,7 @@ const ProjectFilesList = () => {
                         size="small"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDownload(name);
+                          handleDownload(path, name);
                         }}
                         sx={{
                           width: 28,
@@ -447,8 +462,8 @@ const ProjectFilesList = () => {
           {lightboxFile && lightboxFileType === "image" && (
             <Box
               component="img"
-              src={`${API_BASE_URL}/files/view/${encodeURIComponent(lightboxFileName)}`}
-              alt={lightboxFileName}
+              src={`${API_BASE_URL}/files/view/${encodeURIComponent(lightboxStoragePath)}`}
+              alt={lightboxDisplayName}
               sx={{ maxHeight: "90%", maxWidth: "90%", objectFit: "contain" }}
             />
           )}
@@ -456,7 +471,7 @@ const ProjectFilesList = () => {
           {lightboxFile && lightboxFileType !== "image" && (
             <Stack spacing={1.5} alignItems="center">
               <FileIcon type={lightboxFileType!} size={64} />
-              <Typography sx={{ color: "#F8FAFC", fontWeight: 600 }}>{lightboxFileName}</Typography>
+              <Typography sx={{ color: "#F8FAFC", fontWeight: 600 }}>{lightboxDisplayName}</Typography>
               <Typography variant="caption" sx={{ color: "#94A3B8" }}>
                 Preview not supported for this format
               </Typography>
@@ -502,21 +517,21 @@ const ProjectFilesList = () => {
             }}
           >
             <Typography variant="caption" sx={{ color: "#F8FAFC", fontWeight: 500 }}>
-              {lightboxFileName}
+              {lightboxDisplayName}
               {totalFiles > 1 && ` • ${(lightboxIndex ?? 0) + 1} of ${totalFiles}`}
             </Typography>
 
             <IconButton
               size="small"
-              onClick={() => handleDownload(lightboxFileName)}
+              onClick={() => handleDownload(lightboxStoragePath, lightboxDisplayName)}
               aria-label="Download"
-              disabled={lightboxFileName in downloadProgress}
+              disabled={lightboxStoragePath in downloadProgress}
               sx={{ color: "#F8FAFC" }}
             >
-              {lightboxFileName in downloadProgress ? (
+              {lightboxStoragePath in downloadProgress ? (
                 <CircularProgress
                   variant="determinate"
-                  value={downloadProgress[lightboxFileName]}
+                  value={downloadProgress[lightboxStoragePath]}
                   size={16}
                   thickness={5}
                   sx={{ color: "#3B82F6" }}

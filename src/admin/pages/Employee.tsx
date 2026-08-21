@@ -65,7 +65,7 @@ const baseColumns: GridColDef[] = [
     renderCell: ({ value }) => (
       <Chip
         label={value}
-        sx={semanticChipSx(getSemanticColor("priority", value))}
+        sx={semanticChipSx(getSemanticColor("status", value))}
       />
     ),
 
@@ -82,7 +82,7 @@ const Employee = () => {
 
   const fetchEmployees = async () => {
     await sendRequest({
-      endpoint: "/users/",
+      endpoint: API.users.list,
       method: "get",
       onSuccess: (res: Employee[]) => {
         setEmployees(res);

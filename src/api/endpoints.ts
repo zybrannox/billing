@@ -1,6 +1,8 @@
 export const API = {
   auth: {
     login: "/auth/login",
+    me: "/auth/me",
+
   },
   users: {
     list: "/users",

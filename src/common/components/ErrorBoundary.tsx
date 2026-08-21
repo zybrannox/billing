@@ -8,12 +8,6 @@ interface State {
   error: Error | null;
 }
 
-/**
- * Catches render-time errors anywhere below it (e.g. a page crashing on an
- * unexpected API response shape) and shows a recoverable message instead of
- * leaving the whole app blank. React error boundaries must be class
- * components - there's no hook equivalent.
- */
 export default class ErrorBoundary extends React.Component<Props, State> {
   state: State = { error: null };
 

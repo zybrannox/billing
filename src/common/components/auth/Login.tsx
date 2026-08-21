@@ -1,30 +1,29 @@
 import { useState } from "react";
 import { useApiRequest } from "../../../hooks/useApiRequest";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useAppStore, type User } from "../../../store/useAppStore";
+import { API } from "../../../api/endpoints";
 
 function Login() {
   const { sendRequest, loading } = useApiRequest();
-  const { setUser } = useAppStore();
+  const { user, setUser } = useAppStore();
   const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  if (user) {
+    return <Navigate to={user.role === "admin" ? "/admin/projects" : "/"} replace />;
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
 
-    // sendRequest swallows failures internally (returns undefined instead
-    // of throwing) so a wrapping try/catch here never actually catches a
-    // failed login - it only ever caught the unrelated "User not found"
-    // thrown below, which is why a wrong password used to surface that
-    // message instead of the real "Invalid credentials" one. onError below
-    // captures the real backend error for each call instead.
     let loginError: any = null;
     const loginResult = await sendRequest({
-      endpoint: "/auth/login",
+      endpoint: API.auth.login,
       method: "post",
       data: { email, password },
       onError: (err) => {
@@ -39,7 +38,7 @@ function Login() {
 
     let meError: any = null;
     const me = await sendRequest<User>({
-      endpoint: "/auth/me",
+      endpoint: API.auth.me,
       method: "get",
       onError: (err) => {
         meError = err;

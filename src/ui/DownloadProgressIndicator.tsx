@@ -22,7 +22,7 @@ export default function DownloadProgressIndicator() {
       }}
     >
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-        <FileDownloadRounded fontSize="small" color="primary" />
+        <FileDownloadRounded fontSize="small" sx={{color: "var(--blue-600)"}} />
         <Typography variant="body2" fontWeight={600} noWrap>
           {label}
         </Typography>
@@ -31,7 +31,12 @@ export default function DownloadProgressIndicator() {
       <LinearProgress
         variant={percent !== null ? "determinate" : "indeterminate"}
         value={percent ?? undefined}
-        sx={{ borderRadius: 1, height: 6, mb: 0.75 }}
+        sx={{
+          borderRadius: 1, height: 6, mb: 0.75, backgroundColor: "var(--blue-100)", // Track background color
+          "& .MuiLinearProgress-bar": {
+            background: "var(--blue-500)", // Progress bar fill color
+          },
+        }}
       />
 
       <Typography variant="caption" color="text.secondary">

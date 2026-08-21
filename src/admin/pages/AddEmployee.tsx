@@ -3,6 +3,7 @@ import { addEmployeeFields } from "../../config/admin";
 import { useApiRequest } from "../../hooks/useApiRequest";
 import { useDialogStore } from "../../store/useDialogStore";
 import { addEmployeeSchema } from "../../schemas/addEmployee.schema";
+import { API } from "../../api/endpoints";
 
 interface AddEmployeeProps {
   onSuccess?: () => void;
@@ -14,7 +15,7 @@ export default function AddEmployee({ onSuccess }: AddEmployeeProps) {
 
   const handleSubmit = async (formData: any) => {
     const result = await sendRequest({
-      endpoint: "/users/",
+      endpoint: API.users.list,
       method: "post",
       data: formData,
       onError: (err) => {

@@ -3,6 +3,11 @@ import { apiService } from "../api/service";
 
 export interface FileObject {
   path: string;
+  // The name the user actually uploaded with - `path` is a UUID-based
+  // storage name (collision-proof on disk) and must never be shown as
+  // "the filename". Optional because entries saved before this field
+  // existed won't have it - display falls back to `path` for those.
+  original_name?: string | null;
   width?: number | null;
   height?: number | null;
   // Server-side source of truth - set by the /files/download endpoints, so

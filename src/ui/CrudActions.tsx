@@ -1,6 +1,5 @@
 import { IconButton, Tooltip } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
-import DeleteIcon from "@mui/icons-material/DeleteOutlined";
 import ToggleOffIcon from "@mui/icons-material/ToggleOff";
 import ToggleOnIcon from "@mui/icons-material/ToggleOn";
 import { GridDownloadIcon } from "@mui/x-data-grid";
@@ -43,18 +42,20 @@ const CrudActions = ({
             size={size}
             onClick={onDownload}
             sx={{
-              // backgroundColor: "#0dcaf0", // Info / Download blue
-              color: "#fff",
+              // GridDownloadIcon (from x-data-grid) doesn't accept its own
+              // sx prop the way @mui/icons-material icons do - it renders
+              // with fill: currentColor, so the color has to be set here
+              // on the button instead.
+              color: "#0dcaf0", // Info / Download blue
               padding: "0",
               borderRadius: "var(--border-radius-md)",
               transition: "0.2s",
               "&:hover": {
                 padding: "0",
-                // backgroundColor: "#0bbcd6",
               },
             }}
           >
-            <GridDownloadIcon fontSize={size} sx={{ color: "#0dcaf0" }} />
+            <GridDownloadIcon fontSize={size} />
           </IconButton>
         </Tooltip>
       )}
