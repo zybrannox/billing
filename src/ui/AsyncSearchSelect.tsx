@@ -1,5 +1,6 @@
 import React from "react";
 import { Autocomplete, CircularProgress, TextField, Typography } from "@mui/material";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CloseIcon from "@mui/icons-material/Close";
 import { apiService } from "../api/service";
@@ -46,13 +47,61 @@ export default function AsyncSearchSelect({
 }: AsyncSearchSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [inputValue, setInputValue] = React.useState("");
-  const [options, setOptions] = React.useState<any[]>([]);
-  const [loading, setLoading] = React.useState(false);
+  const [debouncedInput, setDebouncedInput] = React.useState("");
   const [selected, setSelected] = React.useState<any | null>(null);
 
   const extraParamsKey = JSON.stringify(extraParams ?? {});
 
-  // Fetch initial option object if value is provided externally but not yet loaded
+  // Debounce the search box so every keystroke doesn't fire a request.
+  React.useEffect(() => {
+    const timer = setTimeout(() => setDebouncedInput(inputValue), 300);
+    return () => clearTimeout(timer);
+  }, [inputValue]);
+
+  // Cached by [endpoint, search term, extra params] - this is the actual
+  // fix for the field re-fetching (and flashing "Loading...") every single
+  // time it's re-opened: within staleTime, opening it again with the same
+  // search reuses the cached result instantly instead of hitting the
+  // server again. Typing a genuinely new search term is a different query
+  // key, so it still fetches - only re-opening unchanged is now free.
+  const listQuery = useQuery({
+    queryKey: ["async-select-options", endpoint, debouncedInput, extraParamsKey],
+    queryFn: async () => {
+      const data = await apiService.get<any[] | { items: any[] }>(endpoint, {
+        params: {
+          [searchParam]: debouncedInput || undefined,
+          ...JSON.parse(extraParamsKey),
+        },
+      });
+      return Array.isArray(data) ? data : (data?.items ?? []);
+    },
+    enabled: open,
+    // Keep showing the previous search's results while a new search term
+    // resolves, instead of blanking the list to empty for a moment.
+    placeholderData: keepPreviousData,
+  });
+
+  const options = listQuery.data ?? [];
+  const loading = listQuery.isFetching;
+
+  // Resolves `value` to a full option object when it isn't already
+  // available from the caller (initialOption) or the current options list.
+  const needsHydration =
+    value != null &&
+    value !== "" &&
+    !(selected && getOptionValue(selected) === value) &&
+    !options.some((o) => getOptionValue(o) === value) &&
+    !(initialOption && getOptionValue(initialOption) === value);
+
+  const hydrationQuery = useQuery({
+    queryKey: ["async-select-item", endpoint, value],
+    queryFn: () => apiService.get<any>(`${endpoint}/${value}`),
+    enabled: needsHydration,
+    // Some endpoints don't support a single-record lookup at all (see the
+    // initialOption comment above) - fail quietly once, not with retries.
+    retry: false,
+  });
+
   React.useEffect(() => {
     if (value == null || value === "") {
       setSelected(null);
@@ -61,65 +110,22 @@ export default function AsyncSearchSelect({
 
     if (selected && getOptionValue(selected) === value) return;
 
-    // Search local options first
     const existing = options.find((o) => getOptionValue(o) === value);
     if (existing) {
       setSelected(existing);
       return;
     }
 
-    // Caller already knows what this value resolves to - skip the fetch.
     if (initialOption && getOptionValue(initialOption) === value) {
       setSelected(initialOption);
       return;
     }
 
-    // Attempt single record fetch from server if option is missing
-    let active = true;
-    (async () => {
-      try {
-        const data = await apiService.get<any>(`${endpoint}/${value}`);
-        if (active && data) setSelected(data);
-      } catch {
-        // Fallback gracefully if single-endpoint lookup isn't supported
-      }
-    })();
-
-    return () => {
-      active = false;
-    };
-  }, [value, options, endpoint, getOptionValue, selected, initialOption]);
-
-  // Debounced search query effect
-  React.useEffect(() => {
-    if (!open) return;
-
-    let active = true;
-    setLoading(true);
-
-    const timer = setTimeout(async () => {
-      try {
-        const data = await apiService.get<any[] | { items: any[] }>(endpoint, {
-          params: {
-            [searchParam]: inputValue || undefined,
-            ...JSON.parse(extraParamsKey),
-          },
-        });
-        if (active) {
-          setOptions(Array.isArray(data) ? data : data?.items ?? []);
-        }
-      } catch {
-        if (active) setOptions([]);
-      } finally {
-        if (active) setLoading(false);
-      }
-    }, 300);
-
-    return () => {
-      active = false;
-      clearTimeout(timer);
-    };
-  }, [open, inputValue, endpoint, searchParam, extraParamsKey]);
+    if (hydrationQuery.data) {
+      setSelected(hydrationQuery.data);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, options, selected, initialOption, hydrationQuery.data, getOptionValue]);
 
   return (
     <div className={className} style={{ width: "100%" }}>

@@ -25,6 +25,8 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import { useProjectStore, type FileObject } from "../../store/useProjectStore";
 import { apiService } from "../../api/service";
 import { GenericDialog } from "../../ui/Dialog";
+import { useDownloadProgressStore } from "../../store/useDownloadProgressStore";
+import { useKeyboardShortcuts } from "../../hooks/useKeyboardShortcuts";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -107,10 +109,17 @@ const ProjectFilesList = () => {
   // every download save as the UUID-based storage name instead.
   const handleDownload = async (path: string, saveAsName: string) => {
     setDownloadProgress((prev) => ({ ...prev, [path]: 0 }));
+    // Reflected in the shared bottom-right indicator too (not just the
+    // inline ring on the row/lightbox icon) - that indicator previously
+    // only ever showed for the "download all as zip" flow, so a single-file
+    // download here never appeared there at all.
+    const { start, update, finish, remove } = useDownloadProgressStore.getState();
+    start(path, saveAsName);
     try {
       const blob = await apiService.getWithProgress<Blob>(
         `/files/download/${encodeURIComponent(path)}`,
-        ({ percent }) => {
+        ({ percent, loaded, total }) => {
+          update(path, { percent, loaded, total });
           if (percent === null) return;
           setDownloadProgress((prev) => ({ ...prev, [path]: percent }));
         },
@@ -127,8 +136,10 @@ const ProjectFilesList = () => {
       URL.revokeObjectURL(url);
 
       if (selectedProject) await refreshProject(selectedProject.id);
+      finish(path);
     } catch (err) {
       console.error("Download error:", err);
+      remove(path);
     } finally {
       setDownloadProgress((prev) => {
         const next = { ...prev };
@@ -143,6 +154,23 @@ const ProjectFilesList = () => {
     setLightboxIndex(index);
   };
 
+  // Scoped to "while the lightbox is open" (not the whole page) - Left/Right
+  // change files, Enter downloads whichever one is currently showing.
+  useKeyboardShortcuts(
+    {
+      ArrowLeft: () =>
+        setLightboxIndex((i) => (i !== null && i > 0 ? i - 1 : i)),
+      ArrowRight: () =>
+        setLightboxIndex((i) =>
+          i !== null && i < totalFiles - 1 ? i + 1 : i,
+        ),
+      Enter: () => {
+        if (lightboxFile) handleDownload(lightboxStoragePath, lightboxDisplayName);
+      },
+    },
+    lightboxIndex !== null,
+  );
+
   if (totalFiles === 0) {
     return (
       <Box sx={{ py: 1.5 }}>
@@ -155,6 +183,21 @@ const ProjectFilesList = () => {
 
   return (
     <Box>
+      <Typography
+        variant="caption"
+        sx={{
+          display: "block",
+          mb: 0.75,
+          fontWeight: 600,
+          color: "#64748B",
+          fontSize: "0.7rem",
+          textTransform: "uppercase",
+          letterSpacing: "0.03em",
+        }}
+      >
+        {totalFiles} {totalFiles === 1 ? "File" : "Files"}
+      </Typography>
+
       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
         {visibleFiles.map((file) => {
           const path = storagePath(file);

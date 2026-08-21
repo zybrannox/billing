@@ -74,8 +74,13 @@ const Projects = () => {
   const projectsTotal = useProjectStore((s) => s.projectsTotal);
   const projectsLoading = useProjectStore((s) => s.projectsLoading);
   const fetchProjects = useProjectStore((s) => s.fetchProjects);
-  const { updateProject, deleteProjects, markDesignCompleted, markDelivered } =
-    useProjectStore();
+  const {
+    updateProject,
+    deleteProjects,
+    markDesignCompleted,
+    markPrintCompleted,
+    markDelivered,
+  } = useProjectStore();
 
   const columns: GridColDef[] = useMemo(
     () => [
@@ -197,6 +202,8 @@ const Projects = () => {
       file_paths: p.file_paths || [],
       design_completed_at: p.design_completed_at,
       design_completed_by: p.design_completed_by,
+      print_completed_at: p.print_completed_at,
+      print_completed_by: p.print_completed_by,
       delivered_at: p.delivered_at,
       delivered_by: p.delivered_by,
       customer_name: p.customer_name,
@@ -281,6 +288,23 @@ const Projects = () => {
         try {
           setLoading(true);
           await markDesignCompleted(id);
+          closeDialog();
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
+  };
+
+  const handleMarkPrintCompleted = (id: string) => {
+    showDialog({
+      title: "Mark Print Completed?",
+      description: "This flags printing as done for this order.",
+      confirmText: "Mark Completed",
+      onConfirm: async () => {
+        try {
+          setLoading(true);
+          await markPrintCompleted(id);
           closeDialog();
         } finally {
           setLoading(false);
@@ -434,6 +458,14 @@ const Projects = () => {
                     }
                     : null
                 }
+                printCompletedMeta={
+                  params.row.print_completed_at
+                    ? {
+                      at: params.row.print_completed_at,
+                      by: params.row.print_completed_by,
+                    }
+                    : null
+                }
                 deliveredMeta={
                   params.row.delivered_at
                     ? { at: params.row.delivered_at, by: params.row.delivered_by }
@@ -441,6 +473,9 @@ const Projects = () => {
                 }
                 onMarkDesignCompleted={() =>
                   handleMarkDesignCompleted(params.row.id)
+                }
+                onMarkPrintCompleted={() =>
+                  handleMarkPrintCompleted(params.row.id)
                 }
                 onMarkDelivered={() => handleMarkDelivered(params.row.id)}
               />,

@@ -423,7 +423,7 @@ const gridSx = React.useMemo(
   );
 
   const handleDownloadClick = React.useCallback(
-    (id: GridRowId) => () => {
+    (id: GridRowId, fileCount?: number) => () => {
       showDialog({
         title: "Download Files?",
         description: "Do You Like to Download all The Files.",
@@ -434,17 +434,24 @@ const gridSx = React.useMemo(
           // spinner for the whole download — the floating progress indicator
           // takes over from here so the rest of the UI stays usable.
           closeDialog();
-          const { start, update, finish } = useDownloadProgressStore.getState();
-          start("Downloading project files…");
-          try {
-            const success = await downloadProject(id as string, update);
+          const { start, update, finish, remove } = useDownloadProgressStore.getState();
+          const downloadId = `project-zip-${id}`;
+          start(downloadId, "Downloading project files…", fileCount);
+          // downloadProject resolves to false (rather than throwing) on
+          // failure - that's the actual success/fail signal to branch on,
+          // not a try/catch.
+          const success = await downloadProject(id as string, (progress) =>
+            update(downloadId, progress),
+          );
+          if (success) {
             // The backend flips `downloaded` on every file in the project as
             // part of serving the zip - refetch so the accordion file list
             // (and anyone else looking at this project) picks up the change.
-            if (success) await refreshProject(id as string);
+            await refreshProject(id as string);
             onDownloadRef.current?.(id);
-          } finally {
-            finish();
+            finish(downloadId);
+          } else {
+            remove(downloadId);
           }
         },
       });
@@ -515,7 +522,10 @@ const gridSx = React.useMemo(
         ? renderActions(params, {
           edit: handleEditClick(params.id),
           delete: handleDeleteClick(params.id),
-          download: handleDownloadClick(params.id),
+          download: handleDownloadClick(
+            params.id,
+            (params.row as any).file_paths?.length,
+          ),
           save: handleSaveClick(params.id),
           cancel: handleCancelClick(params.id),
           toggle: handleToggleClick(params),

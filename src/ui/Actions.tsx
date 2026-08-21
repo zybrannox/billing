@@ -18,6 +18,7 @@ import {
   ToggleOnRounded,
   DesignServicesRounded,
   LocalShippingRounded,
+  LocalPrintshopRounded,
   CheckCircleRounded,
   MoreVertRounded,
   DownloadForOfflineRounded,
@@ -52,12 +53,14 @@ interface CrudActionsProps {
   onPreview?: () => void;
   onGenerateInvoice?: () => void;
   onMarkDesignCompleted?: () => void;
+  onMarkPrintCompleted?: () => void;
   onMarkDelivered?: () => void;
   onChangePassword?: () => void;
 
   isActive?: boolean;
   size?: "small" | "medium";
   designCompletedMeta?: MilestoneMeta | null;
+  printCompletedMeta?: MilestoneMeta | null;
   deliveredMeta?: MilestoneMeta | null;
   // Delivery also requires print_status === "Completed" - passed straight
   // from the row rather than duplicated as another boolean prop.
@@ -174,12 +177,14 @@ const CrudActions = ({
   onPreview,
   onGenerateInvoice,
   onMarkDesignCompleted,
+  onMarkPrintCompleted,
   onMarkDelivered,
   onChangePassword,
 
   isActive = false,
   size = "small",
   designCompletedMeta,
+  printCompletedMeta,
   deliveredMeta,
   printStatus,
 }: CrudActionsProps) => {
@@ -187,6 +192,10 @@ const CrudActions = ({
   const isPrintCompleted = printStatus === "Completed";
   const isDelivered = !!deliveredMeta;
   const canDeliver = isDesignCompleted && isPrintCompleted;
+  // Same server-enforced rule as the design/deliver buttons (see
+  // service_update in app/projects/service.py): print can't be marked
+  // Completed until the design phase is.
+  const canCompletePrint = isDesignCompleted && !isPrintCompleted;
 
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(menuAnchor);
@@ -251,6 +260,58 @@ const CrudActions = ({
               <CheckCircleRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
             ) : (
               <DesignServicesRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
+            )}
+          </IconButton>
+        </span>
+      </Tooltip>
+
+      <Tooltip
+        title={
+          isPrintCompleted && printCompletedMeta
+            ? `Print completed on ${formatDateTime(printCompletedMeta.at)} by ${printCompletedMeta.by}`
+            : isPrintCompleted
+              ? "Print marked as completed"
+              : !isDesignCompleted
+                ? "Complete the design first"
+                : "Mark print as completed"
+        }
+      >
+        <span>
+          <IconButton
+            size={size}
+            onClick={onMarkPrintCompleted}
+            disabled={isPrintCompleted || !canCompletePrint}
+            sx={{
+              ...actionIconSx,
+              color: isPrintCompleted
+                ? "#059669"
+                : canCompletePrint
+                ? "#D97706"
+                : "#94A3B8",
+              backgroundColor: isPrintCompleted
+                ? "rgba(16, 185, 129, 0.08)"
+                : canCompletePrint
+                ? "rgba(217, 119, 6, 0.08)"
+                : "rgba(148, 163, 184, 0.08)",
+              border: `1px solid ${
+                isPrintCompleted
+                  ? "rgba(16, 185, 129, 0.2)"
+                  : canCompletePrint
+                  ? "rgba(217, 119, 6, 0.2)"
+                  : "rgba(148, 163, 184, 0.18)"
+              }`,
+              "&:hover": {
+                backgroundColor: isPrintCompleted
+                  ? "rgba(16, 185, 129, 0.15)"
+                  : "rgba(217, 119, 6, 0.15)",
+              },
+              "&.Mui-disabled": { opacity: isPrintCompleted ? 0.95 : 0.45 },
+            }}
+          >
+            {isPrintCompleted ? (
+              <CheckCircleRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
+            ) : (
+              <LocalPrintshopRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
             )}
           </IconButton>
         </span>

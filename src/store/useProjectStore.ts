@@ -27,10 +27,13 @@ export interface Project {
   print_status: string;
   file_paths?: (string | FileObject)[];
   description: string;
-  // Order-lifecycle milestones - server-set (see PATCH /design-completed and
-  // /delivered), null until reached. `*_by` is the username that triggered it.
+  // Order-lifecycle milestones - server-set (see PATCH /design-completed,
+  // /print-completed and /delivered), null until reached. `*_by` is the
+  // username that triggered it.
   design_completed_at?: string | null;
   design_completed_by?: string | null;
+  print_completed_at?: string | null;
+  print_completed_by?: string | null;
   delivered_at?: string | null;
   delivered_by?: string | null;
   customer_id?: number | null;
@@ -68,7 +71,11 @@ interface ProjectState {
   deleteProject: (id: string) => Promise<void>;
   downloadProject: (
     id: string,
-    onProgress?: (progress: { percent: number | null; loaded: number }) => void,
+    onProgress?: (progress: {
+      percent: number | null;
+      loaded: number;
+      total: number | null;
+    }) => void,
   ) => Promise<boolean>;
   setSelectedProject: (project: Project | null) => void;
   updateProject: (id: string, data: Partial<Project>) => Promise<void>;
@@ -78,6 +85,7 @@ interface ProjectState {
   // `selectedProject` and the `projects` list, if present in either.
   refreshProject: (id: string) => Promise<void>;
   markDesignCompleted: (id: string) => Promise<void>;
+  markPrintCompleted: (id: string) => Promise<void>;
   markDelivered: (id: string) => Promise<void>;
 }
 
@@ -126,9 +134,16 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   /** PUT / PATCH */
   updateProject: async (id, data) => {
     await apiService.put(`/projects/${id}`, data);
+    // String(...) both sides - `p.id` is a raw number straight off the API
+    // response (the `id: string` in the Project type above doesn't actually
+    // convert it), while callers pass the DataGrid row's stringified id.
+    // `p.id === id` was therefore always false: the PUT above persisted
+    // correctly, but this local patch silently never applied, leaving the
+    // grid showing stale data until a full refetch. Same normalization
+    // markDesignCompleted/markDelivered below already use.
     set((state) => ({
       projects: state.projects.map((p) =>
-        p.id === id ? { ...p, ...data } : p,
+        String(p.id) === String(id) ? { ...p, ...data } : p,
       ),
     }));
   },
@@ -196,6 +211,20 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   markDesignCompleted: async (id) => {
     const updated = await apiService.patch<Project>(
       `/projects/${id}/design-completed`,
+    );
+    const current = get().selectedProject;
+    set((state) => ({
+      selectedProject:
+        current && String(current.id) === String(id) ? updated : current,
+      projects: state.projects.map((p) =>
+        String(p.id) === String(id) ? updated : p,
+      ),
+    }));
+  },
+
+  markPrintCompleted: async (id) => {
+    const updated = await apiService.patch<Project>(
+      `/projects/${id}/print-completed`,
     );
     const current = get().selectedProject;
     set((state) => ({

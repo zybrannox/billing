@@ -23,6 +23,7 @@ import {
 import { apiService } from "../api/service";
 import { compressImage } from "../utils/imageCompression";
 import { getImageDimensions } from "../utils/appSupport";
+import { uploadFileChunked, CHUNK_UPLOAD_THRESHOLD } from "../utils/chunkedUpload";
 
 export interface UploadItem {
   id: string;
@@ -66,6 +67,119 @@ const formatFileSize = (bytes: number) => {
 
 const MAX_FILE_SIZE = 1024 * 1024 * 1024; // 1GB
 
+// Memoized and given only stable props (see patchItem/removeItem/retryItem's
+// useCallback wrapping above) so that during an active upload, a progress
+// tick on one file only re-renders that file's row - not the whole list.
+// Without this, every row re-rendered on every tick regardless of whether
+// its own data changed, which is what made the list unscrollable once
+// several files were uploading at once.
+const FileRow = React.memo(function FileRow({
+  item,
+  onRemove,
+  onRetry,
+}: {
+  item: UploadItem;
+  onRemove: (id: string) => void;
+  onRetry: (id: string) => void;
+}) {
+  return (
+    <Box
+      sx={{
+        px: 2,
+        py: 1.25,
+        display: "flex",
+        alignItems: "center",
+        gap: 1.5,
+        "&:hover": { backgroundColor: "#F8FAFC" },
+        "&:not(:last-child)": { borderBottom: "1px solid #F1F5F9" },
+      }}
+    >
+      {item.status === "done" && (
+        <CheckCircle sx={{ fontSize: 18, color: "#10B981", flexShrink: 0 }} />
+      )}
+      {item.status === "error" && (
+        <ErrorOutline sx={{ fontSize: 18, color: "#EF4444", flexShrink: 0 }} />
+      )}
+      {item.status === "uploading" && (
+        <UploadFile sx={{ fontSize: 18, color: "#64748B", flexShrink: 0 }} />
+      )}
+
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Typography
+          variant="body2"
+          sx={{
+            color: "#0F172A",
+            fontWeight: 500,
+            fontSize: "0.825rem",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {item.name}
+        </Typography>
+
+        {item.status === "uploading" && (
+          <>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 0.5 }}>
+              <LinearProgress
+                variant="determinate"
+                value={item.progress}
+                sx={{
+                  flex: 1,
+                  height: 3,
+                  borderRadius: 2,
+                  backgroundColor: "#E2E8F0",
+                  "& .MuiLinearProgress-bar": { backgroundColor: "#334155" },
+                }}
+              />
+              <Typography variant="caption" sx={{ color: "#64748B", minWidth: 28, fontSize: "0.7rem" }}>
+                {Math.round(item.progress)}%
+              </Typography>
+            </Box>
+            <Typography variant="caption" sx={{ color: "#94A3B8", fontSize: "0.7rem" }}>
+              {formatFileSize((item.progress / 100) * item.size)} of {formatFileSize(item.size)}
+            </Typography>
+          </>
+        )}
+
+        {item.status === "done" && (
+          <Typography variant="caption" sx={{ color: "#64748B", fontSize: "0.75rem" }}>
+            {formatFileSize(item.size)} · Uploaded
+          </Typography>
+        )}
+
+        {item.status === "error" && (
+          <Typography variant="caption" sx={{ color: "#EF4444", fontSize: "0.75rem" }}>
+            {item.errorMessage || "Upload failed"}
+          </Typography>
+        )}
+      </Box>
+
+      {item.status === "error" && (
+        <IconButton
+          size="small"
+          onClick={() => onRetry(item.id)}
+          sx={{ color: "#64748B", "&:hover": { color: "#0F172A" } }}
+        >
+          <Replay sx={{ fontSize: 16 }} />
+        </IconButton>
+      )}
+
+      <IconButton
+        size="small"
+        onClick={() => onRemove(item.id)}
+        sx={{
+          color: "#94A3B8",
+          "&:hover": { color: "#EF4444", backgroundColor: "rgba(239, 68, 68, 0.06)" },
+        }}
+      >
+        <Close sx={{ fontSize: 16 }} />
+      </IconButton>
+    </Box>
+  );
+});
+
 const GmailFileUploader = ({
   label = "Attachments",
   accept,
@@ -86,43 +200,95 @@ const GmailFileUploader = ({
 
   const controllersRef = React.useRef<Record<string, AbortController>>({});
 
-  const patchItem = (id: string, patch: Partial<UploadItem>) => {
+  // Progress fires many times a second per file, and several files can be
+  // uploading at once (e.g. a 1GB file alongside others) - each one
+  // independently calling patchItem, even throttled per-file, doesn't bound
+  // the *combined* rate: 5 files each capped at ~10 updates/sec is still up
+  // to 50 re-renders/sec of the whole list. This batches every patch from
+  // every concurrently-uploading file into one flush at most every 100ms,
+  // so the total re-render rate stays bounded no matter how many files (or
+  // how many chunks of one large file) are in flight together - that
+  // combined rate, not any single file's, is what made the list unscrollable.
+  const pendingPatchesRef = React.useRef<Record<string, Partial<UploadItem>>>({});
+  const flushScheduledRef = React.useRef(false);
+
+  const flushPatches = React.useCallback(() => {
+    flushScheduledRef.current = false;
+    const patches = pendingPatchesRef.current;
+    pendingPatchesRef.current = {};
+    if (Object.keys(patches).length === 0) return;
+
     const next = itemsRef.current.map((it) =>
-      it.id === id ? { ...it, ...patch } : it,
+      patches[it.id] ? { ...it, ...patches[it.id] } : it,
     );
     itemsRef.current = next;
     onChange?.(next);
-  };
+  }, [onChange]);
 
-  const uploadItem = async (item: UploadItem) => {
+  // Stable across renders (only depends on `onChange`, which react-hook-form
+  // keeps referentially stable per field) so FileRow below can be memoized -
+  // an inline closure here would give every row a "new" prop every render,
+  // which defeats React.memo regardless of whether the row's own data changed.
+  const patchItem = React.useCallback(
+    (id: string, patch: Partial<UploadItem>) => {
+      pendingPatchesRef.current[id] = {
+        ...pendingPatchesRef.current[id],
+        ...patch,
+      };
+      if (!flushScheduledRef.current) {
+        flushScheduledRef.current = true;
+        setTimeout(flushPatches, 100);
+      }
+    },
+    [flushPatches],
+  );
+
+  const uploadItem = React.useCallback(async (item: UploadItem) => {
     const controller = new AbortController();
     controllersRef.current[item.id] = controller;
+
+    // No per-item throttling needed here anymore - patchItem itself now
+    // batches every update (from every concurrently-uploading file) into a
+    // single globally-bounded flush, so calling it on every raw progress
+    // tick is fine.
+    const onProgress = (percent: number) => {
+      patchItem(item.id, { progress: percent });
+    };
 
     try {
       const compressed = await compressImage(item.file);
       const dimensions = await getImageDimensions(item.file);
+      const width = dimensions?.width ?? null;
+      const height = dimensions?.height ?? null;
 
-      const form = new FormData();
-      form.append("files", compressed);
-      form.append(
-        "metadata",
-        JSON.stringify([
-          {
-            filename: item.file.name,
-            width: dimensions?.width ?? null,
-            height: dimensions?.height ?? null,
-          },
-        ]),
-      );
+      // Cloudflare's proxy rejects any request body over ~100MB before it
+      // reaches the backend at all (see chunkedUpload.ts) - anything above
+      // the threshold has to be split into chunks instead of one request.
+      const saved =
+        compressed.size > CHUNK_UPLOAD_THRESHOLD
+          ? await uploadFileChunked(
+              compressed,
+              { width, height },
+              onProgress,
+              controller.signal,
+            )
+          : await (async () => {
+              const form = new FormData();
+              form.append("files", compressed);
+              form.append(
+                "metadata",
+                JSON.stringify([{ filename: item.file.name, width, height }]),
+              );
 
-      const res = await apiService.postWithProgress<UploadResponse>(
-        "/files/upload",
-        form,
-        (percent) => patchItem(item.id, { progress: percent }),
-        controller.signal,
-      );
+              const res = await apiService.postWithProgress<UploadResponse>(
+                "/files/upload",
+                form,
+                onProgress,
+                controller.signal,
+              );
+              return res.files[0];
+            })();
 
-      const saved = res.files[0];
       patchItem(item.id, {
         status: "done",
         progress: 100,
@@ -143,7 +309,7 @@ const GmailFileUploader = ({
     } finally {
       delete controllersRef.current[item.id];
     }
-  };
+  }, [patchItem]);
 
   const openPicker = () => inputRef.current?.click();
 
@@ -182,30 +348,38 @@ const GmailFileUploader = ({
     e.target.value = "";
   };
 
-  const removeItem = (id: string) => {
-    const item = itemsRef.current.find((it) => it.id === id);
+  const removeItem = React.useCallback(
+    (id: string) => {
+      const item = itemsRef.current.find((it) => it.id === id);
 
-    if (item?.status === "uploading") {
-      controllersRef.current[id]?.abort();
-      delete controllersRef.current[id];
-    } else if (item?.status === "done" && item.path) {
-      apiService.delete(`/files/${encodeURIComponent(item.path)}`).catch(() => {});
-    }
+      if (item?.status === "uploading") {
+        controllersRef.current[id]?.abort();
+        delete controllersRef.current[id];
+      } else if (item?.status === "done" && item.path) {
+        apiService.delete(`/files/${encodeURIComponent(item.path)}`).catch(() => {});
+      }
 
-    const next = itemsRef.current.filter((it) => it.id !== id);
-    itemsRef.current = next;
-    onChange?.(next);
-  };
+      const next = itemsRef.current.filter((it) => it.id !== id);
+      itemsRef.current = next;
+      onChange?.(next);
+    },
+    [onChange],
+  );
 
-  const retryItem = (id: string) => {
-    const item = itemsRef.current.find((it) => it.id === id);
-    if (!item) return;
-    patchItem(id, { status: "uploading", progress: 0, errorMessage: undefined });
-    uploadItem({ ...item, status: "uploading", progress: 0 });
-  };
+  const retryItem = React.useCallback(
+    (id: string) => {
+      const item = itemsRef.current.find((it) => it.id === id);
+      if (!item) return;
+      patchItem(id, { status: "uploading", progress: 0, errorMessage: undefined });
+      uploadItem({ ...item, status: "uploading", progress: 0 });
+    },
+    [patchItem, uploadItem],
+  );
 
   const totalSize = items.reduce((sum, it) => sum + it.size, 0);
   const hasErrors = items.some((it) => it.status === "error");
+  const uploadingCount = items.filter((it) => it.status === "uploading").length;
+  const doneCount = items.filter((it) => it.status === "done").length;
 
   const handleOpenDialog = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevents opening the file picker
@@ -372,9 +546,16 @@ const GmailFileUploader = ({
             borderBottom: "1px solid #F1F5F9",
           }}
         >
-          <Typography variant="body2" sx={{ fontWeight: 600, color: "#0F172A", fontSize: "0.9rem" }}>
-            Attached Files ({items.length})
-          </Typography>
+          <Box>
+            <Typography variant="body2" sx={{ fontWeight: 600, color: "#0F172A", fontSize: "0.9rem" }}>
+              Attached Files ({items.length})
+            </Typography>
+            {uploadingCount > 0 && (
+              <Typography variant="caption" sx={{ color: "#64748B", fontSize: "0.7rem" }}>
+                {doneCount} of {items.length} uploaded · {formatFileSize(totalSize)} total
+              </Typography>
+            )}
+          </Box>
           <IconButton size="small" onClick={() => setModalOpen(false)} sx={{ color: "#94A3B8" }}>
             <Close sx={{ fontSize: 18 }} />
           </IconButton>
@@ -394,96 +575,12 @@ const GmailFileUploader = ({
           ) : (
             <Stack spacing={0}>
               {items.map((item) => (
-                <Box
+                <FileRow
                   key={item.id}
-                  sx={{
-                    px: 2,
-                    py: 1.25,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1.5,
-                    "&:hover": { backgroundColor: "#F8FAFC" },
-                    "&:not(:last-child)": { borderBottom: "1px solid #F1F5F9" },
-                  }}
-                >
-                  {item.status === "done" && (
-                    <CheckCircle sx={{ fontSize: 18, color: "#10B981", flexShrink: 0 }} />
-                  )}
-                  {item.status === "error" && (
-                    <ErrorOutline sx={{ fontSize: 18, color: "#EF4444", flexShrink: 0 }} />
-                  )}
-                  {item.status === "uploading" && (
-                    <UploadFile sx={{ fontSize: 18, color: "#64748B", flexShrink: 0 }} />
-                  )}
-
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        color: "#0F172A",
-                        fontWeight: 500,
-                        fontSize: "0.825rem",
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                      }}
-                    >
-                      {item.name}
-                    </Typography>
-
-                    {item.status === "uploading" && (
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 0.5 }}>
-                        <LinearProgress
-                          variant="determinate"
-                          value={item.progress}
-                          sx={{
-                            flex: 1,
-                            height: 3,
-                            borderRadius: 2,
-                            backgroundColor: "#E2E8F0",
-                            "& .MuiLinearProgress-bar": { backgroundColor: "#334155" },
-                          }}
-                        />
-                        <Typography variant="caption" sx={{ color: "#64748B", minWidth: 28, fontSize: "0.7rem" }}>
-                          {Math.round(item.progress)}%
-                        </Typography>
-                      </Box>
-                    )}
-
-                    {item.status === "done" && (
-                      <Typography variant="caption" sx={{ color: "#64748B", fontSize: "0.75rem" }}>
-                        {formatFileSize(item.size)} · Uploaded
-                      </Typography>
-                    )}
-
-                    {item.status === "error" && (
-                      <Typography variant="caption" sx={{ color: "#EF4444", fontSize: "0.75rem" }}>
-                        {item.errorMessage || "Upload failed"}
-                      </Typography>
-                    )}
-                  </Box>
-
-                  {item.status === "error" && (
-                    <IconButton
-                      size="small"
-                      onClick={() => retryItem(item.id)}
-                      sx={{ color: "#64748B", "&:hover": { color: "#0F172A" } }}
-                    >
-                      <Replay sx={{ fontSize: 16 }} />
-                    </IconButton>
-                  )}
-
-                  <IconButton
-                    size="small"
-                    onClick={() => removeItem(item.id)}
-                    sx={{
-                      color: "#94A3B8",
-                      "&:hover": { color: "#EF4444", backgroundColor: "rgba(239, 68, 68, 0.06)" },
-                    }}
-                  >
-                    <Close sx={{ fontSize: 16 }} />
-                  </IconButton>
-                </Box>
+                  item={item}
+                  onRemove={removeItem}
+                  onRetry={retryItem}
+                />
               ))}
             </Stack>
           )}
