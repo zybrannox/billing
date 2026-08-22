@@ -1,7 +1,7 @@
 import type { GridColDef } from "@mui/x-data-grid";
 import CrudActions from "../../ui/Actions";
 import { useProjectStore, type Project } from "../../store/useProjectStore";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Chip from "../../ui/Chip";
 import { semanticChipSx } from "../../ui/chipStyles";
 import { getSemanticColor } from "../../utils/colors";
@@ -23,6 +23,7 @@ import FilterMenu, {
   type FilterFieldDefinition,
 } from "../components/FilterMenu";
 import BulkDeleteButton from "../components/BulkDeleteButton";
+import RefreshButton from "../components/RefreshButton";
 
 const priorityOrder: Record<string, number> = {
   Urgent: 1,
@@ -106,7 +107,29 @@ const Projects = () => {
         flex: 1,
         editable: true,
       },
-      
+      {
+        field: "description",
+        headerName: "Description",
+        flex: 1.5,
+        editable: true,
+        // Already fetched on every project row (see `rows` above) and
+        // already handled by processRowUpdate - this column only needed
+        // adding here, no new data or requests involved.
+        renderCell: ({ value }) => (
+          <span
+            style={{
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              display: "block",
+            }}
+            title={value || undefined}
+          >
+            {value || "—"}
+          </span>
+        ),
+      },
+
       {
         field: "delivery_date",
         headerName: "Delivery Date",
@@ -238,7 +261,10 @@ const Projects = () => {
     setPaginationModel((prev) => (prev.page === 0 ? prev : { ...prev, page: 0 }));
   }, [debouncedSearch, printStatusFilter, priorityFilter, customerFilter]);
 
-  useEffect(() => {
+  // Shared by the auto-refetch effect below and the manual refresh button -
+  // "refresh" means reload whatever the user is currently looking at
+  // (same page, same search/filters), not reset any of it.
+  const loadProjects = useCallback(() => {
     fetchProjects({
       page: paginationModel.page + 1,
       pageSize: paginationModel.pageSize,
@@ -255,6 +281,10 @@ const Projects = () => {
     priorityFilter,
     customerFilter,
   ]);
+
+  useEffect(() => {
+    loadProjects();
+  }, [loadProjects]);
 
   const processRowUpdate = async (newRow: Project, oldRow: Project) => {
     const payload: Partial<Project> = {
@@ -392,6 +422,8 @@ const Projects = () => {
                   setCustomerFilter(undefined);
                 }}
               />
+
+              <RefreshButton onRefresh={loadProjects} loading={projectsLoading} />
 
               {isAdmin && (
                 <BulkDeleteButton

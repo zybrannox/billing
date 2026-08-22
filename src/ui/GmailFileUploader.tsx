@@ -21,7 +21,6 @@ import {
   FolderZipOutlined,
 } from "@mui/icons-material";
 import { apiService } from "../api/service";
-import { compressImage } from "../utils/imageCompression";
 import { getImageDimensions } from "../utils/appSupport";
 import { uploadFileChunked, CHUNK_UPLOAD_THRESHOLD } from "../utils/chunkedUpload";
 
@@ -256,7 +255,18 @@ const GmailFileUploader = ({
     };
 
     try {
-      const compressed = await compressImage(item.file);
+      // Uploads the real file, byte for byte - it used to go through
+      // compressImage first, which re-encoded anything over 500KB as a
+      // resized, quality-0.8 JPEG. That's why a downloaded file could come
+      // back smaller (and lower-fidelity) than what was actually selected:
+      // the compressed copy was the only one ever stored, so there was
+      // nothing left to reconstruct the original from. It bought faster
+      // uploads for large images, but the grid/lightbox previews never
+      // depended on it - they're served from generate_thumbnail's own
+      // server-side, disk-cached thumbnail, generated once from whatever
+      // gets uploaded and unaffected by this either way. Large files are
+      // now handled by chunked upload below instead, so there's no
+      // performance case left for shrinking the stored copy.
       const dimensions = await getImageDimensions(item.file);
       const width = dimensions?.width ?? null;
       const height = dimensions?.height ?? null;
@@ -265,16 +275,16 @@ const GmailFileUploader = ({
       // reaches the backend at all (see chunkedUpload.ts) - anything above
       // the threshold has to be split into chunks instead of one request.
       const saved =
-        compressed.size > CHUNK_UPLOAD_THRESHOLD
+        item.file.size > CHUNK_UPLOAD_THRESHOLD
           ? await uploadFileChunked(
-              compressed,
+              item.file,
               { width, height },
               onProgress,
               controller.signal,
             )
           : await (async () => {
               const form = new FormData();
-              form.append("files", compressed);
+              form.append("files", item.file);
               form.append(
                 "metadata",
                 JSON.stringify([{ filename: item.file.name, width, height }]),

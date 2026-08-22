@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Box,
   Stack,
@@ -6,6 +6,7 @@ import {
   IconButton,
   Tooltip,
   CircularProgress,
+  Checkbox,
   Dialog as MuiDialog,
   useMediaQuery,
   useTheme,
@@ -14,6 +15,8 @@ import {
   FileDownloadRounded,
   Close as CloseIcon,
   CheckCircleRounded,
+  DeleteOutlineRounded,
+  UploadFileRounded,
 } from "@mui/icons-material";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import ArchiveIcon from "@mui/icons-material/Archive";
@@ -27,6 +30,12 @@ import { apiService } from "../../api/service";
 import { GenericDialog } from "../../ui/Dialog";
 import { useDownloadProgressStore } from "../../store/useDownloadProgressStore";
 import { useKeyboardShortcuts } from "../../hooks/useKeyboardShortcuts";
+import { useConfirmDialogStore } from "../../hooks/useconfirmDialogStore";
+import { getImageDimensions } from "../../utils/appSupport";
+import { uploadFileChunked, CHUNK_UPLOAD_THRESHOLD } from "../../utils/chunkedUpload";
+import BulkDeleteButton from "./BulkDeleteButton";
+
+const MAX_FILE_SIZE = 1024 * 1024 * 1024; // 1GB, matches GmailFileUploader
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -86,12 +95,19 @@ const displayName = (f: string | FileObject) =>
  */
 const ProjectFilesList = () => {
   const { selectedProject, refreshProject } = useProjectStore();
+  const { showDialog } = useConfirmDialogStore();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const [downloadProgress, setDownloadProgress] = useState<Record<string, number>>({});
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [viewAllOpen, setViewAllOpen] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [removingPath, setRemovingPath] = useState<string | null>(null);
+  const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
+  const [bulkRemoving, setBulkRemoving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const files = selectedProject?.file_paths ?? [];
   const totalFiles = files.length;
@@ -149,6 +165,152 @@ const ProjectFilesList = () => {
     }
   };
 
+  const openFilePicker = () => fileInputRef.current?.click();
+
+  // Uploads straight to this (already-existing) project - unlike
+  // AddProject's flow, there's no "attach after creation" step needed for
+  // the common case, since the project id already exists here. Large files
+  // still go through the same chunked path (then a single attach call) so
+  // this doesn't quietly regress the >60MB support that already exists
+  // elsewhere - see utils/chunkedUpload.ts for why that split exists.
+  const handleFilesSelected = async (fileList: FileList | null) => {
+    if (!fileList || fileList.length === 0 || !selectedProject) return;
+    const selected = Array.from(fileList);
+
+    const oversized = selected.filter((f) => f.size > MAX_FILE_SIZE);
+    if (oversized.length > 0) {
+      setUploadError(
+        `File limit exceeded: ${oversized.map((f) => f.name).join(", ")} must be under 1GB.`,
+      );
+      return;
+    }
+
+    setUploadError(null);
+    setUploadProgress(0);
+
+    try {
+      const large = selected.filter((f) => f.size > CHUNK_UPLOAD_THRESHOLD);
+      const small = selected.filter((f) => f.size <= CHUNK_UPLOAD_THRESHOLD);
+
+      if (small.length > 0) {
+        const form = new FormData();
+        const metadata: Array<{ filename: string; width: number | null; height: number | null }> = [];
+        for (const file of small) {
+          form.append("files", file);
+          const dims = await getImageDimensions(file);
+          metadata.push({
+            filename: file.name,
+            width: dims?.width ?? null,
+            height: dims?.height ?? null,
+          });
+        }
+        form.append("metadata", JSON.stringify(metadata));
+        await apiService.postWithProgress(
+          `/files/upload/${selectedProject.id}`,
+          form,
+          (percent) => setUploadProgress(percent),
+        );
+      }
+
+      // Uploaded one at a time (not in parallel) - CHUNK_CONCURRENCY inside
+      // uploadFileChunked already saturates the connection per file, so
+      // running several of these concurrently would just contend for the
+      // same bandwidth and backend thread pool for no real gain.
+      for (const file of large) {
+        const dims = await getImageDimensions(file);
+        const controller = new AbortController();
+        const uploaded = await uploadFileChunked(
+          file,
+          { width: dims?.width ?? null, height: dims?.height ?? null },
+          (percent) => setUploadProgress(percent),
+          controller.signal,
+        );
+        await apiService.post(`/files/attach/${selectedProject.id}`, {
+          files: [
+            {
+              path: uploaded.path,
+              original_name: uploaded.original_name,
+              width: uploaded.width,
+              height: uploaded.height,
+            },
+          ],
+        });
+      }
+
+      await refreshProject(selectedProject.id);
+    } catch (err) {
+      console.error("Upload error:", err);
+      setUploadError("Failed to upload one or more files. Please try again.");
+    } finally {
+      setUploadProgress(null);
+    }
+  };
+
+  const handleRemoveFile = (path: string, name: string) => {
+    if (!selectedProject) return;
+    showDialog({
+      title: "Remove file?",
+      description: `"${name}" will be permanently deleted. This can't be undone.`,
+      confirmText: "Remove",
+      isDestructive: true,
+      onConfirm: async () => {
+        setRemovingPath(path);
+        try {
+          await apiService.delete(`/files/${encodeURIComponent(path)}`);
+          await refreshProject(selectedProject.id);
+        } catch (err) {
+          console.error("Remove file error:", err);
+        } finally {
+          setRemovingPath(null);
+        }
+      },
+    });
+  };
+
+  const toggleSelected = (path: string) => {
+    setSelectedPaths((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    setSelectedPaths((prev) =>
+      prev.size === files.length
+        ? new Set()
+        : new Set(files.map((f) => storagePath(f))),
+    );
+  };
+
+  // One request for the whole selection (see POST /files/bulk-delete) -
+  // deliberately not N parallel single-file DELETE calls, which would be
+  // N round trips and N separate DB statements for what's really one
+  // "remove these" operation from the user's point of view.
+  const handleBulkRemove = () => {
+    if (!selectedProject || selectedPaths.size === 0) return;
+    const paths = Array.from(selectedPaths);
+    showDialog({
+      title: `Remove ${paths.length} ${paths.length === 1 ? "file" : "files"}?`,
+      description: "These files will be permanently deleted. This can't be undone.",
+      confirmText: "Remove",
+      isDestructive: true,
+      onConfirm: async () => {
+        setBulkRemoving(true);
+        try {
+          await apiService.post("/files/bulk-delete", { paths });
+          setSelectedPaths(new Set());
+          await refreshProject(selectedProject.id);
+        } catch (err) {
+          console.error("Bulk remove error:", err);
+        } finally {
+          setBulkRemoving(false);
+        }
+      },
+    });
+  };
+
   const openLightbox = (index: number) => {
     setViewAllOpen(false);
     setLightboxIndex(index);
@@ -171,33 +333,102 @@ const ProjectFilesList = () => {
     lightboxIndex !== null,
   );
 
-  if (totalFiles === 0) {
-    return (
-      <Box sx={{ py: 1.5 }}>
+  return (
+    <Box>
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        hidden
+        onChange={(e) => {
+          handleFilesSelected(e.target.files);
+          e.target.value = "";
+        }}
+      />
+
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 0.75 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Typography
+            variant="caption"
+            sx={{
+              fontWeight: 600,
+              color: "#64748B",
+              fontSize: "0.7rem",
+              textTransform: "uppercase",
+              letterSpacing: "0.03em",
+            }}
+          >
+            {totalFiles} {totalFiles === 1 ? "File" : "Files"}
+          </Typography>
+
+          {/* Only the "+N more" overflow chip used to reach this dialog,
+              which meant selecting/removing multiple files was impossible
+              on any project with 4 or fewer - this is always here instead,
+              regardless of count. */}
+          {totalFiles > 0 && (
+            <Typography
+              onClick={(e) => {
+                e.stopPropagation();
+                setViewAllOpen(true);
+              }}
+              sx={{
+                fontSize: "0.7rem",
+                fontWeight: 600,
+                color: "#2563EB",
+                cursor: "pointer",
+                "&:hover": { textDecoration: "underline" },
+              }}
+            >
+              Manage
+            </Typography>
+          )}
+        </Box>
+
+        <Box
+          onClick={(e) => {
+            e.stopPropagation();
+            if (uploadProgress === null) openFilePicker();
+          }}
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 0.5,
+            px: 1,
+            py: 0.375,
+            borderRadius: "6px",
+            cursor: uploadProgress === null ? "pointer" : "default",
+            color: "#2563EB",
+            transition: "background-color 150ms ease-in-out",
+            "&:hover": uploadProgress === null ? { backgroundColor: "#EFF6FF" } : {},
+          }}
+        >
+          {uploadProgress !== null ? (
+            <>
+              <CircularProgress size={13} thickness={5} sx={{ color: "#2563EB" }} />
+              <Typography sx={{ fontSize: "0.7rem", fontWeight: 600 }}>
+                Uploading {uploadProgress}%
+              </Typography>
+            </>
+          ) : (
+            <>
+              <UploadFileRounded sx={{ fontSize: 15 }} />
+              <Typography sx={{ fontSize: "0.7rem", fontWeight: 600 }}>Add files</Typography>
+            </>
+          )}
+        </Box>
+      </Box>
+
+      {uploadError && (
+        <Typography sx={{ fontSize: "0.7rem", color: "#EF4444", mb: 0.75 }}>
+          {uploadError}
+        </Typography>
+      )}
+
+      {totalFiles === 0 ? (
         <Typography variant="body2" sx={{ color: "#94A3B8", fontSize: "0.8125rem" }}>
           No files available in this project
         </Typography>
-      </Box>
-    );
-  }
-
-  return (
-    <Box>
-      <Typography
-        variant="caption"
-        sx={{
-          display: "block",
-          mb: 0.75,
-          fontWeight: 600,
-          color: "#64748B",
-          fontSize: "0.7rem",
-          textTransform: "uppercase",
-          letterSpacing: "0.03em",
-        }}
-      >
-        {totalFiles} {totalFiles === 1 ? "File" : "Files"}
-      </Typography>
-
+      ) : (
       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
         {visibleFiles.map((file) => {
           const path = storagePath(file);
@@ -286,16 +517,62 @@ const ProjectFilesList = () => {
           </Box>
         )}
       </Stack>
+      )}
 
       {/* Full list - only rendered on demand, scoped to a scroll container
           so it stays cheap regardless of how many files the project has. */}
       <GenericDialog
         open={viewAllOpen}
-        onClose={() => setViewAllOpen(false)}
+        onClose={() => {
+          setViewAllOpen(false);
+          setSelectedPaths(new Set());
+        }}
         title={`${totalFiles} ${totalFiles === 1 ? "File" : "Files"}`}
         maxWidth="xs"
         width="26rem"
       >
+        {totalFiles > 0 && (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              mb: 1,
+              px: 0.5,
+            }}
+          >
+            <Box
+              onClick={toggleSelectAll}
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 0.5,
+                cursor: "pointer",
+                userSelect: "none",
+              }}
+            >
+              <Checkbox
+                size="small"
+                checked={selectedPaths.size === files.length}
+                indeterminate={selectedPaths.size > 0 && selectedPaths.size < files.length}
+                sx={{ p: 0.5 }}
+              />
+              <Typography sx={{ fontSize: "0.75rem", color: "#64748B", fontWeight: 500 }}>
+                Select all
+              </Typography>
+            </Box>
+
+            {selectedPaths.size > 0 && (
+              <BulkDeleteButton
+                selectedCount={bulkRemoving ? 0 : selectedPaths.size}
+                onDelete={handleBulkRemove}
+                tooltipTitle={bulkRemoving ? "Removing…" : "Remove selected files"}
+                sx={{ height: 30, width: 30, minWidth: 30 }}
+              />
+            )}
+          </Box>
+        )}
+
         <Stack
           spacing={0.75}
           sx={{
@@ -337,6 +614,15 @@ const ProjectFilesList = () => {
                 }}
               >
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, minWidth: 0, flexGrow: 1 }}>
+                  <Checkbox
+                    size="small"
+                    checked={selectedPaths.has(path)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleSelected(path);
+                    }}
+                    sx={{ p: 0.5, flexShrink: 0 }}
+                  />
                   <Box
                     sx={{
                       width: 32,
@@ -433,6 +719,40 @@ const ProjectFilesList = () => {
                       </IconButton>
                     </Tooltip>
                   )}
+
+                  <Tooltip title="Remove">
+                    <span>
+                      <IconButton
+                        size="small"
+                        disabled={removingPath === path}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveFile(path, name);
+                        }}
+                        sx={{
+                          width: 28,
+                          height: 28,
+                          padding: 0,
+                          ml: 0.5,
+                          backgroundColor: "#F1F5F9",
+                          color: "#94A3B8",
+                          border: "1px solid #E2E8F0",
+                          transition: "all 150ms ease-in-out",
+                          "&:hover": {
+                            backgroundColor: "#FEF2F2",
+                            color: "#EF4444",
+                            borderColor: "#FECACA",
+                          },
+                        }}
+                      >
+                        {removingPath === path ? (
+                          <CircularProgress size={14} thickness={5} sx={{ color: "#94A3B8" }} />
+                        ) : (
+                          <DeleteOutlineRounded sx={{ fontSize: 16 }} />
+                        )}
+                      </IconButton>
+                    </span>
+                  </Tooltip>
                 </Box>
               </Box>
             );
