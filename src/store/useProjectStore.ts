@@ -38,6 +38,9 @@ export interface Project {
   delivered_by?: string | null;
   customer_id?: number | null;
   customer_name?: string | null;
+  // Pinned projects sort to the top of the list server-side (see
+  // GET /projects) - toggled via PATCH /projects/{id}/pin.
+  pinned?: boolean;
 }
 
 export interface ProjectListParams {
@@ -87,6 +90,7 @@ interface ProjectState {
   markDesignCompleted: (id: string) => Promise<void>;
   markPrintCompleted: (id: string) => Promise<void>;
   markDelivered: (id: string) => Promise<void>;
+  togglePinProject: (id: string) => Promise<void>;
 }
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
@@ -240,6 +244,24 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const updated = await apiService.patch<Project>(
       `/projects/${id}/delivered`,
     );
+    const current = get().selectedProject;
+    set((state) => ({
+      selectedProject:
+        current && String(current.id) === String(id) ? updated : current,
+      projects: state.projects.map((p) =>
+        String(p.id) === String(id) ? updated : p,
+      ),
+    }));
+  },
+
+  // Updates the row in place for instant feedback (pin icon flips right
+  // away), but pin also changes sort order server-side - the caller
+  // (Projects.tsx) follows this with a real refetch of the current page so
+  // the row actually moves to/from the top instead of just showing a
+  // pinned icon in its old position until some unrelated action happens
+  // to reload the list.
+  togglePinProject: async (id) => {
+    const updated = await apiService.patch<Project>(`/projects/${id}/pin`);
     const current = get().selectedProject;
     set((state) => ({
       selectedProject:

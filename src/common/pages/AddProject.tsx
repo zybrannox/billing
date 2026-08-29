@@ -3,6 +3,7 @@ import { addProjectFields } from "../../config/common";
 import { useApiRequest } from "../../hooks/useApiRequest";
 import { useDialogStore } from "../../store/useDialogStore";
 import { useAppStore } from "../../store/useAppStore";
+import { useListOptionsStore } from "../../store/useListOptionsStore";
 import { apiService } from "../../api/service";
 import CustomForm from "../components/CustomForm";
 import type { UploadItem } from "../../ui/GmailFileUploader";
@@ -14,6 +15,22 @@ export default function AddProject() {
   const { user } = useAppStore();
   const imagesRef = useRef<UploadItem[]>([]);
   const submittedRef = useRef(false);
+
+  // Project Type's options now live in the admin-managed list_options table
+  // (see admin/pages/SystemSetup.tsx) instead of the hardcoded array in
+  // config/common.ts - fetched once and cached (see useListOptionsStore),
+  // not re-fetched every time this dialog opens. The hardcoded array stays
+  // as the field's default `options` below so the form still renders
+  // correctly for the brief moment before this fetch resolves, rather than
+  // showing an empty dropdown.
+  const fetchActiveOptions = useListOptionsStore((s) => s.fetchActiveOptions);
+  const projectTypeOptions = useListOptionsStore(
+    (s) => s.activeByCategory["project_type"],
+  );
+
+  useEffect(() => {
+    fetchActiveOptions("project_type");
+  }, [fetchActiveOptions]);
 
   useEffect(() => {
     return () => {
@@ -34,9 +51,15 @@ export default function AddProject() {
   // username there 422s and the field would show blank. initialOption
   // hands it an already-resolved option so it never needs that lookup.
   const fields = useMemo(() => {
-    if (user?.role === "admin") return addProjectFields;
+    const withLiveProjectTypes = addProjectFields.map((field) =>
+      field.name === "project_type" && projectTypeOptions?.length
+        ? { ...field, options: projectTypeOptions.map((o) => o.value) }
+        : field,
+    );
 
-    return addProjectFields.map((field) =>
+    if (user?.role === "admin") return withLiveProjectTypes;
+
+    return withLiveProjectTypes.map((field) =>
       field.name === "assigned_to"
         ? {
             ...field,
@@ -46,7 +69,7 @@ export default function AddProject() {
           }
         : field,
     );
-  }, [user]);
+  }, [user, projectTypeOptions]);
 
   const handleSubmit = async (formData: any) => {
     const { images, ...rest } = formData;

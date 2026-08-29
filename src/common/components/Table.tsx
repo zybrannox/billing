@@ -261,14 +261,31 @@ const gridSx = React.useMemo(
       },
 
     // Status indicator rows
+    // Went 0.05 -> 0.14 first pass, still read as barely-there. Pushed
+    // further into clearly-saturated territory - still light enough for
+    // the default dark slate cell text to stay comfortably readable on
+    // top, verified against the actual rendered rows, not just picked
+    // blind.
     "& .MuiDataGrid-row.row-print-completed": {
-      backgroundColor: "rgba(16, 185, 129, 0.05)",
+      backgroundColor: "rgba(16, 185, 129, 0.32)",
     },
     "& .MuiDataGrid-row.row-print-completed:hover": {
-      backgroundColor: "rgba(16, 185, 129, 0.1)",
+      backgroundColor: "rgba(16, 185, 129, 0.4)",
     },
     "& .MuiDataGrid-row.row-print-completed.Mui-selected": {
-      backgroundColor: "rgba(16, 185, 129, 0.15)",
+      backgroundColor: "rgba(16, 185, 129, 0.48)",
+    },
+
+    // Pinned rows - amber, matching the pin action icon's color so the row
+    // tint and the icon that toggled it read as the same signal.
+    "& .MuiDataGrid-row.row-pinned": {
+      backgroundColor: "rgba(180, 83, 9, 0.28)",
+    },
+    "& .MuiDataGrid-row.row-pinned:hover": {
+      backgroundColor: "rgba(180, 83, 9, 0.36)",
+    },
+    "& .MuiDataGrid-row.row-pinned.Mui-selected": {
+      backgroundColor: "rgba(180, 83, 9, 0.44)",
     },
 
     // Accordion detail-panel row (see renderDetailPanel) - a plain content

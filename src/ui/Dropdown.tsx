@@ -280,6 +280,10 @@ export default function Dropdown({
               ...params.InputProps,
               readOnly: !multiple && !freeSolo,
             }}
+            inputProps={{
+              ...params.inputProps,
+              readOnly: !multiple && !freeSolo,
+            }}
             sx={{
               "& .MuiInputBase-input::placeholder": {
                 color: "text.secondary",

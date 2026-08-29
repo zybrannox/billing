@@ -77,10 +77,12 @@ const Projects = () => {
   const fetchProjects = useProjectStore((s) => s.fetchProjects);
   const {
     updateProject,
+    deleteProject,
     deleteProjects,
     markDesignCompleted,
     markPrintCompleted,
     markDelivered,
+    togglePinProject,
   } = useProjectStore();
 
   const columns: GridColDef[] = useMemo(
@@ -93,7 +95,9 @@ const Projects = () => {
         // Editing which customer a project belongs to needs the same
         // search-driven picker as the create form, not a plain text edit -
         // out of scope here, this column is display-only.
-        renderCell: ({ value }) => value || "—",
+        renderCell: ({ value }) => (
+          <span style={{ fontWeight: 600 }}>{value || "—"}</span>
+        ),
       },
       {
         field: "assigned_to",
@@ -122,6 +126,7 @@ const Projects = () => {
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
               display: "block",
+              fontWeight: 600,
             }}
             title={value || undefined}
           >
@@ -230,6 +235,7 @@ const Projects = () => {
       delivered_at: p.delivered_at,
       delivered_by: p.delivered_by,
       customer_name: p.customer_name,
+      pinned: p.pinned,
     }));
   }, [projects]);
 
@@ -360,6 +366,20 @@ const Projects = () => {
     });
   };
 
+  const handleDeleteProject = async (id: string | number) => {
+    await deleteProject(String(id));
+    loadProjects();
+  };
+
+  // Pin/unpin also changes sort order (pinned projects sort first - see
+  // GET /projects), not just the icon's own state, so this refetches the
+  // current page afterward the same way delete does, rather than leaving
+  // the row showing pinned but stuck in its old position.
+  const handleTogglePin = async (id: string | number) => {
+    await togglePinProject(String(id));
+    loadProjects();
+  };
+
   const handleBulkDelete = () => {
     showDialog({
       title: "Delete Selected?",
@@ -371,6 +391,7 @@ const Projects = () => {
           setLoading(true);
           await deleteProjects(selectedIds);
           setSelectedIds([]);
+          loadProjects();
           closeDialog();
         } finally {
           setLoading(false);
@@ -400,7 +421,7 @@ const Projects = () => {
               <TableSearchBar
                 value={searchInput}
                 onChange={setSearchInput}
-                placeholder="Search projects..."
+                placeholder="Search projects or customers..."
                 sx={{ flex: 1, minWidth: 0 }}
               />
 
@@ -463,6 +484,7 @@ const Projects = () => {
             processRowUpdate={processRowUpdate}
             getRowClassName={getRowClassName}
             checkboxSelection={isAdmin}
+            onDelete={handleDeleteProject}
             renderActions={(params, handlers) => [
               <CrudActions
                 key="crud"
@@ -470,9 +492,12 @@ const Projects = () => {
                 download
                 delete
                 info
+                pin
                 invoice={isAdmin}
                 orderMilestones
                 data={params.row}
+                isPinned={!!params.row.pinned}
+                onTogglePin={() => handleTogglePin(params.row.id)}
                 onEdit={handlers.edit}
                 onDelete={handlers.delete}
                 onDownload={handlers.download}

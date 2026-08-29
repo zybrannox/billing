@@ -24,10 +24,6 @@ export interface GenericDialogProps {
   children?: React.ReactNode;
   maxWidth?: "xs" | "sm" | "md" | "lg" | "xl" | false;
   fullWidth?: boolean;
-  // Overrides the paper's width outright, bypassing the maxWidth/fullWidth
-  // breakpoint sizing below - for content that doesn't map to a form-sized
-  // dialog (e.g. a short confirm message, which looks lost/oversized at a
-  // full breakpoint width but cramped when left to shrink to content).
   width?: string | number;
 }
 
@@ -55,7 +51,8 @@ export function GenericDialog({
   width,
 }: GenericDialogProps) {
   const theme = useTheme();
-  const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
+  const isSmallScreen = useMediaQuery(theme.breakpoints.down("sm"));
+  const fullScreen = isSmallScreen && !width;
 
   return (
     <MuiDialog
@@ -162,12 +159,6 @@ export function GenericDialog({
         sx={{
           px: 3.5,
           pb: 3,
-          // MUI's DialogContent ships a built-in
-          // ".MuiDialogTitle-root + .MuiDialogContent-root { padding-top: 0 }"
-          // rule (two chained classes) that otherwise beats a plain "py"
-          // here (one class) regardless of source order, so content sits
-          // flush against the header's bottom border instead of having
-          // breathing room under it.
           pt: "24px !important",
           color: "text.primary",
           display: "flex",

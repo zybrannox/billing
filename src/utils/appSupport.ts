@@ -27,6 +27,13 @@ export function formatFileSize(bytes: number) {
 }
 
 export const getRowClassName = (params: GridRowClassNameParams) => {
+  // Pinned takes precedence when both apply - it's a deliberate, less
+  // common action, so it should stay visually obvious even on an
+  // otherwise-completed row rather than being silently overridden by the
+  // (much more common, longer-lived) completed-row tint.
+  if (params.row.pinned) {
+    return "row-pinned";
+  }
   if (params.row.print_status === "Completed") {
     return "row-print-completed";
   }

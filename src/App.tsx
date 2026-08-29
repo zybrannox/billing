@@ -18,6 +18,7 @@ import Projects from "./common/pages/Projects";
 import Customers from "./admin/pages/Customers";
 import Billing from "./admin/pages/Billing";
 import InvoiceView from "./admin/pages/InvoiceView";
+import SystemSetup from "./admin/pages/SystemSetup";
 import ProtectedRoute from "./common/components/auth/ProtectedRoute";
 import Login from "./common/components/auth/Login";
 import ErrorBoundary from "./common/components/ErrorBoundary";
@@ -84,6 +85,7 @@ function App() {
                 <Route path="employees" element={<Employee />} />
                 <Route path="employees/new" element={<AddEmployee />} />
                 <Route path="billing" element={<Billing />} />
+                <Route path="system-setup" element={<SystemSetup />} />
               </Route>
               {/* Rendered outside AdminLayout - a full-page printable
                   document shouldn't include the sidebar/app chrome. TODO */}

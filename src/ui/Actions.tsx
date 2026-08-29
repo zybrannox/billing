@@ -26,6 +26,8 @@ import {
   VisibilityRounded,
   ReceiptLongRounded,
   VpnKeyRounded,
+  PushPinRounded,
+  PushPinOutlined,
 } from "@mui/icons-material";
 import { formatDateTime } from "../utils/dateFormatter";
 
@@ -44,6 +46,7 @@ interface CrudActionsProps {
   invoice?: boolean;
   orderMilestones?: boolean;
   changePassword?: boolean;
+  pin?: boolean;
   data?: any;
 
   onEdit?: () => void;
@@ -56,8 +59,10 @@ interface CrudActionsProps {
   onMarkPrintCompleted?: () => void;
   onMarkDelivered?: () => void;
   onChangePassword?: () => void;
+  onTogglePin?: () => void;
 
   isActive?: boolean;
+  isPinned?: boolean;
   size?: "small" | "medium";
   designCompletedMeta?: MilestoneMeta | null;
   printCompletedMeta?: MilestoneMeta | null;
@@ -168,6 +173,7 @@ const CrudActions = ({
   invoice = false,
   orderMilestones = false,
   changePassword = false,
+  pin = false,
   data,
 
   onEdit,
@@ -180,8 +186,10 @@ const CrudActions = ({
   onMarkPrintCompleted,
   onMarkDelivered,
   onChangePassword,
+  onTogglePin,
 
   isActive = false,
+  isPinned = false,
   size = "small",
   designCompletedMeta,
   printCompletedMeta,
@@ -230,6 +238,36 @@ const CrudActions = ({
       },
     },
   };
+
+  const pinButton = pin && (
+    <Tooltip title={isPinned ? "Unpin" : "Pin to top"}>
+      <IconButton
+        size={size}
+        onClick={onTogglePin}
+        sx={{
+          ...actionIconSx,
+          color: isPinned ? "#B45309" : "#94A3B8",
+          backgroundColor: isPinned
+            ? "rgba(180, 83, 9, 0.1)"
+            : "rgba(148, 163, 184, 0.08)",
+          border: `1px solid ${
+            isPinned ? "rgba(180, 83, 9, 0.25)" : "rgba(148, 163, 184, 0.18)"
+          }`,
+          "&:hover": {
+            backgroundColor: isPinned
+              ? "rgba(180, 83, 9, 0.18)"
+              : "rgba(148, 163, 184, 0.15)",
+          },
+        }}
+      >
+        {isPinned ? (
+          <PushPinRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
+        ) : (
+          <PushPinOutlined sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
+        )}
+      </IconButton>
+    </Tooltip>
+  );
 
   const milestoneButtons = orderMilestones && (
     <>
@@ -376,6 +414,7 @@ const CrudActions = ({
 
     return (
       <Box sx={{ display: "inline-flex", gap: 0.75, alignItems: "center" }}>
+        {pinButton}
         {milestoneButtons}
 
         {hasMoreActions && (
@@ -504,6 +543,8 @@ const CrudActions = ({
 
   return (
     <Box sx={{ display: "inline-flex", gap: 0.625, alignItems: "center" }}>
+      {pinButton}
+
       {download && (
         <Tooltip title="Download">
           <IconButton
