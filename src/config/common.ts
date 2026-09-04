@@ -18,7 +18,11 @@ export const addProjectFields: FieldDefinition[] = [
     required: true,
     row: 1,
     asyncEndpoint: "/customers",
-    asyncExtraParams: { limit: 20 },
+    // "most_used" surfaces customers with the most existing projects first,
+    // so users can click a frequent customer instead of hunting through an
+    // alphabetical list. Opt-in on this field only - the backend defaults to
+    // alphabetical ("name") for every other /customers caller.
+    asyncExtraParams: { limit: 20, sort: "most_used" },
     getOptionLabel: (c) => `${c.first_name} ${c.last_name}`,
     getOptionValue: (c) => c.id,
   },
@@ -114,25 +118,6 @@ export const addProjectFields: FieldDefinition[] = [
     row: 1,
   },
 
-];
-
-export const generateInvoiceFields: FieldDefinition[] = [
-  {
-    name: "amount",
-    label: "Amount (₹)",
-    type: "number",
-    required: true,
-    min: 0,
-    placeholder: "Enter invoice amount",
-    row: 1,
-  },
-  {
-    name: "due_date",
-    label: "Due Date",
-    type: "date_time",
-    required: false,
-    row: 1,
-  },
 ];
 
 export const addCustomerFields: FieldDefinition[] = [

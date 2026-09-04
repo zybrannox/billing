@@ -17,7 +17,17 @@ export type EditingType =
   | "certificate"
   | "project"
   | "customer"
-  | "invoice"
+  // Opened from the "Design completed" row action (see GenerateInvoice.tsx)
+  // - the standalone "Invoice" menu action was removed, since generating an
+  // invoice from this flow also marks the design done, replacing that
+  // action's old plain confirm dialog entirely rather than being a second,
+  // redundant way to invoice.
+  | "invoiceDesignComplete"
+  // Opened from the "Deliver" row action (see DeliveryCheck.tsx) - shows
+  // the order's full line-item/payment breakdown instead of a plain
+  // "are you sure?" confirm, and is itself the gate on payment being
+  // complete before delivery is allowed.
+  | "deliveryCheck"
   | "changePassword"
   | null;
 

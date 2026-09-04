@@ -90,6 +90,8 @@ export default function AddProject() {
         original_name: item.name,
         width: item.width ?? null,
         height: item.height ?? null,
+        pixel_width: item.pixelWidth ?? null,
+        pixel_height: item.pixelHeight ?? null,
       }));
 
     try {

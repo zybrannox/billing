@@ -27,6 +27,8 @@ interface CompleteResponse {
   original_name: string;
   width: number | null;
   height: number | null;
+  pixel_width: number | null;
+  pixel_height: number | null;
 }
 
 /**
@@ -37,7 +39,7 @@ interface CompleteResponse {
  */
 export async function uploadFileChunked(
   file: File,
-  metadata: { width: number | null; height: number | null },
+  metadata: { width: number | null; height: number | null; pixelWidth: number | null; pixelHeight: number | null },
   onProgress: (percent: number) => void,
   signal: AbortSignal,
 ): Promise<CompleteResponse> {
@@ -100,5 +102,7 @@ export async function uploadFileChunked(
     filename: file.name,
     width: metadata.width,
     height: metadata.height,
+    pixel_width: metadata.pixelWidth,
+    pixel_height: metadata.pixelHeight,
   });
 }

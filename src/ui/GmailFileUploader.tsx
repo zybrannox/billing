@@ -34,6 +34,8 @@ export interface UploadItem {
   path?: string;
   width?: number | null;
   height?: number | null;
+  pixelWidth?: number | null;
+  pixelHeight?: number | null;
   errorMessage?: string;
 }
 
@@ -43,6 +45,8 @@ interface UploadResponse {
     original_name: string;
     width: number | null;
     height: number | null;
+    pixel_width: number | null;
+    pixel_height: number | null;
   }>;
 }
 
@@ -270,6 +274,8 @@ const GmailFileUploader = ({
       const dimensions = await getImageDimensions(item.file);
       const width = dimensions?.width ?? null;
       const height = dimensions?.height ?? null;
+      const pixelWidth = dimensions?.pixelWidth ?? null;
+      const pixelHeight = dimensions?.pixelHeight ?? null;
 
       // Cloudflare's proxy rejects any request body over ~100MB before it
       // reaches the backend at all (see chunkedUpload.ts) - anything above
@@ -278,7 +284,7 @@ const GmailFileUploader = ({
         item.file.size > CHUNK_UPLOAD_THRESHOLD
           ? await uploadFileChunked(
               item.file,
-              { width, height },
+              { width, height, pixelWidth, pixelHeight },
               onProgress,
               controller.signal,
             )
@@ -287,7 +293,15 @@ const GmailFileUploader = ({
               form.append("files", item.file);
               form.append(
                 "metadata",
-                JSON.stringify([{ filename: item.file.name, width, height }]),
+                JSON.stringify([
+                  {
+                    filename: item.file.name,
+                    width,
+                    height,
+                    pixel_width: pixelWidth,
+                    pixel_height: pixelHeight,
+                  },
+                ]),
               );
 
               const res = await apiService.postWithProgress<UploadResponse>(
@@ -305,6 +319,8 @@ const GmailFileUploader = ({
         path: saved.path,
         width: saved.width,
         height: saved.height,
+        pixelWidth: saved.pixel_width,
+        pixelHeight: saved.pixel_height,
       });
     } catch (err: any) {
       const wasCancelled =

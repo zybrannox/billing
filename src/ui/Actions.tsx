@@ -20,11 +20,11 @@ import {
   LocalShippingRounded,
   LocalPrintshopRounded,
   CheckCircleRounded,
+  CancelRounded,
   MoreVertRounded,
   DownloadForOfflineRounded,
   InfoRounded,
   VisibilityRounded,
-  ReceiptLongRounded,
   VpnKeyRounded,
   PushPinRounded,
   PushPinOutlined,
@@ -43,10 +43,13 @@ interface CrudActionsProps {
   download?: boolean;
   info?: boolean;
   preview?: boolean;
-  invoice?: boolean;
   orderMilestones?: boolean;
   changePassword?: boolean;
   pin?: boolean;
+  // Billing row actions - View/Mark Paid/Cancel for one invoice.
+  viewInvoice?: boolean;
+  markPaid?: boolean;
+  cancelInvoice?: boolean;
   data?: any;
 
   onEdit?: () => void;
@@ -54,12 +57,14 @@ interface CrudActionsProps {
   onToggle?: () => void;
   onDownload?: () => void;
   onPreview?: () => void;
-  onGenerateInvoice?: () => void;
   onMarkDesignCompleted?: () => void;
   onMarkPrintCompleted?: () => void;
   onMarkDelivered?: () => void;
   onChangePassword?: () => void;
   onTogglePin?: () => void;
+  onViewInvoice?: () => void;
+  onMarkPaid?: () => void;
+  onCancelInvoice?: () => void;
 
   isActive?: boolean;
   isPinned?: boolean;
@@ -70,6 +75,9 @@ interface CrudActionsProps {
   // Delivery also requires print_status === "Completed" - passed straight
   // from the row rather than duplicated as another boolean prop.
   printStatus?: string;
+  // Drives markPaid/cancelInvoice's disabled state - "paid" disables
+  // Mark Paid, anything but "pending" disables Cancel.
+  invoiceStatus?: string;
 }
 
 const ProjectDetailsTooltip = ({ data }: { data: any }) => (
@@ -170,10 +178,12 @@ const CrudActions = ({
   download = false,
   info = false,
   preview = false,
-  invoice = false,
   orderMilestones = false,
   changePassword = false,
   pin = false,
+  viewInvoice = false,
+  markPaid = false,
+  cancelInvoice = false,
   data,
 
   onEdit,
@@ -181,12 +191,14 @@ const CrudActions = ({
   onToggle,
   onDownload,
   onPreview,
-  onGenerateInvoice,
   onMarkDesignCompleted,
   onMarkPrintCompleted,
   onMarkDelivered,
   onChangePassword,
   onTogglePin,
+  onViewInvoice,
+  onMarkPaid,
+  onCancelInvoice,
 
   isActive = false,
   isPinned = false,
@@ -195,6 +207,7 @@ const CrudActions = ({
   printCompletedMeta,
   deliveredMeta,
   printStatus,
+  invoiceStatus,
 }: CrudActionsProps) => {
   const isDesignCompleted = !!designCompletedMeta;
   const isPrintCompleted = printStatus === "Completed";
@@ -246,17 +259,25 @@ const CrudActions = ({
         onClick={onTogglePin}
         sx={{
           ...actionIconSx,
-          color: isPinned ? "#B45309" : "#94A3B8",
+          // Pinned = yellow. Unpinned deliberately uses a different
+          // neutral than the milestone buttons' "not yet actionable" gray
+          // (#94A3B8 / rgba(148,163,184,...) - see the print/deliver
+          // buttons below) even though both read as "gray" - those two
+          // are genuinely different states (pin is always clickable, a
+          // toggle; a grayed-out milestone button is disabled). This
+          // borrows the app's other neutral resting tone (the "More
+          // actions" button's own default color) instead.
+          color: isPinned ? "#CA8A04" : "#64748B",
           backgroundColor: isPinned
-            ? "rgba(180, 83, 9, 0.1)"
-            : "rgba(148, 163, 184, 0.08)",
+            ? "rgba(202, 138, 4, 0.12)"
+            : "rgba(100, 116, 139, 0.06)",
           border: `1px solid ${
-            isPinned ? "rgba(180, 83, 9, 0.25)" : "rgba(148, 163, 184, 0.18)"
+            isPinned ? "rgba(202, 138, 4, 0.3)" : "rgba(100, 116, 139, 0.15)"
           }`,
           "&:hover": {
             backgroundColor: isPinned
-              ? "rgba(180, 83, 9, 0.18)"
-              : "rgba(148, 163, 184, 0.15)",
+              ? "rgba(202, 138, 4, 0.2)"
+              : "rgba(100, 116, 139, 0.12)",
           },
         }}
       >
@@ -321,27 +342,31 @@ const CrudActions = ({
             disabled={isPrintCompleted || !canCompletePrint}
             sx={{
               ...actionIconSx,
+              // Print = orange when actionable, distinct from Pin's
+              // yellow even though both are warm hues - Design (indigo)
+              // and Deliver (blue) already each have their own color for
+              // this same "actionable" state, so print keeps its own too.
               color: isPrintCompleted
                 ? "#059669"
                 : canCompletePrint
-                ? "#D97706"
+                ? "#EA580C"
                 : "#94A3B8",
               backgroundColor: isPrintCompleted
                 ? "rgba(16, 185, 129, 0.08)"
                 : canCompletePrint
-                ? "rgba(217, 119, 6, 0.08)"
+                ? "rgba(234, 88, 12, 0.08)"
                 : "rgba(148, 163, 184, 0.08)",
               border: `1px solid ${
                 isPrintCompleted
                   ? "rgba(16, 185, 129, 0.2)"
                   : canCompletePrint
-                  ? "rgba(217, 119, 6, 0.2)"
+                  ? "rgba(234, 88, 12, 0.2)"
                   : "rgba(148, 163, 184, 0.18)"
               }`,
               "&:hover": {
                 backgroundColor: isPrintCompleted
                   ? "rgba(16, 185, 129, 0.15)"
-                  : "rgba(217, 119, 6, 0.15)",
+                  : "rgba(234, 88, 12, 0.15)",
               },
               "&.Mui-disabled": { opacity: isPrintCompleted ? 0.95 : 0.45 },
             }}
@@ -410,7 +435,7 @@ const CrudActions = ({
   );
 
   if (orderMilestones) {
-    const hasMoreActions = download || invoice || preview || edit || del || info || toggle;
+    const hasMoreActions = download || preview || edit || del || info || toggle;
 
     return (
       <Box sx={{ display: "inline-flex", gap: 0.75, alignItems: "center" }}>
@@ -461,16 +486,6 @@ const CrudActions = ({
                   </ListItemIcon>
                   <ListItemText primaryTypographyProps={{ fontSize: "0.8125rem", fontWeight: 500 }}>
                     Download All
-                  </ListItemText>
-                </MenuItem>
-              )}
-              {invoice && (
-                <MenuItem onClick={runAndClose(onGenerateInvoice)} sx={{ py: 0.875 }}>
-                  <ListItemIcon>
-                    <ReceiptLongRounded fontSize="small" sx={{ color: "#059669" }} />
-                  </ListItemIcon>
-                  <ListItemText primaryTypographyProps={{ fontSize: "0.8125rem", fontWeight: 500 }}>
-                    Invoice
                   </ListItemText>
                 </MenuItem>
               )}
@@ -579,20 +594,74 @@ const CrudActions = ({
         </Tooltip>
       )}
 
-      {invoice && (
-        <Tooltip title="Generate Invoice">
+      {viewInvoice && (
+        <Tooltip title="View Invoice">
           <IconButton
             size={size}
-            onClick={onGenerateInvoice}
+            onClick={onViewInvoice}
             sx={{
               ...actionIconSx,
-              color: "#059669",
-              backgroundColor: "rgba(5, 150, 105, 0.06)",
-              "&:hover": { backgroundColor: "rgba(5, 150, 105, 0.12)" },
+              color: "#6366F1",
+              backgroundColor: "rgba(99, 102, 241, 0.06)",
+              "&:hover": { backgroundColor: "rgba(99, 102, 241, 0.12)" },
             }}
           >
-            <ReceiptLongRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
+            <VisibilityRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
           </IconButton>
+        </Tooltip>
+      )}
+
+      {markPaid && (
+        <Tooltip
+          title={
+            invoiceStatus === "paid"
+              ? "Already paid"
+              : invoiceStatus === "cancelled"
+                ? "Cancelled invoices can't be marked paid"
+                : "Mark as Paid"
+          }
+        >
+          <span>
+            <IconButton
+              size={size}
+              onClick={onMarkPaid}
+              // Pending is the only status either action can act on - once
+              // an invoice is paid or cancelled, it's a terminal state (see
+              // service_update's own enforcement of the same rule server-
+              // side, so this isn't just a client-side nicety).
+              disabled={invoiceStatus !== "pending"}
+              sx={{
+                ...actionIconSx,
+                color: "#059669",
+                backgroundColor: "rgba(5, 150, 105, 0.06)",
+                "&:hover": { backgroundColor: "rgba(5, 150, 105, 0.12)" },
+                "&.Mui-disabled": { opacity: 0.4 },
+              }}
+            >
+              <CheckCircleRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
+            </IconButton>
+          </span>
+        </Tooltip>
+      )}
+
+      {cancelInvoice && (
+        <Tooltip title={invoiceStatus !== "pending" ? "Only pending invoices can be cancelled" : "Cancel Invoice"}>
+          <span>
+            <IconButton
+              size={size}
+              onClick={onCancelInvoice}
+              disabled={invoiceStatus !== "pending"}
+              sx={{
+                ...actionIconSx,
+                color: "#E11D48",
+                backgroundColor: "rgba(225, 29, 72, 0.06)",
+                "&:hover": { backgroundColor: "rgba(225, 29, 72, 0.12)" },
+                "&.Mui-disabled": { opacity: 0.4 },
+              }}
+            >
+              <CancelRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
+            </IconButton>
+          </span>
         </Tooltip>
       )}
 

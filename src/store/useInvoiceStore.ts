@@ -5,15 +5,28 @@ export interface Invoice {
   id: number;
   project_id: number;
   invoice_number: string;
+  subtotal: number;
+  discount_amount: number;
   amount: number;
   status: "pending" | "paid" | "cancelled";
   created_at: string;
   due_date: string | null;
+  // Advance payment - recorded manually (no payment gateway). 0/null mean
+  // nothing's been recorded yet.
+  advance_amount: number;
+  payment_method: string | null;
+  payment_reference: string | null;
+  balance_due: number;
+  // Otherwise the Billing list shows nothing but an auto-numbered
+  // INV-2026-XXXXX with no way to tell whose order it is.
+  customer_name: string | null;
+  project_type: string | null;
 }
 
 export interface InvoiceListParams {
   page?: number;
   pageSize?: number;
+  search?: string;
 }
 
 interface InvoiceListResponse {
@@ -35,14 +48,15 @@ interface InvoiceState {
    * fetched every invoice unpaginated; billing history only ever grows, so
    * that response got slower and larger forever instead of staying flat. */
   fetchInvoices: (params?: InvoiceListParams) => Promise<void>;
-  addInvoice: (
-    data: Omit<Invoice, "id" | "created_at" | "invoice_number">,
-  ) => Promise<Invoice>;
+  // Invoice creation lives in common/pages/GenerateInvoice.tsx (line-item
+  // based, POST /invoices/ called directly - see that file) rather than
+  // through this store, since the payload is a project_id + items array,
+  // not a flat Invoice shape this store's other methods operate on.
   updateInvoice: (id: number, data: Partial<Invoice>) => Promise<void>;
   deleteInvoice: (id: number) => Promise<void>;
 }
 
-export const useInvoiceStore = create<InvoiceState>((set, get) => ({
+export const useInvoiceStore = create<InvoiceState>((set) => ({
   invoices: [],
   invoicesTotal: 0,
   invoicesPage: 1,
@@ -57,6 +71,7 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
         params: {
           page: params.page ?? 1,
           page_size: params.pageSize ?? 20,
+          search: params.search || undefined,
         },
       });
       set({
@@ -69,24 +84,6 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
     } finally {
       set({ invoicesLoading: false });
     }
-  },
-
-  addInvoice: async (data) => {
-    const newInvoice = await apiService.post<Invoice>("/invoices", data);
-    // Re-fetch the current page rather than appending locally - a new
-    // invoice may not belong on the page the user is currently viewing
-    // (sorted newest-first, so it usually lands on page 1). The invoice
-    // itself is already created at this point, so a refetch hiccup here
-    // shouldn't surface as "creating the invoice failed" to the caller.
-    try {
-      await get().fetchInvoices({
-        page: get().invoicesPage,
-        pageSize: get().invoicesPageSize,
-      });
-    } catch (err) {
-      console.error("Failed to refresh invoice list after creating invoice", err);
-    }
-    return newInvoice;
   },
 
   updateInvoice: async (id, data) => {

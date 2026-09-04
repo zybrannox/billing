@@ -194,7 +194,13 @@ const ProjectFilesList = () => {
 
       if (small.length > 0) {
         const form = new FormData();
-        const metadata: Array<{ filename: string; width: number | null; height: number | null }> = [];
+        const metadata: Array<{
+          filename: string;
+          width: number | null;
+          height: number | null;
+          pixel_width: number | null;
+          pixel_height: number | null;
+        }> = [];
         for (const file of small) {
           form.append("files", file);
           const dims = await getImageDimensions(file);
@@ -202,6 +208,8 @@ const ProjectFilesList = () => {
             filename: file.name,
             width: dims?.width ?? null,
             height: dims?.height ?? null,
+            pixel_width: dims?.pixelWidth ?? null,
+            pixel_height: dims?.pixelHeight ?? null,
           });
         }
         form.append("metadata", JSON.stringify(metadata));
@@ -221,7 +229,12 @@ const ProjectFilesList = () => {
         const controller = new AbortController();
         const uploaded = await uploadFileChunked(
           file,
-          { width: dims?.width ?? null, height: dims?.height ?? null },
+          {
+            width: dims?.width ?? null,
+            height: dims?.height ?? null,
+            pixelWidth: dims?.pixelWidth ?? null,
+            pixelHeight: dims?.pixelHeight ?? null,
+          },
           (percent) => setUploadProgress(percent),
           controller.signal,
         );
@@ -232,6 +245,8 @@ const ProjectFilesList = () => {
               original_name: uploaded.original_name,
               width: uploaded.width,
               height: uploaded.height,
+              pixel_width: uploaded.pixel_width,
+              pixel_height: uploaded.pixel_height,
             },
           ],
         });

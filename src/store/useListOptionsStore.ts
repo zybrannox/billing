@@ -8,6 +8,9 @@ export interface ListOption {
   sort_order: number;
   is_active: boolean;
   created_at: string;
+  // Only set for pricing categories ("item_type" - the invoice line-item
+  // catalog, see GenerateInvoice.tsx). Null everywhere else.
+  rate: number | null;
 }
 
 interface ListOptionsState {
@@ -27,7 +30,7 @@ interface ListOptionsState {
   // Every option (active + deactivated) for the admin System Setup screen,
   // so a previously-removed value can still be found and reactivated.
   fetchAllOptions: (category: string, force?: boolean) => Promise<ListOption[]>;
-  addOption: (category: string, value: string) => Promise<ListOption>;
+  addOption: (category: string, value: string, rate?: number) => Promise<ListOption>;
   setOptionActive: (id: number, category: string, isActive: boolean) => Promise<void>;
 }
 
@@ -72,10 +75,11 @@ export const useListOptionsStore = create<ListOptionsState>((set, get) => ({
   // an existing deactivated row instead of inserting one (see backend
   // create_option), so a local splice could easily produce a duplicate or
   // miss the reactivation. A refetch is cheap and always correct.
-  addOption: async (category, value) => {
+  addOption: async (category, value, rate) => {
     const created = await apiService.post<ListOption>("/list-options/", {
       category,
       value,
+      rate,
     });
     await Promise.all([
       get().fetchActiveOptions(category, true),

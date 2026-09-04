@@ -1,19 +1,58 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Box, Typography, Button, CircularProgress } from "@mui/material";
-import PrintIcon from "@mui/icons-material/Print";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import {
+  Box,
+  Typography,
+  Button,
+  CircularProgress,
+  Paper,
+  Chip,
+  Stack,
+} from "@mui/material";
+import PrintRoundedIcon from "@mui/icons-material/PrintRounded";
+import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
+import EventRoundedIcon from "@mui/icons-material/EventRounded";
+import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
+import FolderOpenRoundedIcon from "@mui/icons-material/FolderOpenRounded";
+import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlineRounded";
+import PendingOutlinedIcon from "@mui/icons-material/PendingOutlined";
+import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
+
 import { apiService } from "../../api/service";
 import { formatDate } from "../../utils/dateFormatter";
+import {
+  InvoiceHeader,
+  InvoiceMetaPanel,
+  InvoicePanelLabel,
+  InvoiceTotalCard,
+  InvoiceFooter,
+} from "../components/InvoiceDocument";
+
+interface InvoiceItem {
+  id: number;
+  description: string | null;
+  width: number;
+  height: number;
+  sq_ft: number;
+  rate: number;
+  total: number;
+}
 
 interface InvoiceDetail {
   id: number;
   project_id: number;
   invoice_number: string;
+  subtotal: number;
+  discount_amount: number;
   amount: number;
   status: "pending" | "paid" | "cancelled";
   created_at: string;
   due_date: string | null;
+  advance_amount: number;
+  payment_method: string | null;
+  payment_reference: string | null;
+  balance_due: number;
   project: {
     id: number;
     project_type: string;
@@ -27,13 +66,38 @@ interface InvoiceDetail {
     contact_number: string;
     email: string;
   } | null;
+  items: InvoiceItem[];
 }
 
-const STATUS_STYLES: Record<string, { bg: string; color: string; label: string }> = {
-  pending: { bg: "#FEF3C7", color: "#92400E", label: "Pending" },
-  paid: { bg: "#DCFCE7", color: "#166534", label: "Paid" },
-  cancelled: { bg: "#FEE2E2", color: "#991B1B", label: "Cancelled" },
+const STATUS_CONFIG: Record<
+  string,
+  { bg: string; color: string; border: string; label: string; icon: React.ReactElement }
+> = {
+  pending: {
+    bg: "#FEF3C7",
+    color: "#92400E",
+    border: "#FCD34D",
+    label: "Payment Pending",
+    icon: <PendingOutlinedIcon sx={{ fontSize: "0.9rem !important" }} />,
+  },
+  paid: {
+    bg: "#DCFCE7",
+    color: "#166534",
+    border: "#86EFAC",
+    label: "Paid in Full",
+    icon: <CheckCircleOutlineRoundedIcon sx={{ fontSize: "0.9rem !important" }} />,
+  },
+  cancelled: {
+    bg: "#FEE2E2",
+    color: "#991B1B",
+    border: "#FCA5A5",
+    label: "Cancelled",
+    icon: <CancelOutlinedIcon sx={{ fontSize: "0.9rem !important" }} />,
+  },
 };
+
+const formatCurrency = (val: number) =>
+  `₹${val.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export default function InvoiceView() {
   const { id } = useParams<{ id: string }>();
@@ -41,6 +105,20 @@ export default function InvoiceView() {
   const [invoice, setInvoice] = useState<InvoiceDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+
+  // This invoice can be reached from more than one place now (Billing's
+  // "View", or straight from generating one in Projects/Delivery) - always
+  // sending "Back" to Billing was wrong whenever it wasn't where the user
+  // actually came from. Going back through the SPA's own history returns
+  // to wherever that really was; `history.state.idx` is how React Router
+  // tracks how deep into its own navigation stack we are, so this only
+  // does that when there's somewhere real to go back to (not on a fresh
+  // page load/direct link), falling back to Billing otherwise.
+  const handleBack = () => {
+    const canGoBack = (window.history.state as { idx?: number } | null)?.idx ?? 0;
+    if (canGoBack > 0) navigate(-1);
+    else navigate("/admin/billing");
+  };
 
   useEffect(() => {
     let active = true;
@@ -62,295 +140,355 @@ export default function InvoiceView() {
 
   if (loading) {
     return (
-      <Box
-        sx={{
-          height: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <CircularProgress />
+      <Box sx={{ height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2 }}>
+        <CircularProgress size={36} thickness={4} />
+        <Typography variant="body2" color="text.secondary">
+          Preparing document...
+        </Typography>
       </Box>
     );
   }
 
   if (error || !invoice) {
     return (
-      <Box
-        sx={{
-          height: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 2,
-        }}
-      >
-        <Typography color="text.secondary">Invoice not found.</Typography>
-        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate("/admin/billing")}>
-          Back to Billing
-        </Button>
+      <Box sx={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <Paper elevation={0} sx={{ p: 5, textAlign: "center", maxWidth: 420, border: "1px dashed #CBD5E1", borderRadius: 3 }}>
+          <ReceiptLongRoundedIcon sx={{ fontSize: 48, color: "#94A3B8", mb: 1.5 }} />
+          <Typography variant="h6" sx={{ fontWeight: 700, color: "#334155" }}>
+            Invoice Not Found
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, mb: 3 }}>
+            The requested invoice record could not be located or may have been deleted.
+          </Typography>
+          <Button
+            variant="contained"
+            disableElevation
+            startIcon={<ArrowBackRoundedIcon />}
+            onClick={() => navigate("/admin/billing")}
+            sx={{ textTransform: "none", fontWeight: 600, borderRadius: 2 }}
+          >
+            Return to Billing
+          </Button>
+        </Paper>
       </Box>
     );
   }
 
-  const statusStyle = STATUS_STYLES[invoice.status] ?? STATUS_STYLES.pending;
+  const status = STATUS_CONFIG[invoice.status] ?? STATUS_CONFIG.pending;
   const customerName = invoice.customer
     ? `${invoice.customer.first_name} ${invoice.customer.last_name}`
     : "—";
 
   return (
-    <Box sx={{ bgcolor: "#f1f5f9", minHeight: "100vh", py: 5 }}>
-      {/* Toolbar - hidden when printing */}
+    <Box sx={{ bgcolor: "#F8FAFC", minHeight: "100vh", pb: 2 }}>
+      {/* Non-Printable Sticky Toolbar */}
       <Box
         className="invoice-toolbar"
         sx={{
-          maxWidth: 800,
-          mx: "auto",
-          mb: 2,
-          px: { xs: 2, sm: 0 },
-          display: "flex",
-          justifyContent: "space-between",
+          position: "sticky",
+          top: 0,
+          zIndex: 10,
+          backdropFilter: "blur(8px)",
+          bgcolor: "rgba(248, 250, 252, 0.85)",
+          borderBottom: "1px solid #E2E8F0",
+          py: 1,
+          mb: 1.5,
         }}
       >
-        <Button
-          startIcon={<ArrowBackIcon />}
-          onClick={() => navigate("/admin/billing")}
-          sx={{ color: "text.secondary" }}
+        <Box
+          sx={{
+            maxWidth: 840,
+            mx: "auto",
+            px: { xs: 2, sm: 3 },
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
         >
-          Back
-        </Button>
-        <Button
-          variant="contained"
-          startIcon={<PrintIcon />}
-          onClick={() => window.print()}
-        >
-          Print / Save PDF
-        </Button>
+          <Button
+            startIcon={<ArrowBackRoundedIcon />}
+            onClick={handleBack}
+            sx={{
+              color: "#475569",
+              textTransform: "none",
+              fontWeight: 600,
+              "&:hover": { bgcolor: "#E2E8F0" },
+            }}
+          >
+            Back
+          </Button>
+
+          <Stack direction="row" spacing={1.5}>
+            <Button
+              variant="contained"
+              disableElevation
+              startIcon={<PrintRoundedIcon />}
+              onClick={() => window.print()}
+              sx={{
+                bgcolor: "#0F172A",
+                color: "#FFFFFF",
+                textTransform: "none",
+                fontWeight: 600,
+                borderRadius: 2,
+                px: 2.5,
+                "&:hover": { bgcolor: "#1E293B" },
+              }}
+            >
+              Print / Save PDF
+            </Button>
+          </Stack>
+        </Box>
       </Box>
 
-      {/* Printable document */}
-      <Box
+      {/* Printable Invoice Sheet */}
+      <Paper
         className="invoice-sheet"
+        elevation={0}
         sx={{
-          maxWidth: 800,
+          maxWidth: 840,
           mx: "auto",
-          bgcolor: "#fff",
-          borderRadius: 2,
-          boxShadow: "0 4px 24px rgba(15, 23, 42, 0.08)",
-          p: { xs: 3, sm: 6 },
+          bgcolor: "#FFFFFF",
+          borderRadius: 3,
+          border: "1px solid #E2E8F0",
+          boxShadow: "0 10px 25px -5px rgba(15, 23, 42, 0.05)",
+          p: { xs: 2.5, sm: 3.5 },
         }}
       >
-        {/* Header */}
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            mb: 5,
-            pb: 3,
-            borderBottom: "2px solid #0f172a",
-          }}
-        >
-          <Box>
-            <Typography
-              sx={{
-                fontSize: "1.75rem",
-                fontWeight: 800,
-                color: "#0f172a",
-                letterSpacing: "-0.5px",
-              }}
-            >
-              Zybrannox
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Print & Signage Solutions
-            </Typography>
-          </Box>
-          <Box sx={{ textAlign: "right" }}>
-            <Typography
-              sx={{ fontSize: "1.5rem", fontWeight: 700, color: "#0f172a" }}
-            >
-              INVOICE
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {invoice.invoice_number}
-            </Typography>
-          </Box>
-        </Box>
+        <InvoiceHeader invoiceNumber={invoice.invoice_number} />
 
-        {/* Bill To / Invoice meta */}
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
-            gap: 4,
-            mb: 5,
-          }}
-        >
-          <Box>
-            <Typography
-              variant="caption"
-              sx={{
-                fontWeight: 700,
-                letterSpacing: "0.5px",
-                color: "text.secondary",
-                textTransform: "uppercase",
-              }}
-            >
-              Bill To
-            </Typography>
-            <Typography sx={{ fontWeight: 600, mt: 0.5 }}>
-              {customerName}
-            </Typography>
-            {invoice.customer && (
-              <>
-                <Typography variant="body2" color="text.secondary">
-                  {invoice.customer.email}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {invoice.customer.contact_number}
-                </Typography>
-              </>
-            )}
-          </Box>
-
-          <Box sx={{ textAlign: { xs: "left", sm: "right" } }}>
-            <Box sx={{ display: "flex", justifyContent: { sm: "flex-end" }, gap: 1 }}>
-              <Typography variant="body2" color="text.secondary">
-                Invoice Date:
-              </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                {formatDate(invoice.created_at)}
-              </Typography>
+        {/* Bill To & Metadata Section */}
+        <InvoiceMetaPanel>
+          <Box sx={{ display: "flex", gap: 1.5 }}>
+            <Box sx={{ p: 1, bgcolor: "#F1F5F9", borderRadius: 1.5, color: "#475569", height: "fit-content" }}>
+              <PersonRoundedIcon fontSize="small" />
             </Box>
-            <Box sx={{ display: "flex", justifyContent: { sm: "flex-end" }, gap: 1 }}>
-              <Typography variant="body2" color="text.secondary">
-                Due Date:
-              </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                {formatDate(invoice.due_date)}
-              </Typography>
-            </Box>
-            <Box
-              sx={{
-                display: "inline-flex",
-                mt: 1,
-                px: 1.5,
-                py: 0.5,
-                borderRadius: 1.5,
-                bgcolor: statusStyle.bg,
-                color: statusStyle.color,
-                fontSize: "0.75rem",
-                fontWeight: 700,
-                textTransform: "uppercase",
-                letterSpacing: "0.5px",
-              }}
-            >
-              {statusStyle.label}
-            </Box>
-          </Box>
-        </Box>
-
-        {/* Order details table */}
-        <Box
-          sx={{
-            border: "1px solid #e2e8f0",
-            borderRadius: 2,
-            overflow: "hidden",
-            mb: 4,
-          }}
-        >
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: "1fr auto",
-              bgcolor: "#0f172a",
-              color: "#fff",
-              px: 2.5,
-              py: 1.25,
-            }}
-          >
-            <Typography variant="body2" sx={{ fontWeight: 700 }}>
-              Description
-            </Typography>
-            <Typography variant="body2" sx={{ fontWeight: 700 }}>
-              Amount
-            </Typography>
-          </Box>
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: "1fr auto",
-              px: 2.5,
-              py: 2,
-              gap: 1,
-            }}
-          >
             <Box>
-              <Typography sx={{ fontWeight: 600 }}>
-                {invoice.project?.project_type ?? "Project"} Order
+              <InvoicePanelLabel>Billed To</InvoicePanelLabel>
+              <Typography sx={{ fontWeight: 700, color: "#0F172A", fontSize: "1.05rem", mt: 0.2 }}>
+                {customerName}
+              </Typography>
+              {invoice.customer && (
+                <Stack spacing={0.2} sx={{ mt: 0.5 }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: "0.85rem" }}>
+                    {invoice.customer.email}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: "0.85rem" }}>
+                    {invoice.customer.contact_number}
+                  </Typography>
+                </Stack>
+              )}
+            </Box>
+          </Box>
+
+          <Box sx={{ textAlign: { xs: "left", sm: "right" }, mt: { xs: 2, sm: 0 } }}>
+            <Stack spacing={0.5} alignItems={{ xs: "flex-start", sm: "flex-end" }}>
+              <Box sx={{ display: "flex", justifyContent: { sm: "flex-end" }, gap: 1 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Invoice Date:
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600, color: "#334155" }}>
+                  {formatDate(invoice.created_at)}
+                </Typography>
+              </Box>
+              {invoice.due_date && (
+                <Box sx={{ display: "flex", justifyContent: { sm: "flex-end" }, gap: 1 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Due Date:
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600, color: "#334155" }}>
+                    {formatDate(invoice.due_date)}
+                  </Typography>
+                </Box>
+              )}
+              <Box sx={{ pt: 0.5 }}>
+                <Chip
+                  icon={status.icon}
+                  label={status.label}
+                  size="small"
+                  sx={{
+                    bgcolor: status.bg,
+                    color: status.color,
+                    border: `1px solid ${status.border}`,
+                    fontWeight: 700,
+                    fontSize: "0.75rem",
+                    letterSpacing: "0.02em",
+                    "& .MuiChip-icon": { color: status.color },
+                  }}
+                />
+              </Box>
+            </Stack>
+          </Box>
+        </InvoiceMetaPanel>
+
+        {/* Project Context Box */}
+        {(invoice.project?.description || invoice.project?.delivery_date || invoice.project?.project_type) && (
+          <Box
+            sx={{
+              mb: 1.5,
+              p: 1.25,
+              borderRadius: 2,
+              bgcolor: "#F8FAFC",
+              border: "1px solid #E2E8F0",
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 1.5,
+            }}
+          >
+            <FolderOpenRoundedIcon sx={{ color: "#64748B", mt: 0.2 }} fontSize="small" />
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="body2" sx={{ fontWeight: 700, color: "#0F172A" }}>
+                {invoice.project?.project_type ?? "Custom Work"} Order
               </Typography>
               {invoice.project?.description && (
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25, fontSize: "0.85rem" }}>
                   {invoice.project.description}
                 </Typography>
               )}
-              {invoice.project?.delivery_date && (
-                <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
+            </Box>
+            {invoice.project?.delivery_date && (
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, bgcolor: "#FFFFFF", px: 1.5, py: 0.5, borderRadius: 1.5, border: "1px solid #E2E8F0" }}>
+                <EventRoundedIcon sx={{ fontSize: "0.85rem", color: "#64748B" }} />
+                <Typography variant="caption" sx={{ fontWeight: 600, color: "#475569" }}>
                   Delivery: {formatDate(invoice.project.delivery_date)}
                 </Typography>
-              )}
-            </Box>
-            <Typography sx={{ fontWeight: 600, whiteSpace: "nowrap" }}>
-              ₹{invoice.amount.toLocaleString()}
-            </Typography>
+              </Box>
+            )}
           </Box>
-        </Box>
+        )}
 
-        {/* Total */}
+        {/* Items Breakdown Table */}
         <Box
           sx={{
-            display: "flex",
-            justifyContent: "flex-end",
-            pt: 2,
-            borderTop: "2px solid #0f172a",
+            border: "1px solid #E2E8F0",
+            borderRadius: 2.5,
+            overflow: "hidden",
+            mb: 1.5,
           }}
         >
-          <Box sx={{ minWidth: 220 }}>
-            <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-              <Typography sx={{ fontWeight: 700, fontSize: "1.1rem" }}>
-                Total
+          {/* Header */}
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: "28px 2.5fr 1.2fr 1fr 1.2fr",
+              bgcolor: "#F8FAFC",
+              borderBottom: "1px solid #E2E8F0",
+              px: 2,
+              py: 0.75,
+              gap: 1.5,
+            }}
+          >
+            <Typography variant="caption" sx={{ fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              #
+            </Typography>
+            <Typography variant="caption" sx={{ fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              Item Description
+            </Typography>
+            <Typography variant="caption" sx={{ fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              Size / Area
+            </Typography>
+            <Typography variant="caption" sx={{ fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              Rate (₹)
+            </Typography>
+            <Typography variant="caption" sx={{ fontWeight: 700, textAlign: "right", color: "#64748B", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              Total Amount
+            </Typography>
+          </Box>
+
+          {/* Rows */}
+          {invoice.items.map((item, idx) => (
+            <Box
+              key={item.id}
+              className="invoice-row"
+              sx={{
+                display: "grid",
+                gridTemplateColumns: "28px 2.5fr 1.2fr 1fr 1.2fr",
+                px: 2,
+                py: 0.9,
+                gap: 1.5,
+                alignItems: "center",
+                borderTop: idx === 0 ? "none" : "1px solid #F1F5F9",
+                bgcolor: idx % 2 === 0 ? "#FFFFFF" : "#FAFAFA",
+              }}
+            >
+              <Typography variant="body2" sx={{ color: "#94A3B8", fontWeight: 600 }}>
+                {idx + 1}
               </Typography>
-              <Typography sx={{ fontWeight: 800, fontSize: "1.1rem" }}>
-                ₹{invoice.amount.toLocaleString()}
+
+              <Typography variant="body2" sx={{ fontWeight: 600, color: "#1E293B" }}>
+                {item.description || "Standard Item"}
+              </Typography>
+
+              <Typography variant="body2" sx={{ color: "#334155" }}>
+                {item.width}' × {item.height}' ({item.sq_ft} sq ft)
+              </Typography>
+
+              <Typography variant="body2" color="text.secondary">
+                ₹{item.rate.toLocaleString("en-IN")}
+              </Typography>
+
+              <Typography variant="body2" sx={{ fontWeight: 700, textAlign: "right", color: "#0F172A", whiteSpace: "nowrap" }}>
+                {formatCurrency(item.total)}
               </Typography>
             </Box>
+          ))}
+        </Box>
+
+        {/* Calculation Summary Card */}
+        <InvoiceTotalCard
+          subtotal={invoice.subtotal}
+          discountAmount={invoice.discount_amount}
+          advanceAmount={invoice.advance_amount}
+          paymentMethod={invoice.payment_method}
+        />
+
+        {/* Reference details */}
+        {invoice.payment_reference && (
+          <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 1 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ bgcolor: "#F1F5F9", px: 1.5, py: 0.5, borderRadius: 1 }}>
+              Payment Ref: <strong>{invoice.payment_reference}</strong>
+            </Typography>
           </Box>
-        </Box>
+        )}
 
-        {/* Footer */}
-        <Box sx={{ mt: 6, pt: 3, borderTop: "1px solid #e2e8f0" }}>
-          <Typography variant="caption" color="text.secondary">
-            Thank you for your business. For questions about this invoice,
-            please contact Zybrannox support.
-          </Typography>
-        </Box>
-      </Box>
+        <InvoiceFooter />
+      </Paper>
 
+      {/* Global CSS for Print Optimization */}
       <style>{`
         @media print {
-          body * { visibility: hidden; }
-          .invoice-sheet, .invoice-sheet * { visibility: visible; }
-          .invoice-toolbar { display: none !important; }
+          @page {
+            margin: 12mm;
+            size: auto;
+          }
+          body {
+            background-color: #FFFFFF !important;
+            color: #000000 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          body * {
+            visibility: hidden;
+          }
+          .invoice-sheet, .invoice-sheet * {
+            visibility: visible;
+          }
+          .invoice-toolbar {
+            display: none !important;
+          }
           .invoice-sheet {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
             box-shadow: none !important;
-            border-radius: 0 !important;
+            border: none !important;
+            background: transparent !important;
+          }
+          .invoice-row {
+            page-break-inside: avoid;
           }
         }
       `}</style>

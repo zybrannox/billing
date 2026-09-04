@@ -2,11 +2,14 @@ import { useState } from "react";
 import Alert from "@mui/material/Alert";
 import CustomForm, { type FieldDefinition } from "../components/CustomForm";
 import { useListOptionsStore } from "../../store/useListOptionsStore";
-import { addListOptionSchema } from "../../schemas/addListOption.schema";
+import { addListOptionSchema, addPricedListOptionSchema } from "../../schemas/addListOption.schema";
 
 interface AddListOptionProps {
   category: string;
   label: string; // e.g. "Project Type" - drives the field's label/placeholder
+  // Pricing categories (e.g. "item_type") get an extra Rate field, and a
+  // rate becomes part of what's actually being added, not just a label.
+  hasRate?: boolean;
   onSuccess?: () => void;
 }
 
@@ -21,7 +24,7 @@ const extractErrorMessage = (err: any): string => {
   return "Something went wrong while adding this option. Please try again.";
 };
 
-export default function AddListOption({ category, label, onSuccess }: AddListOptionProps) {
+export default function AddListOption({ category, label, hasRate = false, onSuccess }: AddListOptionProps) {
   const addOption = useListOptionsStore((s) => s.addOption);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -33,15 +36,28 @@ export default function AddListOption({ category, label, onSuccess }: AddListOpt
       type: "text",
       placeholder: `Enter ${label.toLowerCase()}`,
       required: true,
-      row: 1,
+      row: hasRate ? 1 : undefined,
     },
+    ...(hasRate
+      ? ([
+          {
+            name: "rate",
+            label: "Rate (₹ per sq ft)",
+            type: "number",
+            placeholder: "0.00",
+            required: true,
+            min: 0,
+            row: 1,
+          },
+        ] as FieldDefinition[])
+      : []),
   ];
 
   const handleSubmit = async (formData: any) => {
     setErrorMessage(null);
     setLoading(true);
     try {
-      await addOption(category, formData.value);
+      await addOption(category, formData.value, hasRate ? Number(formData.rate) : undefined);
       onSuccess?.();
     } catch (err: any) {
       console.error("Error adding option", err);
@@ -63,7 +79,7 @@ export default function AddListOption({ category, label, onSuccess }: AddListOpt
         onSubmit={handleSubmit}
         buttonName={loading ? "Adding..." : `Add ${label}`}
         loading={loading}
-        zodSchema={addListOptionSchema}
+        zodSchema={hasRate ? addPricedListOptionSchema : addListOptionSchema}
       />
     </div>
   );

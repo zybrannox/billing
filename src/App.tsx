@@ -19,6 +19,7 @@ import Customers from "./admin/pages/Customers";
 import Billing from "./admin/pages/Billing";
 import InvoiceView from "./admin/pages/InvoiceView";
 import SystemSetup from "./admin/pages/SystemSetup";
+import Dashboard from "./admin/pages/Dashboard";
 import ProtectedRoute from "./common/components/auth/ProtectedRoute";
 import Login from "./common/components/auth/Login";
 import ErrorBoundary from "./common/components/ErrorBoundary";
@@ -80,6 +81,8 @@ function App() {
             {/* ADMIN ROUTES */}
             <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
               <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<Dashboard />} />
+                <Route path="dashboard" element={<Dashboard />} />
                 <Route path="projects" element={<Projects />} />
                 <Route path="customers" element={<Customers />} />
                 <Route path="employees" element={<Employee />} />

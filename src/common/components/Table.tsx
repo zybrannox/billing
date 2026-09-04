@@ -44,9 +44,6 @@ interface TableProps<T extends GridRowModel> {
     },
   ) => React.ReactElement[];
   onSave?: (row: GridRowModel) => void;
-  // When provided, the built-in Delete action calls this instead of
-  // deleting a project — use it for tables that show a different entity
-  // (e.g. employees) so Delete hits the right endpoint.
   onDelete?: (id: GridRowId) => void | Promise<void>;
   onEdit?: (id: GridRowId) => void;
   onDownload?: (id: GridRowId) => void;
@@ -58,8 +55,6 @@ interface TableProps<T extends GridRowModel> {
   rowSelectionModel?: GridRowId[]; // Keep as GridRowId[] for compatibility
   initialState?: GridInitialState;
   checkboxSelection?: boolean;
-  // Server-side pagination/sorting (opt-in). When omitted, the grid behaves
-  // exactly as before: client-side pagination/sorting over the full `rows`.
   paginationMode?: "client" | "server";
   rowCount?: number;
   paginationModel?: GridPaginationModel;
@@ -70,14 +65,6 @@ interface TableProps<T extends GridRowModel> {
   loading?: boolean;
   pageSizeOptions?: number[];
   actionsWidth?: number;
-  // Opt-in accordion-style row expansion: clicking a row spans a full-width
-  // panel underneath it instead of (or as well as) driving some external
-  // preview. Only one row is ever expanded at a time - clicking a second
-  // row collapses the first, matching standard accordion behavior. Built
-  // on the grid's real "column spanning" feature (a synthetic row inserted
-  // after the expanded one, whose first cell spans every column) rather
-  // than MUI X's row-detail-panel API, which is Pro-only and not available
-  // on the Community package this app uses.
   renderDetailPanel?: (row: T) => React.ReactNode;
 }
 
@@ -147,6 +134,9 @@ const gridSx = React.useMemo(
     },
     "& .MuiDataGrid-row:last-of-type": {
       borderBottom: "none",
+    },
+    "& .MuiDataGrid-row": {
+      backgroundColor: "#FFFFFF",
     },
     "& .MuiDataGrid-row.Mui-selected": {
       backgroundColor: "rgba(37, 99, 235, 0.04)",
@@ -276,16 +266,16 @@ const gridSx = React.useMemo(
       backgroundColor: "rgba(16, 185, 129, 0.48)",
     },
 
-    // Pinned rows - amber, matching the pin action icon's color so the row
-    // tint and the icon that toggled it read as the same signal.
+    // Pinned rows - yellow, matching the pin action icon's color so the
+    // row tint and the icon that toggled it read as the same signal.
     "& .MuiDataGrid-row.row-pinned": {
-      backgroundColor: "rgba(180, 83, 9, 0.28)",
+      backgroundColor: "rgba(202, 138, 4, 0.28)",
     },
     "& .MuiDataGrid-row.row-pinned:hover": {
-      backgroundColor: "rgba(180, 83, 9, 0.36)",
+      backgroundColor: "rgba(202, 138, 4, 0.36)",
     },
     "& .MuiDataGrid-row.row-pinned.Mui-selected": {
-      backgroundColor: "rgba(180, 83, 9, 0.44)",
+      backgroundColor: "rgba(202, 138, 4, 0.44)",
     },
 
     // Accordion detail-panel row (see renderDetailPanel) - a plain content
@@ -400,18 +390,10 @@ const gridSx = React.useMemo(
 
   const handleSaveClick = React.useCallback(
     (id: GridRowId) => () => {
-      // Save/Cancel act immediately, no confirmation dialog - editing a row
-      // is already an explicit, reversible-until-you-click-Save action, so
-      // a second "are you sure?" step is just friction, not safety.
-      //
-      // apiRef.current is only null before the grid has mounted, which
-      // can't happen here - this only runs after a user has already
-      // clicked Edit/Save on a rendered row. Guard anyway rather than
-      // asserting, so a stray call can't throw.
       if (!apiRef.current) return;
       apiRef.current.stopRowEditMode({
         id,
-        ignoreModifications: false, // 🔥 THIS triggers processRowUpdate
+        ignoreModifications: false,
       });
     },
     [apiRef],
@@ -511,14 +493,6 @@ const gridSx = React.useMemo(
       const isEditing = rowModesModel[params.id]?.mode === GridRowModes.Edit;
 
       if (isEditing) {
-        // GridActionsCellItem's typed props (MUI X v8) don't expose `sx` -
-        // its underlying IconButton is styled here instead via the grid's
-        // own sx block (see the "button[aria-label=...]" rules below),
-        // matching the rounded-pill + tinted-hover treatment every other
-        // row action already has (see ui/Actions.tsx's actionIconSx). The
-        // old code put a hover sx on the *icon* prop instead of the button
-        // - the icon isn't what receives the hover event, so it never did
-        // anything.
         return [
           <GridActionsCellItem
             key="save"
@@ -564,12 +538,7 @@ const gridSx = React.useMemo(
   );
 
   const mergedColumns: GridColDef[] = React.useMemo(() => {
-    // Inserted right after the expanded row (see handleRowClick) - the
-    // first data column's colSpan grows to cover every column for just
-    // this one synthetic row, so its renderCell can paint a single
-    // full-width panel instead of the grid trying to lay this row out like
-    // a normal one.
-    const totalColumnSpan = columns.length + 1; // +1 for the appended "actions" column
+    const totalColumnSpan = columns.length + 1; 
     const dataColumns = renderDetailPanel
       ? columns.map((col, idx) => {
         if (idx !== 0) return col;
@@ -698,14 +667,6 @@ const gridSx = React.useMemo(
     if (message) alert(message);
   }, []);
 
-  // NOTE: there used to be an onCellClick handler here that unconditionally
-  // set event.defaultMuiPrevented = true. MUI's grid checks that flag after
-  // publishing "cellClick" and, if set, never publishes "rowClick" at all -
-  // so handleRowClick below (and the accordion expand/select it drives)
-  // silently never fired for a normal click anywhere in the row. Removed;
-  // only cellDoubleClick still suppresses its default (blocks double-click
-  // auto edit, which this app deliberately keeps explicit via the Edit
-  // action).
   const handleRowClick = React.useCallback<GridEventListener<"rowClick">>(
     (params, event) => {
       // Don't trigger row selection if clicking on checkbox
@@ -737,12 +698,6 @@ const gridSx = React.useMemo(
     event.defaultMuiPrevented = true;
   }, []);
 
-  // Only used as the *uncontrolled* starting page size (client-mode tables
-  // with no paginationModel prop, e.g. Employee/Billing) - server-mode
-  // tables already control the displayed page size via their own
-  // paginationModel prop, which takes precedence over this regardless.
-  // Without it, MUI's uncontrolled default (100) wouldn't match our first
-  // pageSizeOptions entry and would trigger its own console warning.
   const resolvedInitialState = React.useMemo(
     () => ({
       ...initialState,
@@ -762,27 +717,12 @@ const gridSx = React.useMemo(
       }}
       className="w-full overflow-x-auto"
     >
-      {/* The rows-per-page dropdown's option list is a MUI Menu that
-          portals straight to document.body, outside this component's DOM
-          - a component-scoped sx (like gridSx below) can never reach it.
-          It was rendering MUI's raw default elevation-8 shadow (a heavy,
-          triple-layer Material shadow) while every other menu in the app
-          (ui/Menu.tsx, ui/Actions.tsx's "more actions" menu) already
-          overrides that to something much lighter. This targets only that
-          unstyled default - anything with its own PaperProps/sx override
-          (i.e. every other menu) already wins over a plain class rule. */}
       <GlobalStyles
         styles={{
           ".MuiPopover-paper.MuiMenu-paper.MuiPaper-elevation8": {
             boxShadow:
               "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.05)",
           },
-          // Fades + slides the accordion panel's content in on mount. Only
-          // opacity/transform are animated (never height) - those don't
-          // affect layout, so the "auto" row-height measurement (see
-          // getRowHeight below) stays correct on the very first frame
-          // instead of racing an in-progress height animation, and it
-          // can't fight the DataGrid virtualizer's own row positioning the
           // way animating height directly would.
           "@keyframes detailPanelIn": {
             from: { opacity: 0, transform: "translateY(-6px)" },
@@ -820,16 +760,6 @@ const gridSx = React.useMemo(
         onProcessRowUpdateError={handleProcessRowUpdateError}
         onRowClick={handleRowClick}
         onCellDoubleClick={preventDefaultCellDoubleClick}
-        // Without this, the grid fills whatever height its flex parent
-        // computes and scrolls its rows in its own internal
-        // .MuiDataGrid-virtualScroller - a second, separately-scrolling
-        // region nested inside the page. That's why the table felt
-        // "stuck"/heavy to scroll (touch and wheel gestures both have to
-        // fight over which container owns the scroll) while the outer
-        // page scrolled fine. autoHeight sizes the grid to exactly fit
-        // its current page's rows instead, so there's only ever one
-        // scroll surface - the page itself, which already scrolls
-        // smoothly natively.
         autoHeight
         pageSizeOptions={pageSizeOptions ?? [10, 20, 30, 50, 100]}
         paginationMode={paginationMode ?? "client"}

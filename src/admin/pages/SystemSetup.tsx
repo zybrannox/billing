@@ -8,40 +8,58 @@ import { GenericDialog } from "../../ui/Dialog";
 import AddListOption from "../../common/pages/AddListOption";
 import { useListOptionsStore, type ListOption } from "../../store/useListOptionsStore";
 
-// Project Type is the only category wired up so far (the user's own scope
-// call - "just Project Type for now", other dropdowns like Priority/Client
-// Status deferred). Both the backend (app/list_options) and this page's
-// plumbing are already generic per-category, so onboarding another dropdown
-// later is just adding another entry here, not new backend work.
-const CATEGORIES: { category: string; label: string }[] = [
+// Project Type and Item Type are the categories wired up so far. Both the
+// backend (app/list_options) and this page's plumbing are already generic
+// per-category, so onboarding another dropdown later is just adding
+// another entry here, not new backend work. `hasRate` categories (just
+// Item Type today - the invoice line-item catalog, see
+// GenerateInvoice.tsx) get an extra Rate column/field; others don't.
+const CATEGORIES: { category: string; label: string; hasRate?: boolean }[] = [
   { category: "project_type", label: "Project Type" },
+  { category: "item_type", label: "Item Type", hasRate: true },
 ];
 
-const columns: GridColDef<ListOption & { isActive: boolean }>[] = [
+const statusColumn: GridColDef<ListOption & { isActive: boolean }> = {
+  field: "is_active",
+  headerName: "Status",
+  width: 130,
+  renderCell: (params) => (
+    <Chip
+      label={params.value ? "Active" : "Inactive"}
+      size="small"
+      sx={{
+        fontWeight: 600,
+        fontSize: "0.75rem",
+        color: params.value ? "#059669" : "#64748B",
+        backgroundColor: params.value
+          ? "rgba(5, 150, 105, 0.1)"
+          : "rgba(100, 116, 139, 0.1)",
+      }}
+    />
+  ),
+};
+
+const baseColumns: GridColDef<ListOption & { isActive: boolean }>[] = [
   { field: "value", headerName: "Value", flex: 1 },
   { field: "sort_order", headerName: "Order", width: 90 },
-  {
-    field: "is_active",
-    headerName: "Status",
-    width: 130,
-    renderCell: (params) => (
-      <Chip
-        label={params.value ? "Active" : "Inactive"}
-        size="small"
-        sx={{
-          fontWeight: 600,
-          fontSize: "0.75rem",
-          color: params.value ? "#059669" : "#64748B",
-          backgroundColor: params.value
-            ? "rgba(5, 150, 105, 0.1)"
-            : "rgba(100, 116, 139, 0.1)",
-        }}
-      />
-    ),
-  },
 ];
 
-function CategorySection({ category, label }: { category: string; label: string }) {
+const rateColumn: GridColDef<ListOption & { isActive: boolean }> = {
+  field: "rate",
+  headerName: "Rate (₹/sq ft)",
+  width: 140,
+  renderCell: ({ value }) => (value != null ? `₹${Number(value).toLocaleString()}` : "—"),
+};
+
+function CategorySection({
+  category,
+  label,
+  hasRate = false,
+}: {
+  category: string;
+  label: string;
+  hasRate?: boolean;
+}) {
   const [addOpen, setAddOpen] = useState(false);
   const options = useListOptionsStore((s) => s.allByCategory[category]);
   const loading = useListOptionsStore((s) => s.loading);
@@ -59,6 +77,11 @@ function CategorySection({ category, label }: { category: string; label: string 
   const rows = useMemo(
     () => (options ?? []).map((o) => ({ ...o, isActive: o.is_active })),
     [options],
+  );
+
+  const columns = useMemo(
+    () => (hasRate ? [...baseColumns, rateColumn, statusColumn] : [...baseColumns, statusColumn]),
+    [hasRate],
   );
 
   return (
@@ -91,6 +114,7 @@ function CategorySection({ category, label }: { category: string; label: string 
         <AddListOption
           category={category}
           label={label}
+          hasRate={hasRate}
           onSuccess={() => setAddOpen(false)}
         />
       </GenericDialog>

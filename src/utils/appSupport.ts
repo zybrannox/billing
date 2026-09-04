@@ -43,8 +43,17 @@ export const getRowClassName = (params: GridRowClassNameParams) => {
 export const getImageDimensions = (
   file: File,
 ): Promise<{
+  // Assumes 96 DPI to turn the file's pixel size into a physical size -
+  // a screen-resolution convention, not something the file actually
+  // declares, so treat these as a rough estimate only (used for display
+  // elsewhere in the app, e.g. ProjectFilesList). pixelWidth/pixelHeight
+  // below are the actual, assumption-free fact about the file and are
+  // what invoice line items should be seeded from (see GenerateInvoice.tsx)
+  // - never a size derived from a guessed DPI.
   width: number;
   height: number;
+  pixelWidth: number;
+  pixelHeight: number;
 } | null> => {
   return new Promise((resolve) => {
     if (
@@ -61,7 +70,12 @@ export const getImageDimensions = (
       const widthInInches = parseFloat((img.width / 96).toFixed(2));
       const heightInInches = parseFloat((img.height / 96).toFixed(2));
 
-      resolve({ width: widthInInches, height: heightInInches });
+      resolve({
+        width: widthInInches,
+        height: heightInInches,
+        pixelWidth: img.width,
+        pixelHeight: img.height,
+      });
       URL.revokeObjectURL(img.src);
     };
     img.onerror = () => {

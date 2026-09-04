@@ -1,4 +1,6 @@
 import type { GridColDef } from "@mui/x-data-grid";
+import { Tooltip } from "@mui/material";
+import CalendarTodayRoundedIcon from "@mui/icons-material/CalendarTodayRounded";
 import CrudActions from "../../ui/Actions";
 import { useProjectStore, type Project } from "../../store/useProjectStore";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -13,6 +15,7 @@ import { useAppStore } from "../../store/useAppStore";
 import AddProject from "./AddProject";
 import AddCustomer from "./AddCustomer";
 import GenerateInvoice from "./GenerateInvoice";
+import DeliveryCheck from "./DeliveryCheck";
 import Button from "../../ui/Button";
 import { getRowClassName } from "../../utils/appSupport";
 import { formatDateTime } from "../../utils/dateFormatter";
@@ -79,9 +82,7 @@ const Projects = () => {
     updateProject,
     deleteProject,
     deleteProjects,
-    markDesignCompleted,
     markPrintCompleted,
-    markDelivered,
     togglePinProject,
   } = useProjectStore();
 
@@ -134,18 +135,47 @@ const Projects = () => {
           </span>
         ),
       },
-
       {
         field: "delivery_date",
-        headerName: "Delivery Date",
+        headerName: "Deliveryadd invoice / Start Date",
         flex: 1.5,
+        minWidth: 200,
         editable: true,
         valueFormatter: (value) => formatDateTime(value),
+        renderCell: ({ value, row }) => (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              overflow: "hidden",
+              width: "100%",
+            }}
+          >
+            <span
+              style={{
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                minWidth: 0,
+              }}
+            >
+              {formatDateTime(value)}
+            </span>
+            {row.start_date && (
+              <Tooltip title={`Started ${formatDateTime(row.start_date)}`} arrow placement="top">
+                <CalendarTodayRoundedIcon
+                  sx={{ fontSize: 14, color: "#94a3b8", flexShrink: 0, cursor: "default" }}
+                />
+              </Tooltip>
+            )}
+          </div>
+        ),
       },
       {
         field: "priority",
         headerName: "Priority",
-        flex: 1.5,
+        flex: 1,
         editable: true,
         type: "singleSelect",
         valueOptions: ["Normal", "High", "Urgent"],
@@ -169,7 +199,7 @@ const Projects = () => {
       {
         field: "client_status",
         headerName: "Client Status",
-        flex: 1.5,
+        flex: 1,
         editable: true,
         type: "singleSelect",
         valueOptions: ["Confirmed", "Correction"],
@@ -186,12 +216,9 @@ const Projects = () => {
       {
         field: "print_status",
         headerName: "Print Status",
-        flex: 1.5,
+        flex: 1,
         editable: true,
         type: "singleSelect",
-        // "Completed" only becomes selectable once the design phase is marked
-        // done - keeps the impossible state from ever being offered, rather
-        // than letting the user pick it and bouncing off a server error.
         valueOptions: ({ row }) =>
           row?.design_completed_at
             ? ["Pending", "In Progress", "Completed"]
@@ -253,7 +280,7 @@ const Projects = () => {
   );
   const [paginationModel, setPaginationModel] = useState({
     page: 0, // MUI DataGrid pages are 0-indexed; the API is 1-indexed.
-    pageSize: 10,
+    pageSize: 20,
   });
 
   // Debounce the search box so every keystroke doesn't fire a request.
@@ -314,24 +341,6 @@ const Projects = () => {
     return newRow;
   };
 
-  const handleMarkDesignCompleted = (id: string) => {
-    showDialog({
-      title: "Mark Design Completed?",
-      description:
-        "This flags the design phase as done for this order. The customer will later be notified automatically when messaging is wired up.",
-      confirmText: "Mark Completed",
-      onConfirm: async () => {
-        try {
-          setLoading(true);
-          await markDesignCompleted(id);
-          closeDialog();
-        } finally {
-          setLoading(false);
-        }
-      },
-    });
-  };
-
   const handleMarkPrintCompleted = (id: string) => {
     showDialog({
       title: "Mark Print Completed?",
@@ -341,23 +350,6 @@ const Projects = () => {
         try {
           setLoading(true);
           await markPrintCompleted(id);
-          closeDialog();
-        } finally {
-          setLoading(false);
-        }
-      },
-    });
-  };
-
-  const handleMarkDelivered = (id: string) => {
-    showDialog({
-      title: "Mark Order Delivered?",
-      description: "This flags the order as delivered to the customer.",
-      confirmText: "Mark Delivered",
-      onConfirm: async () => {
-        try {
-          setLoading(true);
-          await markDelivered(id);
           closeDialog();
         } finally {
           setLoading(false);
@@ -493,7 +485,6 @@ const Projects = () => {
                 delete
                 info
                 pin
-                invoice={isAdmin}
                 orderMilestones
                 data={params.row}
                 isPinned={!!params.row.pinned}
@@ -501,11 +492,6 @@ const Projects = () => {
                 onEdit={handlers.edit}
                 onDelete={handlers.delete}
                 onDownload={handlers.download}
-                onGenerateInvoice={
-                  isAdmin
-                    ? () => openDialog("invoice", params.row.id, "add")
-                    : undefined
-                }
                 printStatus={params.row.print_status}
                 designCompletedMeta={
                   params.row.design_completed_at
@@ -528,13 +514,21 @@ const Projects = () => {
                     ? { at: params.row.delivered_at, by: params.row.delivered_by }
                     : null
                 }
+                // Marking design done now always goes through the invoice
+                // dialog (see GenerateInvoice.tsx) - creating an invoice is
+                // open to any authenticated role on the backend, not just
+                // admins, since it's the employee finishing their own
+                // assigned work that triggers it.
                 onMarkDesignCompleted={() =>
-                  handleMarkDesignCompleted(params.row.id)
+                  openDialog("invoiceDesignComplete", params.row.id, "add")
                 }
                 onMarkPrintCompleted={() =>
                   handleMarkPrintCompleted(params.row.id)
                 }
-                onMarkDelivered={() => handleMarkDelivered(params.row.id)}
+                // Opens the full order/payment breakdown dialog instead
+                // of a plain confirm - see DeliveryCheck.tsx, which is
+                // itself what gates delivery on payment being complete.
+                onMarkDelivered={() => openDialog("deliveryCheck", params.row.id, "add")}
               />,
             ]}
             onSelectionChange={(newSelectionModel) => {
@@ -546,11 +540,6 @@ const Projects = () => {
             paginationModel={paginationModel}
             onPaginationModelChange={setPaginationModel}
             loading={projectsLoading}
-            // Clicking a row expands its files inline (accordion-style) as
-            // a compact Gmail-attachments-style chip row, not the old
-            // side-by-side big-preview panel - ProjectFilesList still
-            // reads the clicked row from useProjectStore. The row's height
-            // auto-fits whatever it renders (see Table.tsx's getRowHeight).
             renderDetailPanel={() => <ProjectFilesList />}
           />
 
@@ -567,14 +556,18 @@ const Projects = () => {
           children={<AddCustomer />}
           maxWidth="xs"
         />
-        {isAdmin && (
-          <Dialog
-            type="invoice"
-            title="Invoice"
-            children={<GenerateInvoice />}
-            maxWidth="xs"
-          />
-        )}
+        <Dialog
+          type="invoiceDesignComplete"
+          title="Invoice"
+          children={<GenerateInvoice />}
+          maxWidth="md"
+        />
+        <Dialog
+          type="deliveryCheck"
+          title="Delivery"
+          children={<DeliveryCheck />}
+          maxWidth="md"
+        />
       </div>
     </div>
   );
