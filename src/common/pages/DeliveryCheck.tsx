@@ -141,11 +141,13 @@ export default function DeliveryCheck() {
 
     setMarkingPaid(true);
     try {
-      const updated = await apiService.patch<InvoiceDetail>(`/invoices/${invoice.id}`, {
-        status: "paid",
-        payment_method: paymentMethod,
-        payment_reference: paymentReference.trim() || undefined,
-      });
+      const updated = await apiService.patch<InvoiceDetail>(
+        `/invoices/${invoice.id}/mark-paid`,
+        {
+          payment_method: paymentMethod,
+          payment_reference: paymentReference.trim() || undefined,
+        },
+      );
       setInvoice((prev) => (prev ? { ...prev, ...updated } : prev));
     } catch (err: any) {
       setPaymentError(
@@ -206,11 +208,14 @@ export default function DeliveryCheck() {
     ? `${invoice.customer.first_name} ${invoice.customer.last_name}`
     : "—";
   const canEditDiscount = isAdmin && invoice.status === "pending";
-  // Marking paid is always available while pending - it's the explicit
-  // "yes, this was paid" declaration itself, not gated on the balance
+  // Marking paid is available to anyone (see the dedicated
+  // PATCH /invoices/{id}/mark-paid this now calls) - recording that a
+  // delivery was paid for is part of completing your own assigned work,
+  // not a financial-oversight action like the discount above, which stays
+  // admin-only. Always available while pending, not gated on the balance
   // already being zero (a discount can get it there, but doesn't have
   // to - most invoices get settled by an actual payment, not a discount).
-  const canCompletePayment = isAdmin && invoice.status === "pending";
+  const canCompletePayment = invoice.status === "pending";
   const canDeliver = invoice.status === "paid";
 
   return (
@@ -342,12 +347,13 @@ export default function DeliveryCheck() {
         </Box>
       )}
 
-      {/* Complete Payment - admin-only, pending-only, and independent of
-          the discount above: marking paid is the explicit "this was
-          settled" declaration, not something that unlocks itself once
-          the balance happens to hit zero. Recording how it was paid here
-          is the same PATCH the "Mark Paid" action in Billing.tsx uses -
-          this just also asks for the method/reference first. */}
+      {/* Complete Payment - available to any role, pending-only, and
+          independent of the discount above: marking paid is the explicit
+          "this was settled" declaration, not something that unlocks itself
+          once the balance happens to hit zero. Calls the dedicated
+          PATCH /invoices/{id}/mark-paid (see controller.py) rather than the
+          generic update Billing.tsx's admin-only "Mark Paid" uses, since
+          this one has to stay safe for non-admins to call. */}
       {canCompletePayment && (
         <Box
           sx={{
