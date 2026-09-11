@@ -28,6 +28,8 @@ import {
   VpnKeyRounded,
   PushPinRounded,
   PushPinOutlined,
+  ReceiptLongRounded,
+  PersonRounded,
 } from "@mui/icons-material";
 import { formatDateTime } from "../utils/dateFormatter";
 
@@ -50,6 +52,9 @@ interface CrudActionsProps {
   viewInvoice?: boolean;
   markPaid?: boolean;
   cancelInvoice?: boolean;
+  // Jumps from a project row (Ongoing Activities) straight to the
+  // customer profile it belongs to (see admin/pages/CustomerProfile.tsx).
+  viewCustomer?: boolean;
   data?: any;
 
   onEdit?: () => void;
@@ -65,6 +70,7 @@ interface CrudActionsProps {
   onViewInvoice?: () => void;
   onMarkPaid?: () => void;
   onCancelInvoice?: () => void;
+  onViewCustomer?: () => void;
 
   isActive?: boolean;
   isPinned?: boolean;
@@ -86,7 +92,7 @@ const ProjectDetailsTooltip = ({ data }: { data: any }) => (
       sx={{
         fontWeight: 600,
         mb: 1.25,
-        color: "#0F172A",
+        color: "var(--slate-900)",
         fontSize: "0.8125rem",
       }}
     >
@@ -121,7 +127,7 @@ const ProjectDetailsTooltip = ({ data }: { data: any }) => (
         >
           <Typography
             variant="caption"
-            sx={{ fontWeight: 500, color: "#64748B", fontSize: "0.75rem" }}
+            sx={{ fontWeight: 500, color: "var(--slate-500)", fontSize: "0.75rem" }}
           >
             {item.label}
           </Typography>
@@ -129,7 +135,7 @@ const ProjectDetailsTooltip = ({ data }: { data: any }) => (
             variant="caption"
             sx={{
               fontWeight: 500,
-              color: "#0F172A",
+              color: "var(--slate-900)",
               fontSize: "0.75rem",
               textAlign: "right",
             }}
@@ -140,14 +146,14 @@ const ProjectDetailsTooltip = ({ data }: { data: any }) => (
       ))}
     </Stack>
 
-    <Divider sx={{ borderColor: "#E2E8F0", my: 1.25 }} />
+    <Divider sx={{ borderColor: "var(--slate-200)", my: 1.25 }} />
 
     <Box>
       <Typography
         variant="caption"
         sx={{
           fontWeight: 500,
-          color: "#64748B",
+          color: "var(--slate-500)",
           fontSize: "0.75rem",
           display: "block",
           mb: 0.375,
@@ -160,7 +166,7 @@ const ProjectDetailsTooltip = ({ data }: { data: any }) => (
         sx={{
           display: "block",
           lineHeight: 1.5,
-          color: "#334155",
+          color: "var(--slate-700)",
           fontSize: "0.75rem",
           wordBreak: "break-word",
         }}
@@ -184,6 +190,7 @@ const CrudActions = ({
   viewInvoice = false,
   markPaid = false,
   cancelInvoice = false,
+  viewCustomer = false,
   data,
 
   onEdit,
@@ -199,6 +206,7 @@ const CrudActions = ({
   onViewInvoice,
   onMarkPaid,
   onCancelInvoice,
+  onViewCustomer,
 
   isActive = false,
   isPinned = false,
@@ -242,10 +250,10 @@ const CrudActions = ({
   const detailsTooltipSlotProps = {
     tooltip: {
       sx: {
-        bgcolor: "#ffffff",
+        bgcolor: "var(--white)",
         p: 0,
         maxWidth: "none",
-        border: "1px solid #E2E8F0",
+        border: "1px solid var(--slate-200)",
         borderRadius: "var(--border-radius-md, 8px)",
         boxShadow: "0 12px 32px rgba(15, 23, 42, 0.14)",
       },
@@ -261,13 +269,13 @@ const CrudActions = ({
           ...actionIconSx,
           // Pinned = yellow. Unpinned deliberately uses a different
           // neutral than the milestone buttons' "not yet actionable" gray
-          // (#94A3B8 / rgba(148,163,184,...) - see the print/deliver
+          // (var(--slate-400) / rgba(148,163,184,...) - see the print/deliver
           // buttons below) even though both read as "gray" - those two
           // are genuinely different states (pin is always clickable, a
           // toggle; a grayed-out milestone button is disabled). This
           // borrows the app's other neutral resting tone (the "More
           // actions" button's own default color) instead.
-          color: isPinned ? "#CA8A04" : "#64748B",
+          color: isPinned ? "var(--yellow-600)" : "var(--slate-500)",
           backgroundColor: isPinned
             ? "rgba(202, 138, 4, 0.12)"
             : "rgba(100, 116, 139, 0.06)",
@@ -306,7 +314,7 @@ const CrudActions = ({
             disabled={isDesignCompleted}
             sx={{
               ...actionIconSx,
-              color: isDesignCompleted ? "#059669" : "#4F46E5",
+              color: isDesignCompleted ? "var(--emerald-600)" : "var(--indigo-600)",
               backgroundColor: isDesignCompleted ? "rgba(16, 185, 129, 0.08)" : "rgba(79, 70, 229, 0.08)",
               border: `1px solid ${isDesignCompleted ? "rgba(16, 185, 129, 0.2)" : "rgba(79, 70, 229, 0.2)"}`,
               "&:hover": {
@@ -347,10 +355,10 @@ const CrudActions = ({
               // and Deliver (blue) already each have their own color for
               // this same "actionable" state, so print keeps its own too.
               color: isPrintCompleted
-                ? "#059669"
+                ? "var(--emerald-600)"
                 : canCompletePrint
-                ? "#EA580C"
-                : "#94A3B8",
+                ? "var(--orange-600)"
+                : "var(--slate-400)",
               backgroundColor: isPrintCompleted
                 ? "rgba(16, 185, 129, 0.08)"
                 : canCompletePrint
@@ -399,10 +407,10 @@ const CrudActions = ({
             sx={{
               ...actionIconSx,
               color: isDelivered
-                ? "#059669"
+                ? "var(--emerald-600)"
                 : canDeliver
-                ? "#0284C7"
-                : "#94A3B8",
+                ? "var(--sky-600)"
+                : "var(--slate-400)",
               backgroundColor: isDelivered
                 ? "rgba(16, 185, 129, 0.08)"
                 : canDeliver
@@ -435,7 +443,7 @@ const CrudActions = ({
   );
 
   if (orderMilestones) {
-    const hasMoreActions = download || preview || edit || del || info || toggle;
+    const hasMoreActions = download || preview || edit || del || info || toggle || viewInvoice || viewCustomer;
 
     return (
       <Box sx={{ display: "inline-flex", gap: 0.75, alignItems: "center" }}>
@@ -450,12 +458,12 @@ const CrudActions = ({
                 onClick={(e) => setMenuAnchor(e.currentTarget)}
                 sx={{
                   ...actionIconSx,
-                  color: "#64748B",
+                  color: "var(--slate-500)",
                   backgroundColor: "rgba(100, 116, 139, 0.06)",
                   border: "1px solid rgba(100, 116, 139, 0.15)",
                   "&:hover": {
                     backgroundColor: "rgba(100, 116, 139, 0.12)",
-                    color: "#334155",
+                    color: "var(--slate-700)",
                   },
                 }}
               >
@@ -473,16 +481,36 @@ const CrudActions = ({
                     mt: 0.75,
                     minWidth: 160,
                     borderRadius: "10px",
-                    border: "1px solid #E2E8F0",
+                    border: "1px solid var(--slate-200)",
                     boxShadow: "0px 8px 20px -4px rgba(15, 23, 42, 0.08)",
                   },
                 },
               }}
             >
+              {viewInvoice && (
+                <MenuItem onClick={runAndClose(onViewInvoice)} sx={{ py: 0.875 }}>
+                  <ListItemIcon>
+                    <ReceiptLongRounded fontSize="small" sx={{ color: "var(--indigo-500)" }} />
+                  </ListItemIcon>
+                  <ListItemText primaryTypographyProps={{ fontSize: "0.8125rem", fontWeight: 500 }}>
+                    View Invoice
+                  </ListItemText>
+                </MenuItem>
+              )}
+              {viewCustomer && (
+                <MenuItem onClick={runAndClose(onViewCustomer)} sx={{ py: 0.875 }}>
+                  <ListItemIcon>
+                    <PersonRounded fontSize="small" sx={{ color: "var(--cyan-600)" }} />
+                  </ListItemIcon>
+                  <ListItemText primaryTypographyProps={{ fontSize: "0.8125rem", fontWeight: 500 }}>
+                    View Customer
+                  </ListItemText>
+                </MenuItem>
+              )}
               {download && (
                 <MenuItem onClick={runAndClose(onDownload)} sx={{ py: 0.875 }}>
                   <ListItemIcon>
-                    <DownloadForOfflineRounded fontSize="small" sx={{ color: "#0284C7" }} />
+                    <DownloadForOfflineRounded fontSize="small" sx={{ color: "var(--sky-600)" }} />
                   </ListItemIcon>
                   <ListItemText primaryTypographyProps={{ fontSize: "0.8125rem", fontWeight: 500 }}>
                     Download All
@@ -492,7 +520,7 @@ const CrudActions = ({
               {preview && (
                 <MenuItem onClick={runAndClose(onPreview)} sx={{ py: 0.875 }}>
                   <ListItemIcon>
-                    <VisibilityRounded fontSize="small" sx={{ color: "#6366F1" }} />
+                    <VisibilityRounded fontSize="small" sx={{ color: "var(--indigo-500)" }} />
                   </ListItemIcon>
                   <ListItemText primaryTypographyProps={{ fontSize: "0.8125rem", fontWeight: 500 }}>
                     Preview
@@ -502,7 +530,7 @@ const CrudActions = ({
               {edit && (
                 <MenuItem onClick={runAndClose(onEdit)} sx={{ py: 0.875 }}>
                   <ListItemIcon>
-                    <EditRounded fontSize="small" sx={{ color: "#2563EB" }} />
+                    <EditRounded fontSize="small" sx={{ color: "var(--blue-600)" }} />
                   </ListItemIcon>
                   <ListItemText primaryTypographyProps={{ fontSize: "0.8125rem", fontWeight: 500 }}>
                     Edit
@@ -513,9 +541,9 @@ const CrudActions = ({
                 <MenuItem onClick={runAndClose(onToggle)} sx={{ py: 0.875 }}>
                   <ListItemIcon>
                     {isActive ? (
-                      <ToggleOnRounded fontSize="small" sx={{ color: "#059669" }} />
+                      <ToggleOnRounded fontSize="small" sx={{ color: "var(--emerald-600)" }} />
                     ) : (
-                      <ToggleOffRounded fontSize="small" sx={{ color: "#64748B" }} />
+                      <ToggleOffRounded fontSize="small" sx={{ color: "var(--slate-500)" }} />
                     )}
                   </ListItemIcon>
                   <ListItemText primaryTypographyProps={{ fontSize: "0.8125rem", fontWeight: 500 }}>
@@ -531,7 +559,7 @@ const CrudActions = ({
                 >
                   <MenuItem onClick={closeMenu} sx={{ py: 0.875 }}>
                     <ListItemIcon>
-                      <InfoRounded fontSize="small" sx={{ color: "#0284C7" }} />
+                      <InfoRounded fontSize="small" sx={{ color: "var(--sky-600)" }} />
                     </ListItemIcon>
                     <ListItemText primaryTypographyProps={{ fontSize: "0.8125rem", fontWeight: 500 }}>
                       Details
@@ -540,9 +568,9 @@ const CrudActions = ({
                 </Tooltip>
               )}
               {del && (
-                <MenuItem onClick={runAndClose(onDelete)} sx={{ color: "#E11D48", py: 0.875 }}>
+                <MenuItem onClick={runAndClose(onDelete)} sx={{ color: "var(--rose-600)", py: 0.875 }}>
                   <ListItemIcon>
-                    <DeleteForeverRounded fontSize="small" sx={{ color: "#E11D48" }} />
+                    <DeleteForeverRounded fontSize="small" sx={{ color: "var(--rose-600)" }} />
                   </ListItemIcon>
                   <ListItemText primaryTypographyProps={{ fontSize: "0.8125rem", fontWeight: 500 }}>
                     Delete
@@ -567,7 +595,7 @@ const CrudActions = ({
             onClick={onDownload}
             sx={{
               ...actionIconSx,
-              color: "#0284C7",
+              color: "var(--sky-600)",
               backgroundColor: "rgba(2, 132, 199, 0.06)",
               "&:hover": { backgroundColor: "rgba(2, 132, 199, 0.12)" },
             }}
@@ -584,7 +612,7 @@ const CrudActions = ({
             onClick={onPreview}
             sx={{
               ...actionIconSx,
-              color: "#6366F1",
+              color: "var(--indigo-500)",
               backgroundColor: "rgba(99, 102, 241, 0.06)",
               "&:hover": { backgroundColor: "rgba(99, 102, 241, 0.12)" },
             }}
@@ -601,7 +629,7 @@ const CrudActions = ({
             onClick={onViewInvoice}
             sx={{
               ...actionIconSx,
-              color: "#6366F1",
+              color: "var(--indigo-500)",
               backgroundColor: "rgba(99, 102, 241, 0.06)",
               "&:hover": { backgroundColor: "rgba(99, 102, 241, 0.12)" },
             }}
@@ -632,7 +660,7 @@ const CrudActions = ({
               disabled={invoiceStatus !== "pending"}
               sx={{
                 ...actionIconSx,
-                color: "#059669",
+                color: "var(--emerald-600)",
                 backgroundColor: "rgba(5, 150, 105, 0.06)",
                 "&:hover": { backgroundColor: "rgba(5, 150, 105, 0.12)" },
                 "&.Mui-disabled": { opacity: 0.4 },
@@ -653,7 +681,7 @@ const CrudActions = ({
               disabled={invoiceStatus !== "pending"}
               sx={{
                 ...actionIconSx,
-                color: "#E11D48",
+                color: "var(--rose-600)",
                 backgroundColor: "rgba(225, 29, 72, 0.06)",
                 "&:hover": { backgroundColor: "rgba(225, 29, 72, 0.12)" },
                 "&.Mui-disabled": { opacity: 0.4 },
@@ -672,7 +700,7 @@ const CrudActions = ({
             onClick={onEdit}
             sx={{
               ...actionIconSx,
-              color: "#2563EB",
+              color: "var(--blue-600)",
               backgroundColor: "rgba(37, 99, 235, 0.06)",
               "&:hover": { backgroundColor: "rgba(37, 99, 235, 0.12)" },
             }}
@@ -689,7 +717,7 @@ const CrudActions = ({
             onClick={onChangePassword}
             sx={{
               ...actionIconSx,
-              color: "#7C3AED",
+              color: "var(--violet-600)",
               backgroundColor: "rgba(124, 58, 237, 0.06)",
               "&:hover": { backgroundColor: "rgba(124, 58, 237, 0.12)" },
             }}
@@ -706,7 +734,7 @@ const CrudActions = ({
             onClick={onDelete}
             sx={{
               ...actionIconSx,
-              color: "#E11D48",
+              color: "var(--rose-600)",
               backgroundColor: "rgba(225, 29, 72, 0.06)",
               "&:hover": { backgroundColor: "rgba(225, 29, 72, 0.12)" },
             }}
@@ -726,7 +754,7 @@ const CrudActions = ({
             size={size}
             sx={{
               ...actionIconSx,
-              color: "#0284C7",
+              color: "var(--sky-600)",
               backgroundColor: "rgba(2, 132, 199, 0.06)",
               "&:hover": { backgroundColor: "rgba(2, 132, 199, 0.12)" },
             }}
@@ -743,7 +771,7 @@ const CrudActions = ({
             onClick={onToggle}
             sx={{
               ...actionIconSx,
-              color: isActive ? "#059669" : "#64748B",
+              color: isActive ? "var(--emerald-600)" : "var(--slate-500)",
               backgroundColor: isActive
                 ? "rgba(5, 150, 105, 0.06)"
                 : "rgba(100, 116, 139, 0.06)",

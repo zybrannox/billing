@@ -1,8 +1,12 @@
 import type { GridColDef } from "@mui/x-data-grid";
 import { Tooltip } from "@mui/material";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import CalendarTodayRoundedIcon from "@mui/icons-material/CalendarTodayRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import PlaceRoundedIcon from "@mui/icons-material/PlaceRounded";
 import CrudActions from "../../ui/Actions";
 import { useProjectStore, type Project } from "../../store/useProjectStore";
+import { apiService } from "../../api/service";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Chip from "../../ui/Chip";
 import { semanticChipSx } from "../../ui/chipStyles";
@@ -165,7 +169,7 @@ const Projects = () => {
             {row.start_date && (
               <Tooltip title={`Started ${formatDateTime(row.start_date)}`} arrow placement="top">
                 <CalendarTodayRoundedIcon
-                  sx={{ fontSize: 14, color: "#94a3b8", flexShrink: 0, cursor: "default" }}
+                  sx={{ fontSize: 14, color: "var(--slate-400)", flexShrink: 0, cursor: "default" }}
                 />
               </Tooltip>
             )}
@@ -261,6 +265,7 @@ const Projects = () => {
       print_completed_by: p.print_completed_by,
       delivered_at: p.delivered_at,
       delivered_by: p.delivered_by,
+      customer_id: p.customer_id,
       customer_name: p.customer_name,
       pinned: p.pinned,
     }));
@@ -268,6 +273,20 @@ const Projects = () => {
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const { showDialog, closeDialog, setLoading } = useConfirmDialogStore();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Arriving here from a dashboard/notification row (e.g. "Recent
+  // Deliveries") jumps straight to that one project via an exact server-side
+  // id match, rather than relying on the free-text search possibly matching
+  // more than one row (or not matching a name with unusual punctuation).
+  const focusedProjectId = searchParams.get("projectId");
+
+  const clearFocusedProject = useCallback(() => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("projectId");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   // Search/filters are sent to the server rather than applied client-side,
   // so the browser never has to hold more than one page of projects.
@@ -292,11 +311,13 @@ const Projects = () => {
   // Any new search/filter should land back on page 1.
   useEffect(() => {
     setPaginationModel((prev) => (prev.page === 0 ? prev : { ...prev, page: 0 }));
-  }, [debouncedSearch, printStatusFilter, priorityFilter, customerFilter]);
+  }, [debouncedSearch, printStatusFilter, priorityFilter, customerFilter, focusedProjectId]);
 
   // Shared by the auto-refetch effect below and the manual refresh button -
   // "refresh" means reload whatever the user is currently looking at
-  // (same page, same search/filters), not reset any of it.
+  // (same page, same search/filters), not reset any of it. When a
+  // `projectId` is focused, the server ignores every other filter and
+  // returns just that one project (see GET /projects, project_id param).
   const loadProjects = useCallback(() => {
     fetchProjects({
       page: paginationModel.page + 1,
@@ -305,6 +326,7 @@ const Projects = () => {
       printStatus: printStatusFilter,
       priority: priorityFilter,
       customerId: customerFilter,
+      projectId: focusedProjectId || undefined,
     });
   }, [
     fetchProjects,
@@ -313,6 +335,7 @@ const Projects = () => {
     printStatusFilter,
     priorityFilter,
     customerFilter,
+    focusedProjectId,
   ]);
 
   useEffect(() => {
@@ -356,6 +379,25 @@ const Projects = () => {
         }
       },
     });
+  };
+
+  // Fetched on demand (not preloaded per row) since most projects are
+  // browsed far more often than their invoice is actually opened - a
+  // project without one yet just gets a friendly message here instead of
+  // the menu having to know in advance whether one exists.
+  const handleViewInvoice = async (id: string | number) => {
+    try {
+      const invoice = await apiService.get<{ id: number }>(
+        `/invoices/project/${id}/latest`,
+      );
+      navigate(`/admin/invoices/${invoice.id}`);
+    } catch {
+      showDialog({
+        title: "No Invoice Yet",
+        description: "This project hasn't been invoiced yet.",
+        confirmText: "OK",
+      });
+    }
   };
 
   const handleDeleteProject = async (id: string | number) => {
@@ -412,7 +454,13 @@ const Projects = () => {
             <div className="flex items-center gap-2.5">
               <TableSearchBar
                 value={searchInput}
-                onChange={setSearchInput}
+                onChange={(value) => {
+                  // Typing a real search should drop out of the single-
+                  // project focus view rather than being silently ignored
+                  // by the server (project_id, when set, wins over search).
+                  if (focusedProjectId) clearFocusedProject();
+                  setSearchInput(value);
+                }}
                 placeholder="Search projects or customers..."
                 sx={{ flex: 1, minWidth: 0 }}
               />
@@ -425,6 +473,7 @@ const Projects = () => {
                   customer: customerFilter,
                 }}
                 onChange={(key, value) => {
+                  if (focusedProjectId) clearFocusedProject();
                   if (key === "printStatus") setPrintStatusFilter((value as string) ?? "");
                   if (key === "priority") setPriorityFilter((value as string) ?? "");
                   if (key === "customer") setCustomerFilter(value);
@@ -469,6 +518,27 @@ const Projects = () => {
           </div>
         </div>
 
+        {/* Focused-project banner - only shown when we arrived here via a
+            dashboard/notification row's exact-id jump (see
+            clearFocusedProject above); "View all projects" is the way back
+            to the normal, unfiltered list. */}
+        {focusedProjectId && (
+          <div className="flex items-center justify-between gap-3 mb-4 px-4 py-2.5 rounded-xl bg-blue-100/70 border border-blue-200">
+            <div className="flex items-center gap-2 text-sm font-semibold text-blue-900">
+              <PlaceRoundedIcon sx={{ fontSize: 18 }} />
+              Showing project #{focusedProjectId}
+            </div>
+            <button
+              type="button"
+              onClick={clearFocusedProject}
+              className="flex items-center gap-1 text-sm font-semibold text-blue-700 hover:text-blue-900"
+            >
+              View all projects
+              <CloseRoundedIcon sx={{ fontSize: 16 }} />
+            </button>
+          </div>
+        )}
+
         {/* Table Section */}
           <Table<Project>
             rows={rows}
@@ -486,6 +556,10 @@ const Projects = () => {
                 info
                 pin
                 orderMilestones
+                viewInvoice
+                onViewInvoice={() => handleViewInvoice(params.row.id)}
+                viewCustomer={isAdmin && !!params.row.customer_id}
+                onViewCustomer={() => navigate(`/admin/customers/${params.row.customer_id}`)}
                 data={params.row}
                 isPinned={!!params.row.pinned}
                 onTogglePin={() => handleTogglePin(params.row.id)}

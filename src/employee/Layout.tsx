@@ -1,20 +1,27 @@
 import React from "react";
 import { Box, CssBaseline } from "@mui/material";
 import { Outlet } from "react-router-dom";
-import { createTheme } from "@mui/material/styles";
+import { createTheme, ThemeProvider } from "@mui/material/styles";
 import IconButton from "@mui/material/IconButton";
 import { AppBar as MuiAppBar, Toolbar as MuiToolbar } from "@mui/material";
 import { MenuOutlined } from "@mui/icons-material";
 import { employeeNavigations } from "../config/employee";
-import NotificationsIcon from "@mui/icons-material/Notifications";
-import Badge from "@mui/material/Badge";
 import Menu from "../ui/Menu";
 import Avatar from "../ui/Avatar";
 import Drawer from "../common/components/Drawer";
 
+// Heading variants get their own fontFamily (see index.css's --font-
+// heading/h1-h6 rule) - same reasoning as admin/Layout.tsx's identical
+// theme override.
 const theme = createTheme({
   typography: {
     fontFamily: "var(--font-noto-sans)",
+    h1: { fontFamily: "var(--font-heading)" },
+    h2: { fontFamily: "var(--font-heading)" },
+    h3: { fontFamily: "var(--font-heading)" },
+    h4: { fontFamily: "var(--font-heading)" },
+    h5: { fontFamily: "var(--font-heading)" },
+    h6: { fontFamily: "var(--font-heading)" },
   },
 });
 
@@ -25,7 +32,9 @@ export default function EmployeeLayout() {
   const handleDrawerClose = () => setOpen(false);
 
   return (
-    <>
+    // `theme` was previously created but never actually provided to the
+    // tree - see admin/Layout.tsx's identical fix for why.
+    <ThemeProvider theme={theme}>
       <CssBaseline />
       <Box sx={{ display: "flex" }}>
         {/* Drawer: component decides permanent vs temporary based on breakpoints */}
@@ -53,15 +62,6 @@ export default function EmployeeLayout() {
                 <MenuOutlined sx={{ color: "#000" }} />
               </IconButton>
               <div>
-                <IconButton
-                  size="large"
-                  aria-label="show 17 new notifications"
-                  color="inherit"
-                >
-                  <Badge badgeContent={17} color="error">
-                    <NotificationsIcon sx={{ color: "#000" }} />
-                  </Badge>
-                </IconButton>
                 <Avatar />
                 <Menu />
               </div>
@@ -86,6 +86,6 @@ export default function EmployeeLayout() {
           </Box>
         </Box>
       </Box>
-    </>
+    </ThemeProvider>
   );
 }

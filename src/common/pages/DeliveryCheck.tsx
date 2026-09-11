@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { Box, Typography, Button as MuiButton, CircularProgress, Alert } from "@mui/material";
 import LocalShippingRoundedIcon from "@mui/icons-material/LocalShippingRounded";
+import CreditScoreRoundedIcon from "@mui/icons-material/CreditScoreRounded";
 import { apiService } from "../../api/service";
 import { useDialogStore } from "../../store/useDialogStore";
 import { useProjectStore } from "../../store/useProjectStore";
 import { useAppStore } from "../../store/useAppStore";
+import { useConfirmDialogStore } from "../../hooks/useconfirmDialogStore";
 import TextField from "../../ui/TextField";
 import Dropdown from "../../ui/Dropdown";
 import Button from "../../ui/Button";
@@ -28,6 +30,10 @@ interface InvoiceItem {
   sq_ft: number;
   rate: number;
   total: number;
+  // See InvoiceView.tsx - true when Total was typed directly at creation,
+  // so `rate` is a back-derived number nobody actually entered and is
+  // hidden here too, same as on the invoice itself.
+  is_manual_total: boolean;
 }
 
 interface InvoiceDetail {
@@ -46,9 +52,9 @@ interface InvoiceDetail {
 }
 
 const STATUS_STYLES: Record<string, { bg: string; color: string; label: string }> = {
-  pending: { bg: "#FEF3C7", color: "#92400E", label: "Pending" },
-  paid: { bg: "#DCFCE7", color: "#166534", label: "Paid" },
-  cancelled: { bg: "#FEE2E2", color: "#991B1B", label: "Cancelled" },
+  pending: { bg: "var(--amber-100)", color: "var(--amber-800)", label: "Pending" },
+  paid: { bg: "var(--green-100)", color: "var(--green-800)", label: "Paid" },
+  cancelled: { bg: "var(--red-100)", color: "var(--red-800)", label: "Cancelled" },
 };
 
 const colHeaderSx = {
@@ -62,6 +68,7 @@ const colHeaderSx = {
 export default function DeliveryCheck() {
   const { editingId, closeDialog } = useDialogStore();
   const { markDelivered } = useProjectStore();
+  const { showDialog } = useConfirmDialogStore();
   const { user } = useAppStore();
   const isAdmin = user?.role === "admin";
   const projectId = editingId;
@@ -169,6 +176,26 @@ export default function DeliveryCheck() {
     }
   };
 
+  // Bypasses the normal "must be paid first" gate below (canDeliver) as a
+  // deliberate choice, not a loophole - confirmed explicitly since it's
+  // handing over goods against an unpaid balance, and recorded server-side
+  // (Project.delivered_on_credit) so it stays visible everywhere else the
+  // order shows up as unpaid, not silently indistinguishable from "we
+  // forgot to collect payment".
+  const handleDeliverOnCredit = () => {
+    if (!projectId || !invoice) return;
+    showDialog({
+      title: "Deliver on credit?",
+      description: `₹${invoice.balance_due.toLocaleString("en-IN")} is still unpaid on this order. It'll be marked Delivered and recorded as a credit sale - the balance stays tracked as due until it's actually paid.`,
+      confirmText: "Deliver on Credit",
+      isDestructive: true,
+      onConfirm: async () => {
+        await markDelivered(String(projectId), true);
+        closeDialog();
+      },
+    });
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
@@ -217,6 +244,12 @@ export default function DeliveryCheck() {
   // to - most invoices get settled by an actual payment, not a discount).
   const canCompletePayment = invoice.status === "pending";
   const canDeliver = invoice.status === "paid";
+  // Extending credit is a business-risk call on the same footing as the
+  // discount above (letting goods go out against money not yet in hand),
+  // so it's gated the same way: admin-only, and only while there's
+  // actually an unpaid balance to extend credit against - a cancelled
+  // invoice needs a new one generated first, same as normal delivery.
+  const canDeliverOnCredit = isAdmin && invoice.status === "pending";
 
   return (
     <Box>
@@ -255,7 +288,7 @@ export default function DeliveryCheck() {
       </InvoiceMetaPanel>
 
       {invoice.project && (
-        <Typography variant="body2" sx={{ fontWeight: 600, color: "#0f172a", mb: 2 }}>
+        <Typography variant="body2" sx={{ fontWeight: 600, color: "var(--slate-900)", mb: 2 }}>
           {invoice.project.project_type} Order
           {invoice.project.description ? ` — ${invoice.project.description}` : ""}
         </Typography>
@@ -305,7 +338,7 @@ export default function DeliveryCheck() {
               {item.width} × {item.height} ({item.sq_ft} sq ft)
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              ₹{item.rate.toLocaleString()}
+              {item.is_manual_total ? "—" : `₹${item.rate.toLocaleString()}`}
             </Typography>
             <Typography sx={{ fontWeight: 700, textAlign: "right" }}>
               ₹{item.total.toLocaleString()}
@@ -334,7 +367,7 @@ export default function DeliveryCheck() {
               size="small"
               onClick={handleApplyDiscount}
               disabled={applyingDiscount}
-              sx={{ textTransform: "none", fontWeight: 600, color: "#2563EB", mb: 0.25 }}
+              sx={{ textTransform: "none", fontWeight: 600, color: "var(--blue-600)", mb: 0.25 }}
             >
               {applyingDiscount ? "Applying..." : "Apply Discount"}
             </MuiButton>
@@ -404,14 +437,33 @@ export default function DeliveryCheck() {
         <Alert severity="warning" sx={{ mt: 2 }}>
           {invoice.status === "cancelled"
             ? "This invoice was cancelled - generate a new one and complete payment before delivering."
-            : "Payment must be completed before this order can be marked as delivered."}
+            : canDeliverOnCredit
+              ? "Payment must be completed before this order can be marked as delivered - or deliver it on credit below."
+              : "Payment must be completed before this order can be marked as delivered."}
         </Alert>
       )}
 
-      <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1.5, mt: 3 }}>
+      <Box sx={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 1.5, mt: 3 }}>
         <MuiButton onClick={closeDialog} sx={{ color: "text.secondary", textTransform: "none" }}>
           Close
         </MuiButton>
+        {canDeliverOnCredit && (
+          <MuiButton
+            onClick={handleDeliverOnCredit}
+            disabled={delivering}
+            startIcon={<CreditScoreRoundedIcon fontSize="small" />}
+            sx={{
+              textTransform: "none",
+              fontWeight: 600,
+              color: "var(--amber-700)",
+              border: "1px solid var(--amber-200)",
+              bgcolor: "var(--amber-50)",
+              "&:hover": { bgcolor: "var(--amber-100)", borderColor: "var(--amber-300)" },
+            }}
+          >
+            Deliver on Credit
+          </MuiButton>
+        )}
         <Button
           onClick={handleDeliver}
           disabled={!canDeliver || delivering}

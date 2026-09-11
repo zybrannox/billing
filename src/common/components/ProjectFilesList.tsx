@@ -17,6 +17,7 @@ import {
   CheckCircleRounded,
   DeleteOutlineRounded,
   UploadFileRounded,
+  BlockRounded,
 } from "@mui/icons-material";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import ArchiveIcon from "@mui/icons-material/Archive";
@@ -65,15 +66,15 @@ const FileIcon = ({ type, size = 28 }: { type: FileType; size?: number }) => {
   const iconSx = { fontSize: size };
   switch (type) {
     case "pdf":
-      return <PictureAsPdfIcon sx={{ ...iconSx, color: "#EF4444" }} />;
+      return <PictureAsPdfIcon sx={{ ...iconSx, color: "var(--red-500)" }} />;
     case "archive":
-      return <ArchiveIcon sx={{ ...iconSx, color: "#8B5CF6" }} />;
+      return <ArchiveIcon sx={{ ...iconSx, color: "var(--violet-500)" }} />;
     case "doc":
-      return <DescriptionIcon sx={{ ...iconSx, color: "#2563EB" }} />;
+      return <DescriptionIcon sx={{ ...iconSx, color: "var(--blue-600)" }} />;
     case "sheet":
-      return <TableChartIcon sx={{ ...iconSx, color: "#10B981" }} />;
+      return <TableChartIcon sx={{ ...iconSx, color: "var(--emerald-500)" }} />;
     default:
-      return <InsertDriveFileIcon sx={{ ...iconSx, color: "#64748B" }} />;
+      return <InsertDriveFileIcon sx={{ ...iconSx, color: "var(--slate-500)" }} />;
   }
 };
 
@@ -118,6 +119,9 @@ const ProjectFilesList = () => {
   const lightboxStoragePath = lightboxFile ? storagePath(lightboxFile) : "";
   const lightboxDisplayName = lightboxFile ? displayName(lightboxFile) : "";
   const lightboxFileType = lightboxFile ? getFileType(lightboxFile) : null;
+  // Original removed by the weekly retention job - /files/view would 410
+  // for this one, so the lightbox falls back to the thumbnail below.
+  const lightboxIsPurged = typeof lightboxFile !== "string" && !!lightboxFile?.original_deleted_at;
 
   // `path` addresses the file on the server (must be the real stored
   // name); `saveAsName` is what the browser names the downloaded file -
@@ -342,7 +346,7 @@ const ProjectFilesList = () => {
           i !== null && i < totalFiles - 1 ? i + 1 : i,
         ),
       Enter: () => {
-        if (lightboxFile) handleDownload(lightboxStoragePath, lightboxDisplayName);
+        if (lightboxFile && !lightboxIsPurged) handleDownload(lightboxStoragePath, lightboxDisplayName);
       },
     },
     lightboxIndex !== null,
@@ -367,7 +371,7 @@ const ProjectFilesList = () => {
             variant="caption"
             sx={{
               fontWeight: 600,
-              color: "#64748B",
+              color: "var(--slate-500)",
               fontSize: "0.7rem",
               textTransform: "uppercase",
               letterSpacing: "0.03em",
@@ -389,7 +393,7 @@ const ProjectFilesList = () => {
               sx={{
                 fontSize: "0.7rem",
                 fontWeight: 600,
-                color: "#2563EB",
+                color: "var(--blue-600)",
                 cursor: "pointer",
                 "&:hover": { textDecoration: "underline" },
               }}
@@ -412,14 +416,14 @@ const ProjectFilesList = () => {
             py: 0.375,
             borderRadius: "6px",
             cursor: uploadProgress === null ? "pointer" : "default",
-            color: "#2563EB",
+            color: "var(--blue-600)",
             transition: "background-color 150ms ease-in-out",
-            "&:hover": uploadProgress === null ? { backgroundColor: "#EFF6FF" } : {},
+            "&:hover": uploadProgress === null ? { backgroundColor: "var(--blue-50)" } : {},
           }}
         >
           {uploadProgress !== null ? (
             <>
-              <CircularProgress size={13} thickness={5} sx={{ color: "#2563EB" }} />
+              <CircularProgress size={13} thickness={5} sx={{ color: "var(--blue-600)" }} />
               <Typography sx={{ fontSize: "0.7rem", fontWeight: 600 }}>
                 Uploading {uploadProgress}%
               </Typography>
@@ -434,13 +438,13 @@ const ProjectFilesList = () => {
       </Box>
 
       {uploadError && (
-        <Typography sx={{ fontSize: "0.7rem", color: "#EF4444", mb: 0.75 }}>
+        <Typography sx={{ fontSize: "0.7rem", color: "var(--red-500)", mb: 0.75 }}>
           {uploadError}
         </Typography>
       )}
 
       {totalFiles === 0 ? (
-        <Typography variant="body2" sx={{ color: "#94A3B8", fontSize: "0.8125rem" }}>
+        <Typography variant="body2" sx={{ color: "var(--slate-400)", fontSize: "0.8125rem" }}>
           No files available in this project
         </Typography>
       ) : (
@@ -451,6 +455,7 @@ const ProjectFilesList = () => {
           const originalIndex = files.indexOf(file);
           const type = getFileType(file);
           const isDownloaded = typeof file !== "string" && !!file.downloaded;
+          const isPurged = typeof file !== "string" && !!file.original_deleted_at;
 
           return (
             <Box
@@ -466,13 +471,14 @@ const ProjectFilesList = () => {
                 maxWidth: 200,
                 borderRadius: "8px",
                 cursor: "pointer",
-                backgroundColor: isDownloaded ? "#F0FDF4" : "#F8FAFC",
+                backgroundColor: isPurged ? "var(--slate-50)" : isDownloaded ? "var(--green-50)" : "var(--slate-50)",
                 border: "1px solid",
-                borderColor: isDownloaded ? "#A7F3D0" : "#E2E8F0",
+                borderColor: isPurged ? "var(--slate-200)" : isDownloaded ? "var(--emerald-200)" : "var(--slate-200)",
+                opacity: isPurged ? 0.7 : 1,
                 transition: "all 150ms ease-in-out",
                 "&:hover": {
-                  borderColor: isDownloaded ? "#34D399" : "#CBD5E1",
-                  backgroundColor: isDownloaded ? "#DCFCE7" : "#F1F5F9",
+                  borderColor: isPurged ? "var(--slate-300)" : isDownloaded ? "var(--emerald-400)" : "var(--slate-300)",
+                  backgroundColor: isPurged ? "var(--slate-100)" : isDownloaded ? "var(--green-100)" : "var(--slate-100)",
                 },
               }}
             >
@@ -498,13 +504,19 @@ const ProjectFilesList = () => {
                 sx={{
                   fontSize: "0.75rem",
                   fontWeight: isDownloaded ? 600 : 500,
-                  color: isDownloaded ? "#065F46" : "#334155",
+                  color: isDownloaded ? "var(--emerald-800)" : "var(--slate-700)",
                 }}
               >
                 {name}
               </Typography>
-              {isDownloaded && (
-                <CheckCircleRounded sx={{ color: "#10B981", fontSize: 13, flexShrink: 0 }} />
+              {isPurged ? (
+                <Tooltip title="Original removed after 7 days - thumbnail only">
+                  <BlockRounded sx={{ color: "var(--slate-400)", fontSize: 13, flexShrink: 0 }} />
+                </Tooltip>
+              ) : (
+                isDownloaded && (
+                  <CheckCircleRounded sx={{ color: "var(--emerald-500)", fontSize: 13, flexShrink: 0 }} />
+                )
               )}
             </Box>
           );
@@ -520,13 +532,13 @@ const ProjectFilesList = () => {
               py: 0.625,
               borderRadius: "8px",
               cursor: "pointer",
-              backgroundColor: "#EFF6FF",
-              border: "1px solid #BFDBFE",
+              backgroundColor: "var(--blue-50)",
+              border: "1px solid var(--blue-200)",
               transition: "all 150ms ease-in-out",
-              "&:hover": { backgroundColor: "#DBEAFE", borderColor: "#93C5FD" },
+              "&:hover": { backgroundColor: "var(--blue-100)", borderColor: "var(--blue-300)" },
             }}
           >
-            <Typography sx={{ fontSize: "0.75rem", fontWeight: 700, color: "#2563EB" }}>
+            <Typography sx={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--blue-600)" }}>
               +{hiddenCount} more
             </Typography>
           </Box>
@@ -572,7 +584,7 @@ const ProjectFilesList = () => {
                 indeterminate={selectedPaths.size > 0 && selectedPaths.size < files.length}
                 sx={{ p: 0.5 }}
               />
-              <Typography sx={{ fontSize: "0.75rem", color: "#64748B", fontWeight: 500 }}>
+              <Typography sx={{ fontSize: "0.75rem", color: "var(--slate-500)", fontWeight: 500 }}>
                 Select all
               </Typography>
             </Box>
@@ -596,8 +608,8 @@ const ProjectFilesList = () => {
             mx: -1,
             px: 1,
             "::-webkit-scrollbar": { width: "6px" },
-            "::-webkit-scrollbar-thumb": { backgroundColor: "#CBD5E1", borderRadius: "10px" },
-            "::-webkit-scrollbar-track": { backgroundColor: "#F1F5F9" },
+            "::-webkit-scrollbar-thumb": { backgroundColor: "var(--slate-300)", borderRadius: "10px" },
+            "::-webkit-scrollbar-track": { backgroundColor: "var(--slate-100)" },
           }}
         >
           {files.map((file, index) => {
@@ -605,6 +617,10 @@ const ProjectFilesList = () => {
             const name = displayName(file);
             const type = getFileType(file);
             const isDownloaded = typeof file !== "string" && !!file.downloaded;
+            // Original was permanently removed by the weekly retention job
+            // (see backend app/project_files/retention.py) - the row and
+            // thumbnail still exist, but there's nothing left to download.
+            const isPurged = typeof file !== "string" && !!file.original_deleted_at;
 
             return (
               <Box
@@ -618,13 +634,14 @@ const ProjectFilesList = () => {
                   p: 1,
                   borderRadius: "8px",
                   cursor: "pointer",
-                  backgroundColor: isDownloaded ? "#F0FDF4" : "#FFFFFF",
+                  backgroundColor: isPurged ? "var(--slate-50)" : isDownloaded ? "var(--green-50)" : "var(--white)",
                   border: "1px solid",
-                  borderColor: isDownloaded ? "#A7F3D0" : "#E2E8F0",
+                  borderColor: isPurged ? "var(--slate-200)" : isDownloaded ? "var(--emerald-200)" : "var(--slate-200)",
+                  opacity: isPurged ? 0.75 : 1,
                   transition: "all 150ms ease-in-out",
                   "&:hover": {
-                    borderColor: isDownloaded ? "#34D399" : "#CBD5E1",
-                    backgroundColor: isDownloaded ? "#DCFCE7" : "#F8FAFC",
+                    borderColor: isPurged ? "var(--slate-300)" : isDownloaded ? "var(--emerald-400)" : "var(--slate-300)",
+                    backgroundColor: isPurged ? "var(--slate-100)" : isDownloaded ? "var(--green-100)" : "var(--slate-50)",
                   },
                 }}
               >
@@ -658,7 +675,7 @@ const ProjectFilesList = () => {
                           height: 32,
                           borderRadius: "4px",
                           objectFit: "cover",
-                          border: "1px solid #E2E8F0",
+                          border: "1px solid var(--slate-200)",
                         }}
                         alt=""
                       />
@@ -673,33 +690,62 @@ const ProjectFilesList = () => {
                       noWrap
                       sx={{
                         fontSize: "0.8125rem",
-                        color: isDownloaded ? "#065F46" : "#0F172A",
+                        color: isDownloaded ? "var(--emerald-800)" : "var(--slate-900)",
                         fontWeight: isDownloaded ? 600 : 500,
                       }}
                     >
                       {name}
                     </Typography>
 
-                    {typeof file === "object" && (file.width || file.height) && (
+                    {isPurged ? (
                       <Typography
                         variant="caption"
-                        sx={{ display: "block", color: "#64748B", fontSize: "0.7rem" }}
+                        sx={{ display: "block", color: "var(--slate-400)", fontSize: "0.7rem", fontStyle: "italic" }}
                       >
-                        {file.width || "?"}" × {file.height || "?"}"
+                        Original removed after 7 days - thumbnail only
                       </Typography>
+                    ) : (
+                      typeof file === "object" && (file.width || file.height) && (
+                        <Typography
+                          variant="caption"
+                          sx={{ display: "block", color: "var(--slate-500)", fontSize: "0.7rem" }}
+                        >
+                          {file.width || "?"}" × {file.height || "?"}"
+                        </Typography>
+                      )
                     )}
                   </Box>
                 </Box>
 
                 <Box sx={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
-                  {path in downloadProgress ? (
+                  {isPurged ? (
+                    <Tooltip title="Original file was automatically removed after 7 days on this completed project - only the thumbnail remains, nothing to download">
+                      <span>
+                        <IconButton
+                          size="small"
+                          disabled
+                          onClick={(e) => e.stopPropagation()}
+                          sx={{
+                            width: 28,
+                            height: 28,
+                            padding: 0,
+                            color: "var(--slate-300)",
+                            border: "1px solid var(--slate-200)",
+                            "&.Mui-disabled": { color: "var(--slate-300)" },
+                          }}
+                        >
+                          <BlockRounded sx={{ fontSize: 16 }} />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                  ) : path in downloadProgress ? (
                     <Box sx={{ display: "flex", alignItems: "center", px: 0.5 }}>
                       <CircularProgress
                         variant="determinate"
                         value={downloadProgress[path]}
                         size={20}
                         thickness={5}
-                        sx={{ color: "#2563EB" }}
+                        sx={{ color: "var(--blue-600)" }}
                       />
                     </Box>
                   ) : (
@@ -714,15 +760,15 @@ const ProjectFilesList = () => {
                           width: 28,
                           height: 28,
                           padding: 0,
-                          backgroundColor: isDownloaded ? "#10B981" : "#F1F5F9",
-                          color: isDownloaded ? "#FFFFFF" : "#475569",
+                          backgroundColor: isDownloaded ? "var(--emerald-500)" : "var(--slate-100)",
+                          color: isDownloaded ? "var(--white)" : "var(--slate-600)",
                           border: "1px solid",
-                          borderColor: isDownloaded ? "#059669" : "#E2E8F0",
+                          borderColor: isDownloaded ? "var(--emerald-600)" : "var(--slate-200)",
                           transition: "all 150ms ease-in-out",
                           "&:hover": {
-                            backgroundColor: isDownloaded ? "#059669" : "#2563EB",
-                            color: "#FFFFFF",
-                            borderColor: isDownloaded ? "#047857" : "#1D4ED8",
+                            backgroundColor: isDownloaded ? "var(--emerald-600)" : "var(--blue-600)",
+                            color: "var(--white)",
+                            borderColor: isDownloaded ? "var(--emerald-700)" : "var(--blue-700)",
                           },
                         }}
                       >
@@ -749,19 +795,19 @@ const ProjectFilesList = () => {
                           height: 28,
                           padding: 0,
                           ml: 0.5,
-                          backgroundColor: "#F1F5F9",
-                          color: "#94A3B8",
-                          border: "1px solid #E2E8F0",
+                          backgroundColor: "var(--slate-100)",
+                          color: "var(--slate-400)",
+                          border: "1px solid var(--slate-200)",
                           transition: "all 150ms ease-in-out",
                           "&:hover": {
-                            backgroundColor: "#FEF2F2",
-                            color: "#EF4444",
-                            borderColor: "#FECACA",
+                            backgroundColor: "var(--red-50)",
+                            color: "var(--red-500)",
+                            borderColor: "var(--red-200)",
                           },
                         }}
                       >
                         {removingPath === path ? (
-                          <CircularProgress size={14} thickness={5} sx={{ color: "#94A3B8" }} />
+                          <CircularProgress size={14} thickness={5} sx={{ color: "var(--slate-400)" }} />
                         ) : (
                           <DeleteOutlineRounded sx={{ fontSize: 16 }} />
                         )}
@@ -788,7 +834,7 @@ const ProjectFilesList = () => {
             backgroundColor: "rgba(15, 23, 42, 0.98)",
             boxShadow: "none",
             borderRadius: isMobile ? 0 : "12px",
-            border: isMobile ? "none" : "1px solid #334155",
+            border: isMobile ? "none" : "1px solid var(--slate-700)",
             backgroundImage: "none",
           },
         }}
@@ -809,7 +855,7 @@ const ProjectFilesList = () => {
               position: "absolute",
               top: 16,
               right: 16,
-              color: "#F8FAFC",
+              color: "var(--slate-50)",
               backgroundColor: "rgba(255, 255, 255, 0.1)",
               border: "1px solid rgba(255, 255, 255, 0.15)",
               "&:hover": { backgroundColor: "rgba(255, 255, 255, 0.2)" },
@@ -826,7 +872,7 @@ const ProjectFilesList = () => {
               sx={{
                 position: "absolute",
                 left: 16,
-                color: "#F8FAFC",
+                color: "var(--slate-50)",
                 backgroundColor: "rgba(255, 255, 255, 0.1)",
                 border: "1px solid rgba(255, 255, 255, 0.15)",
                 "&:hover": { backgroundColor: "rgba(255, 255, 255, 0.2)" },
@@ -838,20 +884,31 @@ const ProjectFilesList = () => {
           )}
 
           {lightboxFile && lightboxFileType === "image" && (
-            <Box
-              component="img"
-              src={`${API_BASE_URL}/files/view/${encodeURIComponent(lightboxStoragePath)}`}
-              alt={lightboxDisplayName}
-              sx={{ maxHeight: "90%", maxWidth: "90%", objectFit: "contain" }}
-            />
+            <Stack spacing={1.5} alignItems="center" sx={{ maxHeight: "90%", maxWidth: "90%" }}>
+              <Box
+                component="img"
+                // The original 410s once purged - the thumbnail (never
+                // deleted by retention) is the only thing left to show.
+                src={`${API_BASE_URL}/files/${lightboxIsPurged ? "thumbnail" : "view"}/${encodeURIComponent(lightboxStoragePath)}`}
+                alt={lightboxDisplayName}
+                sx={{ maxHeight: lightboxIsPurged ? "80vh" : "90%", maxWidth: "100%", objectFit: "contain" }}
+              />
+              {lightboxIsPurged && (
+                <Typography variant="caption" sx={{ color: "var(--slate-400)" }}>
+                  Original removed after 7 days - showing thumbnail only
+                </Typography>
+              )}
+            </Stack>
           )}
 
           {lightboxFile && lightboxFileType !== "image" && (
             <Stack spacing={1.5} alignItems="center">
               <FileIcon type={lightboxFileType!} size={64} />
-              <Typography sx={{ color: "#F8FAFC", fontWeight: 600 }}>{lightboxDisplayName}</Typography>
-              <Typography variant="caption" sx={{ color: "#94A3B8" }}>
-                Preview not supported for this format
+              <Typography sx={{ color: "var(--slate-50)", fontWeight: 600 }}>{lightboxDisplayName}</Typography>
+              <Typography variant="caption" sx={{ color: "var(--slate-400)" }}>
+                {lightboxIsPurged
+                  ? "Original removed after 7 days on this completed project"
+                  : "Preview not supported for this format"}
               </Typography>
             </Stack>
           )}
@@ -866,7 +923,7 @@ const ProjectFilesList = () => {
               sx={{
                 position: "absolute",
                 right: 16,
-                color: "#F8FAFC",
+                color: "var(--slate-50)",
                 backgroundColor: "rgba(255, 255, 255, 0.1)",
                 border: "1px solid rgba(255, 255, 255, 0.15)",
                 "&:hover": { backgroundColor: "rgba(255, 255, 255, 0.2)" },
@@ -894,30 +951,36 @@ const ProjectFilesList = () => {
               backdropFilter: "blur(8px)",
             }}
           >
-            <Typography variant="caption" sx={{ color: "#F8FAFC", fontWeight: 500 }}>
+            <Typography variant="caption" sx={{ color: "var(--slate-50)", fontWeight: 500 }}>
               {lightboxDisplayName}
               {totalFiles > 1 && ` • ${(lightboxIndex ?? 0) + 1} of ${totalFiles}`}
             </Typography>
 
-            <IconButton
-              size="small"
-              onClick={() => handleDownload(lightboxStoragePath, lightboxDisplayName)}
-              aria-label="Download"
-              disabled={lightboxStoragePath in downloadProgress}
-              sx={{ color: "#F8FAFC" }}
-            >
-              {lightboxStoragePath in downloadProgress ? (
-                <CircularProgress
-                  variant="determinate"
-                  value={downloadProgress[lightboxStoragePath]}
-                  size={16}
-                  thickness={5}
-                  sx={{ color: "#3B82F6" }}
-                />
-              ) : (
-                <FileDownloadRounded fontSize="small" />
-              )}
-            </IconButton>
+            <Tooltip title={lightboxIsPurged ? "Original removed after 7 days - nothing to download" : ""}>
+              <span>
+                <IconButton
+                  size="small"
+                  onClick={() => handleDownload(lightboxStoragePath, lightboxDisplayName)}
+                  aria-label="Download"
+                  disabled={lightboxIsPurged || lightboxStoragePath in downloadProgress}
+                  sx={{ color: "var(--slate-50)", "&.Mui-disabled": { color: "rgba(248, 250, 252, 0.35)" } }}
+                >
+                  {lightboxStoragePath in downloadProgress ? (
+                    <CircularProgress
+                      variant="determinate"
+                      value={downloadProgress[lightboxStoragePath]}
+                      size={16}
+                      thickness={5}
+                      sx={{ color: "var(--blue-500)" }}
+                    />
+                  ) : lightboxIsPurged ? (
+                    <BlockRounded fontSize="small" />
+                  ) : (
+                    <FileDownloadRounded fontSize="small" />
+                  )}
+                </IconButton>
+              </span>
+            </Tooltip>
           </Stack>
         </Box>
       </MuiDialog>

@@ -73,7 +73,7 @@ export function GenericDialog({
       }}
       sx={{
         "& .MuiDialog-paper": {
-          backgroundColor: "#ffffff",
+          backgroundColor: "var(--white)",
           backgroundImage: "none",
           width: width ?? (maxWidth ? undefined : "30rem"),
           maxWidth: fullScreen ? "100%" : "calc(100% - 32px)",
@@ -98,7 +98,7 @@ export function GenericDialog({
           alignItems: "flex-start",
           borderBottom: "1px solid",
           borderColor: "rgba(226, 232, 240, 0.8)",
-          bgcolor: "#f8fafc",
+          bgcolor: "var(--slate-50)",
         }}
       >
         <Box sx={{ pr: 2 }}>
@@ -122,7 +122,7 @@ export function GenericDialog({
               variant="body2"
               sx={{
                 fontSize: "0.8125rem",
-                color: "var(--slate-500, #64748b)",
+                color: "var(--slate-500, var(--slate-500))",
                 mt: 0.5,
                 lineHeight: 1.4,
               }}

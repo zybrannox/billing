@@ -4,6 +4,7 @@ import "./App.css";
 
 import AdminLayout from "./admin/Layout";
 import Employee from "./admin/pages/Employee";
+import EmployeeProfile from "./admin/pages/EmployeeProfile";
 import AddEmployee from "./admin/pages/AddEmployee";
 
 import EmployeeLayout from "./employee/Layout";
@@ -16,7 +17,7 @@ import { apiService } from "./api/service";
 import { API } from "./api/endpoints";
 import Projects from "./common/pages/Projects";
 import Customers from "./admin/pages/Customers";
-import Billing from "./admin/pages/Billing";
+import CustomerProfile from "./admin/pages/CustomerProfile";
 import InvoiceView from "./admin/pages/InvoiceView";
 import SystemSetup from "./admin/pages/SystemSetup";
 import Dashboard from "./admin/pages/Dashboard";
@@ -85,13 +86,24 @@ function App() {
                 <Route path="dashboard" element={<Dashboard />} />
                 <Route path="projects" element={<Projects />} />
                 <Route path="customers" element={<Customers />} />
+                <Route path="customers/:id" element={<CustomerProfile />} />
                 <Route path="employees" element={<Employee />} />
                 <Route path="employees/new" element={<AddEmployee />} />
-                <Route path="billing" element={<Billing />} />
+                <Route path="employees/:id" element={<EmployeeProfile />} />
                 <Route path="system-setup" element={<SystemSetup />} />
               </Route>
-              {/* Rendered outside AdminLayout - a full-page printable
-                  document shouldn't include the sidebar/app chrome. TODO */}
+            </Route>
+
+            {/* Every project's invoice(s) need to be viewable from the
+                project itself (the More-actions menu's "View Invoice" -
+                see Projects.tsx/Actions.tsx), for whoever is looking at
+                that project - not just admins, since employees work their
+                own projects through this same page. Kept at the same
+                /admin/invoices/:id path (Billing.tsx and Dashboard.tsx
+                already link there) but outside the admin-only guard above,
+                and outside AdminLayout - a full-page printable document
+                shouldn't include the sidebar/app chrome either way. */}
+            <Route element={<ProtectedRoute allowedRoles={["admin", "user", "moderator"]} />}>
               <Route path="/admin/invoices/:id" element={<InvoiceView />} />
             </Route>
 

@@ -1,4 +1,5 @@
 import type { GridColDef, GridRowId } from "@mui/x-data-grid";
+import { useNavigate } from "react-router-dom";
 import { useApiRequest } from "../../hooks/useApiRequest";
 import { API } from "../../api/endpoints";
 import { apiService } from "../../api/service";
@@ -76,6 +77,7 @@ const baseColumns: GridColDef[] = [
 ];
 
 const Employee = () => {
+  const navigate = useNavigate();
   const { openDialog } = useDialogStore();
   const { sendRequest } = useApiRequest();
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -198,6 +200,7 @@ const Employee = () => {
         columns={columns}
         processRowUpdate={processRowUpdate}
         onDelete={handleDeleteEmployee}
+        onRowSelect={(row) => navigate(`/admin/employees/${row.id}`)}
         renderActions={(params, handlers) => [
           <CrudActions
             key="crud"

@@ -57,7 +57,7 @@ export default function SearchInput({
             <SearchIcon
               sx={{
                 fontSize: 18,
-                color: "var(--blue-400, #94a3b8)",
+                color: "var(--blue-400, var(--slate-400))",
                 transition: "color 0.2s ease",
               }}
             />
@@ -103,7 +103,7 @@ export default function SearchInput({
           height: 36,
           fontSize: "0.85rem",
           borderRadius: "var(--border-radius-md, 6px)",
-          bgcolor: "#ffffff",
+          bgcolor: "var(--white)",
           paddingLeft: "10px",
           paddingRight: "32px", // Fixed reserve padding so text doesn't overlap the clear button
           transition: "background-color 0.2s ease, box-shadow 0.2s ease",
@@ -122,10 +122,10 @@ export default function SearchInput({
             transition: "border-color 0.2s ease, box-shadow 0.2s ease",
           },
           "&:hover fieldset": {
-            borderColor: "var(--blue-300, #93c5fd)",
+            borderColor: "var(--blue-300, var(--blue-300))",
           },
           "&.Mui-focused fieldset": {
-            borderColor: "var(--blue-500, #3b82f6)",
+            borderColor: "var(--blue-500, var(--blue-500))",
             borderWidth: "1px",
             boxShadow: "0 0 0 3px rgba(59, 130, 246, 0.12)",
           },

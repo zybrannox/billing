@@ -14,6 +14,12 @@ export interface FileObject {
   // every user sees the same "downloaded" state, not just the browser that
   // downloaded it.
   downloaded?: boolean | null;
+  // Set once the weekly retention job has permanently deleted the
+  // original from disk (completed/delivered/invoiced projects, 7+ days
+  // old) - null means the original is still there. The thumbnail and
+  // this row survive either way, so the UI shows a "removed" state with
+  // the real filename instead of offering a download that would 410.
+  original_deleted_at?: string | null;
 }
 
 export interface Project {
@@ -36,6 +42,12 @@ export interface Project {
   print_completed_by?: string | null;
   delivered_at?: string | null;
   delivered_by?: string | null;
+  // True when this delivery was made explicitly "on credit" - the invoice
+  // was still unpaid at the time (see DeliveryCheck.tsx). A deliberate
+  // business decision, kept as its own flag rather than inferred from the
+  // invoice's current status, which can change later (e.g. once it's
+  // actually paid) without altering how the delivery itself happened.
+  delivered_on_credit?: boolean;
   customer_id?: number | null;
   customer_name?: string | null;
   // Pinned projects sort to the top of the list server-side (see
@@ -50,6 +62,9 @@ export interface ProjectListParams {
   printStatus?: string;
   priority?: string;
   customerId?: string | number;
+  // Jump straight to one known project (e.g. from a dashboard/notification
+  // row) - an exact id match server-side, bypassing search/filters.
+  projectId?: string | number;
 }
 
 interface ProjectListResponse {
@@ -89,7 +104,7 @@ interface ProjectState {
   refreshProject: (id: string) => Promise<void>;
   markDesignCompleted: (id: string) => Promise<void>;
   markPrintCompleted: (id: string) => Promise<void>;
-  markDelivered: (id: string) => Promise<void>;
+  markDelivered: (id: string, onCredit?: boolean) => Promise<void>;
   togglePinProject: (id: string) => Promise<void>;
 }
 
@@ -114,6 +129,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
           print_status: params.printStatus || undefined,
           priority: params.priority || undefined,
           customer_id: params.customerId || undefined,
+          project_id: params.projectId || undefined,
         },
       });
       set({
@@ -240,9 +256,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     }));
   },
 
-  markDelivered: async (id) => {
+  markDelivered: async (id, onCredit) => {
     const updated = await apiService.patch<Project>(
-      `/projects/${id}/delivered`,
+      `/projects/${id}/delivered${onCredit ? "?on_credit=true" : ""}`,
     );
     const current = get().selectedProject;
     set((state) => ({

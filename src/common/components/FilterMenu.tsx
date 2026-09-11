@@ -60,13 +60,13 @@ export default function FilterMenu({
             border: "1px solid",
             borderColor:
               open || activeCount > 0
-                ? "var(--blue-500, #3b82f6)"
+                ? "var(--blue-500, var(--blue-500))"
                 : "rgba(0, 0, 0, 0.12)",
             borderRadius: "var(--border-radius-md, 6px)",
             bgcolor:
               open || activeCount > 0
-                ? "var(--blue-50, #eff6ff)"
-                : "#ffffff",
+                ? "var(--blue-50, var(--blue-50))"
+                : "var(--white)",
             boxShadow:
               open || activeCount > 0
                 ? "0 0 0 3px rgba(59, 130, 246, 0.12)"
@@ -76,9 +76,9 @@ export default function FilterMenu({
             "&:hover": {
               borderColor:
                 open || activeCount > 0
-                  ? "var(--blue-500, #3b82f6)"
-                  : "var(--blue-300, #93c5fd)",
-              bgcolor: "var(--blue-50, #eff6ff)",
+                  ? "var(--blue-500, var(--blue-500))"
+                  : "var(--blue-300, var(--blue-300))",
+              bgcolor: "var(--blue-50, var(--blue-50))",
             },
           }}
         >
@@ -91,7 +91,7 @@ export default function FilterMenu({
                 height: 16,
                 minWidth: 16,
                 padding: "0 4px",
-                bgcolor: "var(--blue-500, #3b82f6)",
+                bgcolor: "var(--blue-500, var(--blue-500))",
               },
             }}
           >
@@ -100,7 +100,7 @@ export default function FilterMenu({
                 fontSize: 18,
                 color:
                   open || activeCount > 0
-                    ? "var(--blue-600, #2563eb)"
+                    ? "var(--blue-600, var(--blue-600))"
                     : "text.secondary",
                 transition: "color 0.15s ease",
               }}
@@ -129,7 +129,7 @@ export default function FilterMenu({
       >
         <Box sx={{ p: 2.5, width: 260, display: "flex", flexDirection: "column", gap: 2 }}>
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#0f172a" }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "var(--slate-900)" }}>
               Filters
             </Typography>
             {activeCount > 0 && onClearAll && (

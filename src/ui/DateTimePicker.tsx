@@ -112,7 +112,7 @@ const DateTimePicker = React.memo(
                       paddingRight: "6px !important", // Gives inner spacing for the adornment
                       fontSize: "0.85rem",
                       borderRadius: "var(--border-radius-md, 6px)",
-                      bgcolor: disabled ? "rgba(0, 0, 0, 0.02)" : "#ffffff",
+                      bgcolor: disabled ? "rgba(0, 0, 0, 0.02)" : "var(--white)",
                       transition:
                         "background-color 0.2s ease, box-shadow 0.2s ease",
                     },
@@ -123,14 +123,14 @@ const DateTimePicker = React.memo(
                     // Mui-focused/hover rules for MuiPickersOutlinedInput
                     // outrank a plain sx override on these nested selectors.
                     "& .MuiPickersOutlinedInput-notchedOutline": {
-                      borderColor: `${error ? "#ef4444" : "rgba(0, 0, 0, 0.12)"} !important`,
+                      borderColor: `${error ? "var(--red-500)" : "rgba(0, 0, 0, 0.12)"} !important`,
                       transition: "border-color 0.2s ease, box-shadow 0.2s ease",
                     },
                     "&:hover .MuiPickersOutlinedInput-notchedOutline": {
-                      borderColor: `${error ? "#ef4444" : "var(--blue-300, #93c5fd)"} !important`,
+                      borderColor: `${error ? "var(--red-500)" : "var(--blue-300, var(--blue-300))"} !important`,
                     },
                     "&.Mui-focused .MuiPickersOutlinedInput-notchedOutline": {
-                      borderColor: `${error ? "#ef4444" : "var(--blue-500, #3b82f6)"} !important`,
+                      borderColor: `${error ? "var(--red-500)" : "var(--blue-500, var(--blue-500))"} !important`,
                       borderWidth: "1px !important",
                     },
                     "&.Mui-focused": {
@@ -192,7 +192,7 @@ const DateTimePicker = React.memo(
                       fontSize: "0.78rem",
                       borderRadius: "var(--border-radius-sm, 4px)",
                       "&.Mui-selected": {
-                        bgcolor: "#3b82f6 !important",
+                        bgcolor: "var(--blue-500) !important",
                         fontWeight: 600,
                       },
                       "&:hover": {
@@ -222,7 +222,7 @@ const DateTimePicker = React.memo(
                       padding: "4px 8px",
                       "&.Mui-selected": {
                         bgcolor: "rgba(59, 130, 246, 0.12) !important",
-                        color: "#2563eb",
+                        color: "var(--blue-600)",
                         fontWeight: 600,
                       },
                     },

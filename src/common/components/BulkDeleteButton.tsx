@@ -44,8 +44,8 @@ export default function BulkDeleteButton({
                   height: 16,
                   minWidth: 16,
                   padding: "0 4px",
-                  bgcolor: "var(--red-500, #ef4444)",
-                  color: "#ffffff",
+                  bgcolor: "var(--red-500, var(--red-500))",
+                  color: "var(--white)",
                   fontWeight: 600,
                 },
               }}
@@ -54,7 +54,7 @@ export default function BulkDeleteButton({
                 sx={{
                   fontSize: 18,
                   color: !isDisabled
-                    ? "var(--red-600, #dc2626)"
+                    ? "var(--red-600, var(--red-600))"
                     : "text.disabled",
                   transition: "color 0.15s ease",
                 }}
@@ -74,20 +74,20 @@ export default function BulkDeleteButton({
             // icon controls read as one consistent group.
             border: "1px solid rgba(0, 0, 0, 0.12)",
             borderRadius: "var(--border-radius-md, 6px)",
-            bgcolor: "#ffffff",
+            bgcolor: "var(--white)",
             boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
-            color: "var(--red-600, #dc2626)",
+            color: "var(--red-600, var(--red-600))",
             transition:
               "background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease",
             "& .MuiButton-startIcon": { margin: 0 },
             "&:hover": {
               borderColor: isDisabled
                 ? "rgba(0, 0, 0, 0.12)"
-                : "var(--red-300, #fca5a5)",
-              bgcolor: isDisabled ? "#ffffff" : "var(--red-50, #fef2f2)",
+                : "var(--red-300, var(--red-300))",
+              bgcolor: isDisabled ? "var(--white)" : "var(--red-50, var(--red-50))",
             },
             "&.Mui-disabled": {
-              bgcolor: "#ffffff",
+              bgcolor: "var(--white)",
               borderColor: "rgba(0, 0, 0, 0.12)",
             },
             ...sx,

@@ -22,6 +22,7 @@ import CalculateRoundedIcon from "@mui/icons-material/CalculateRounded";
 import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
 import DiscountRoundedIcon from "@mui/icons-material/DiscountRounded";
 import ImageRoundedIcon from "@mui/icons-material/ImageRounded";
+import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 
 import { apiService } from "../../api/service";
 import { formatDate } from "../../utils/dateFormatter";
@@ -86,6 +87,14 @@ interface ItemRow {
   width: string;
   height: string;
   rate: string;
+  // Raw override for the Total Amount field, typed directly by the user -
+  // "" means "not overridden, just show rate × area" (see totalDisplayOf
+  // below). Editing Width/Height/Rate clears this back to "" so an old
+  // override never silently lingers and disagrees with the inputs that
+  // actually drive it; editing Total itself sets this AND back-derives
+  // Rate (the field the backend actually persists) to match, so the two
+  // never disagree on submit.
+  total: string;
   // The source image's actual pixel size, if this row was seeded from one -
   // display-only (see the caption under Item Description). Width/Height in
   // feet are never derived from this: a raster image's pixel count doesn't
@@ -109,6 +118,7 @@ const newRow = (
   width: "",
   height: "",
   rate: "",
+  total: "",
   pixelWidth,
   pixelHeight,
 });
@@ -139,8 +149,21 @@ const sqFtOf = (row: ItemRow) =>
     ? Math.round(toNumber(row.width) * toNumber(row.height) * 100) / 100
     : 0;
 
+// The real, authoritative total (rate × area) - used for every actual sum
+// (grand total, submission payload, etc). Always derived from rate, never
+// from row.total directly, so a manual Total override can never silently
+// drift from what's actually billed: editing Total back-derives rate (see
+// handleTotalChange), and this recomputes from that updated rate.
 const totalOf = (row: ItemRow) =>
   Math.round(sqFtOf(row) * toNumber(row.rate) * 100) / 100;
+
+// What the Total Amount field itself should show: the user's raw typed
+// override while they're actively editing it, or the live computed value
+// otherwise. Never reformats an in-progress override (no toFixed on every
+// keystroke) - doing that here would re-inject extra characters mid-type
+// and corrupt whatever the user is entering.
+const totalDisplayOf = (row: ItemRow) =>
+  row.total !== "" ? row.total : totalOf(row) ? totalOf(row).toFixed(2) : "";
 
 const extractErrorMessage = (err: any): string => {
   const detail = err?.detail ?? err?.message;
@@ -154,7 +177,7 @@ const colHeaderSx = {
   fontSize: "0.725rem",
   letterSpacing: "0.05em",
   textTransform: "uppercase" as const,
-  color: "#64748B",
+  color: "var(--slate-500)",
   userSelect: "none" as const,
 };
 
@@ -184,7 +207,7 @@ const numberFieldSx = {
     m: 0,
     "& .MuiTypography-root": {
       fontSize: "0.75rem",
-      color: "#64748B",
+      color: "var(--slate-500)",
       fontWeight: 600,
     },
   },
@@ -287,7 +310,38 @@ export default function GenerateInvoice() {
     updateRow(key, {
       itemType: value,
       rate: match?.rate != null ? String(match.rate) : "",
+      // Whatever Total was showing no longer reflects this new rate -
+      // clear back to "auto" so it recomputes from it instead of
+      // displaying a now-stale override.
+      total: "",
     });
+  };
+
+  // Total Amount is editable, but the backend only ever persists Rate
+  // (Width × Height × Rate) - there's no separate "total" column to save
+  // an override into. So typing a total here works by solving that same
+  // equation backwards: Rate = Total ÷ Area. Only meaningful once an area
+  // exists (the field is disabled with 0 area - see the JSX), so this is
+  // never called with sqft <= 0.
+  const handleTotalChange = (key: string, value: string) => {
+    setItems((prev) =>
+      prev.map((r) => {
+        if (r.key !== key) return r;
+        const area = sqFtOf(r);
+        if (area <= 0) return r;
+        const typed = toNumber(value);
+        // Rounding this to 2 decimals (like a real, user-entered rate)
+        // used to throw away enough precision that re-multiplying by area
+        // could land a few cents off the total actually typed - e.g. 9.25
+        // sq ft @ a typed ₹250 total came back as ₹250.03. This field is
+        // never shown to the user (see the "Hidden" rate cell below, only
+        // rendered while row.total is set) - it exists purely so the
+        // total÷area round-trip below reproduces the typed amount, so
+        // there's no UI reason to keep it low-precision.
+        const derivedRate = Math.round((typed / area) * 1_000_000) / 1_000_000;
+        return { ...r, total: value, rate: String(derivedRate) };
+      })
+    );
   };
 
   const addRow = () => setItems((prev) => [...prev, newRow()]);
@@ -361,16 +415,33 @@ export default function GenerateInvoice() {
           width: toNumber(r.width),
           height: toNumber(r.height),
           rate: toNumber(r.rate),
+          is_manual_total: r.total !== "",
         })),
       });
 
+      // The invoice itself is the source of truth and already exists at
+      // this point, so a failure here shouldn't block navigating to it -
+      // but silently swallowing it (as this used to) left the "Generate
+      // Invoice" button re-enabled with no sign anything was wrong,
+      // inviting a second invoice for the same project on retry (now
+      // rejected server-side - see service_create's pending-invoice
+      // guard - but that's a confusing error to hit blind). One retry
+      // covers the common transient case (a network blip); if it still
+      // fails, tell the user plainly instead of failing silently.
       try {
         await markDesignCompleted(String(projectId));
-      } catch (err) {
-        console.error(
-          "Invoice generated, but marking design completed failed",
-          err
-        );
+      } catch {
+        try {
+          await markDesignCompleted(String(projectId));
+        } catch (err) {
+          console.error(
+            "Invoice generated, but marking design completed failed twice",
+            err,
+          );
+          alert(
+            `Invoice ${invoice.id} was created, but this project couldn't be marked "design completed" automatically. Mark it manually from Projects - Generate Invoice will otherwise refuse a second one for this order.`,
+          );
+        }
       }
 
       closeDialog();
@@ -396,8 +467,8 @@ export default function GenerateInvoice() {
 
   if (loadError || !preview) {
     return (
-      <Paper elevation={0} sx={{ textAlign: "center", py: 6, px: 3, border: "1px dashed #CBD5E1", borderRadius: 3 }}>
-        <Typography variant="subtitle1" sx={{ fontWeight: 600, color: "#475569" }}>
+      <Paper elevation={0} sx={{ textAlign: "center", py: 6, px: 3, border: "1px dashed var(--slate-300)", borderRadius: 3 }}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 600, color: "var(--slate-600)" }}>
           Unable to Load Project
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
@@ -421,18 +492,18 @@ export default function GenerateInvoice() {
           p: 2,
           mb: 3,
           borderRadius: 2.5,
-          bgcolor: "#F8FAFC",
-          border: "1px solid #E2E8F0",
+          bgcolor: "var(--slate-50)",
+          border: "1px solid var(--slate-200)",
           display: "flex",
           alignItems: "center",
           gap: 1.5,
         }}
       >
-        <Box sx={{ p: 1, bgcolor: "#EFF6FF", borderRadius: 2, color: "#2563EB", display: "flex" }}>
+        <Box sx={{ p: 1, bgcolor: "var(--blue-50)", borderRadius: 2, color: "var(--blue-600)", display: "flex" }}>
           <ReceiptLongRoundedIcon fontSize="small" />
         </Box>
         <Box>
-          <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#1E293B" }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "var(--slate-800)" }}>
             Invoice Generation & Handover
           </Typography>
           <Typography variant="caption" color="text.secondary">
@@ -448,18 +519,18 @@ export default function GenerateInvoice() {
           p: 2.5,
           mb: 3,
           borderRadius: 3,
-          border: "1px solid #E2E8F0",
-          bgcolor: "#FFFFFF",
+          border: "1px solid var(--slate-200)",
+          bgcolor: "var(--white)",
         }}
       >
         <InvoiceMetaPanel>
           <Box sx={{ display: "flex", gap: 1.5, alignItems: "flex-start" }}>
-            <Box sx={{ p: 1, bgcolor: "#F1F5F9", borderRadius: 1.5, color: "#475569", mt: 0.5 }}>
+            <Box sx={{ p: 1, bgcolor: "var(--slate-100)", borderRadius: 1.5, color: "var(--slate-600)", mt: 0.5 }}>
               <PersonRoundedIcon fontSize="small" />
             </Box>
             <Box>
               <InvoicePanelLabel>Billed To</InvoicePanelLabel>
-              <Typography sx={{ fontWeight: 700, color: "#0F172A", fontSize: "0.95rem" }}>
+              <Typography sx={{ fontWeight: 700, color: "var(--slate-900)", fontSize: "0.95rem" }}>
                 {customerName}
               </Typography>
               {customer && (
@@ -480,7 +551,7 @@ export default function GenerateInvoice() {
               <Typography variant="body2" color="text.secondary">
                 Invoice Date:
               </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 600, color: "#334155" }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, color: "var(--slate-700)" }}>
                 {formatDate(new Date().toISOString())}
               </Typography>
             </Box>
@@ -490,18 +561,18 @@ export default function GenerateInvoice() {
           </Box>
         </InvoiceMetaPanel>
 
-        <Divider sx={{ my: 2, borderColor: "#F1F5F9" }} />
+        <Divider sx={{ my: 2, borderColor: "var(--slate-100)" }} />
 
         {/* Project Summary */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, bgcolor: "#F8FAFC", p: 1.5, borderRadius: 2 }}>
-          <FolderOpenRoundedIcon fontSize="small" sx={{ color: "#64748B" }} />
-          <Typography variant="body2" sx={{ fontWeight: 600, color: "#334155" }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, bgcolor: "var(--slate-50)", p: 1.5, borderRadius: 2 }}>
+          <FolderOpenRoundedIcon fontSize="small" sx={{ color: "var(--slate-500)" }} />
+          <Typography variant="body2" sx={{ fontWeight: 600, color: "var(--slate-700)" }}>
             {project.project_type} Order
             {project.description ? ` — ${project.description}` : ""}
           </Typography>
           {project.delivery_date && (
             <Box sx={{ ml: "auto", display: "flex", alignItems: "center", gap: 0.5 }}>
-              <EventRoundedIcon sx={{ fontSize: "1rem", color: "#94A3B8" }} />
+              <EventRoundedIcon sx={{ fontSize: "1rem", color: "var(--slate-400)" }} />
               <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
                 Target Delivery: {formatDate(project.delivery_date)}
               </Typography>
@@ -509,11 +580,11 @@ export default function GenerateInvoice() {
           )}
         </Box>
 
-        <Divider sx={{ my: 2, borderColor: "#F1F5F9" }} />
+        <Divider sx={{ my: 2, borderColor: "var(--slate-100)" }} />
 
         {/* Advance Payment Controls */}
         <Box sx={{ display: "flex", gap: 1.5, alignItems: "flex-start" }}>
-          <Box sx={{ p: 1, bgcolor: "#F1F5F9", borderRadius: 1.5, color: "#475569", mt: 0.5 }}>
+          <Box sx={{ p: 1, bgcolor: "var(--slate-100)", borderRadius: 1.5, color: "var(--slate-600)", mt: 0.5 }}>
             <PaymentsRoundedIcon fontSize="small" />
           </Box>
           <Box sx={{ flex: 1 }}>
@@ -557,7 +628,7 @@ export default function GenerateInvoice() {
       </Paper>
 
       {/* Dynamic Line Items Section */}
-      <Paper elevation={0} sx={{ border: "1px solid #E2E8F0", borderRadius: 3, overflow: "hidden", mb: 2 }}>
+      <Paper elevation={0} sx={{ border: "1px solid var(--slate-200)", borderRadius: 3, overflow: "hidden", mb: 2 }}>
         <Box sx={{ overflowX: "auto" }}>
           <Box sx={{ minWidth: 920 }}>
             {/* Table Header */}
@@ -566,8 +637,8 @@ export default function GenerateInvoice() {
                 display: "grid",
                 gridTemplateColumns: ITEM_ROW_GRID,
                 gap: 1.25,
-                bgcolor: "#F8FAFC",
-                borderBottom: "1px solid #E2E8F0",
+                bgcolor: "var(--slate-50)",
+                borderBottom: "1px solid var(--slate-200)",
                 px: 2,
                 py: 1.5,
                 alignItems: "center",
@@ -596,11 +667,11 @@ export default function GenerateInvoice() {
                     px: 2,
                     py: 1.25,
                     alignItems: "center",
-                    borderTop: idx === 0 ? "none" : "1px solid #F1F5F9",
-                    bgcolor: idx % 2 === 0 ? "#FFFFFF" : "#FAFAFA",
+                    borderTop: idx === 0 ? "none" : "1px solid var(--slate-100)",
+                    bgcolor: idx % 2 === 0 ? "var(--white)" : "var(--slate-50)",
                   }}
                 >
-                  <Typography variant="body2" sx={{ color: "#94A3B8", fontWeight: 600, fontSize: "0.8rem" }}>
+                  <Typography variant="body2" sx={{ color: "var(--slate-400)", fontWeight: 600, fontSize: "0.8rem" }}>
                     {idx + 1}
                   </Typography>
 
@@ -630,7 +701,7 @@ export default function GenerateInvoice() {
                                       this rides inside the field instead of
                                       adding a second line beneath it. */}
                                   <Tooltip title={`Source image is ${row.pixelWidth} × ${row.pixelHeight}px — enter the real print size in the fields to the right`}>
-                                    <ImageRoundedIcon sx={{ fontSize: 16, color: "#94A3B8" }} />
+                                    <ImageRoundedIcon sx={{ fontSize: 16, color: "var(--slate-400)" }} />
                                   </Tooltip>
                                 </InputAdornment>
                               ),
@@ -643,7 +714,7 @@ export default function GenerateInvoice() {
                     type="number"
                     placeholder="0"
                     value={row.width}
-                    onChange={(e) => updateRow(row.key, { width: e.target.value })}
+                    onChange={(e) => updateRow(row.key, { width: e.target.value, total: "" })}
                     sx={numberFieldSx}
                     slotProps={{
                       input: {
@@ -656,7 +727,7 @@ export default function GenerateInvoice() {
                     type="number"
                     placeholder="0"
                     value={row.height}
-                    onChange={(e) => updateRow(row.key, { height: e.target.value })}
+                    onChange={(e) => updateRow(row.key, { height: e.target.value, total: "" })}
                     sx={numberFieldSx}
                     slotProps={{
                       input: {
@@ -665,29 +736,86 @@ export default function GenerateInvoice() {
                     }}
                   />
 
-                  <Typography variant="body2" sx={{ fontWeight: 600, color: "#334155", textAlign: "right", pr: 0.5, fontSize: "0.85rem" }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600, color: "var(--slate-700)", textAlign: "right", pr: 0.5, fontSize: "0.85rem" }}>
                     {sqFtOf(row)}{" "}
-                    <Typography component="span" sx={{ fontSize: "0.75rem", color: "#64748B", fontWeight: 500 }}>
+                    <Typography component="span" sx={{ fontSize: "0.75rem", color: "var(--slate-500)", fontWeight: 500 }}>
                       sq ft
                     </Typography>
                   </Typography>
 
-                  <TextField
-                    type="number"
-                    placeholder="0.00"
-                    value={row.rate}
-                    onChange={(e) => updateRow(row.key, { rate: e.target.value })}
-                    sx={numberFieldSx}
-                    slotProps={{
-                      input: {
-                        startAdornment: <InputAdornment position="start">₹</InputAdornment>,
-                      },
-                    }}
-                  />
+                  {row.total !== "" ? (
+                    // Total was typed directly - the rate on this row is
+                    // just total ÷ area solved backwards, not something
+                    // anyone actually entered, so it's hidden here (and on
+                    // the printed invoice - see InvoiceView.tsx) rather
+                    // than displayed as if it were real. Click reverts to
+                    // entering a rate directly.
+                    <Tooltip title="Rate is hidden because Total was entered directly for this item - click to enter a rate instead">
+                      <Box
+                        onClick={() => updateRow(row.key, { total: "" })}
+                        sx={{
+                          height: 40,
+                          px: 1,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "flex-end",
+                          gap: 0.5,
+                          borderRadius: "8px",
+                          border: "1px dashed var(--slate-300)",
+                          bgcolor: "var(--slate-50)",
+                          color: "var(--slate-400)",
+                          cursor: "pointer",
+                          "&:hover": { borderColor: "var(--slate-400)", color: "var(--slate-500)", bgcolor: "var(--slate-100)" },
+                        }}
+                      >
+                        <VisibilityOffRoundedIcon sx={{ fontSize: 15 }} />
+                        <Typography sx={{ fontSize: "0.75rem", fontWeight: 600, fontStyle: "italic" }}>
+                          Hidden
+                        </Typography>
+                      </Box>
+                    </Tooltip>
+                  ) : (
+                    <TextField
+                      type="number"
+                      placeholder="0.00"
+                      value={row.rate}
+                      onChange={(e) => updateRow(row.key, { rate: e.target.value, total: "" })}
+                      sx={numberFieldSx}
+                      slotProps={{
+                        input: {
+                          startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                        },
+                      }}
+                    />
+                  )}
 
-                  <Typography sx={{ fontWeight: 700, textAlign: "right", color: "#0F172A", fontSize: "0.875rem", pr: 0.5 }}>
-                    ₹{totalOf(row).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                  </Typography>
+                  {/* Editable - typing here solves Rate = Total ÷ Area
+                      backwards (see handleTotalChange) so it stays exactly
+                      as authoritative as typing into Rate directly would
+                      be. Disabled with no area: a total can't mean
+                      anything until there's a size to divide it by. */}
+                  <Tooltip title={sqFtOf(row) <= 0 ? "Enter Width and Height first" : ""}>
+                    <span>
+                      <TextField
+                        type="number"
+                        placeholder="0.00"
+                        value={totalDisplayOf(row)}
+                        onChange={(e) => handleTotalChange(row.key, e.target.value)}
+                        disabled={sqFtOf(row) <= 0}
+                        sx={{
+                          ...numberFieldSx,
+                          "& .MuiInputBase-input.Mui-disabled": {
+                            WebkitTextFillColor: "var(--slate-400)",
+                          },
+                        }}
+                        slotProps={{
+                          input: {
+                            startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                          },
+                        }}
+                      />
+                    </span>
+                  </Tooltip>
 
                   <Tooltip title={items.length === 1 ? "Minimum 1 item required" : "Remove item"}>
                     <span>
@@ -696,8 +824,8 @@ export default function GenerateInvoice() {
                         onClick={() => removeRow(row.key)}
                         disabled={items.length === 1}
                         sx={{
-                          color: "#94A3B8",
-                          "&:hover": { color: "#EF4444", bgcolor: "#FEF2F2" },
+                          color: "var(--slate-400)",
+                          "&:hover": { color: "var(--red-500)", bgcolor: "var(--red-50)" },
                           "&.Mui-disabled": { opacity: 0.3 },
                         }}
                       >
@@ -722,18 +850,18 @@ export default function GenerateInvoice() {
           sx={{
             textTransform: "none",
             fontWeight: 600,
-            color: "#2563EB",
-            bgcolor: "#EFF6FF",
+            color: "var(--blue-600)",
+            bgcolor: "var(--blue-50)",
             px: 2,
             py: 0.8,
             borderRadius: 2,
-            "&:hover": { bgcolor: "#DBEAFE" },
+            "&:hover": { bgcolor: "var(--blue-100)" },
           }}
         >
           Add Item Line
         </MuiButton>
 
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, color: "#64748B" }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, color: "var(--slate-500)" }}>
           <CalculateRoundedIcon fontSize="small" />
           <Typography variant="body2" sx={{ fontWeight: 500 }}>
             Total Printable Area: <strong>{totalSqFt} sq ft</strong>
@@ -773,14 +901,14 @@ export default function GenerateInvoice() {
           sx={{
             p: 1.5,
             borderRadius: 2,
-            bgcolor: "#F8FAFC",
-            border: "1px solid #E2E8F0",
+            bgcolor: "var(--slate-50)",
+            border: "1px solid var(--slate-200)",
             display: "flex",
             alignItems: "center",
             gap: 2,
           }}
         >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1, color: "#475569" }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, color: "var(--slate-600)" }}>
             <DiscountRoundedIcon fontSize="small" />
             <Typography variant="body2" sx={{ fontWeight: 600 }}>
               Discount Amount
@@ -816,16 +944,16 @@ export default function GenerateInvoice() {
       </Box>
 
       {/* Action Footer */}
-      <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2, pt: 2, borderTop: "1px solid #E2E8F0" }}>
+      <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2, pt: 2, borderTop: "1px solid var(--slate-200)" }}>
         <MuiButton
           onClick={closeDialog}
           disabled={submitting}
           sx={{
-            color: "#64748B",
+            color: "var(--slate-500)",
             textTransform: "none",
             fontWeight: 600,
             px: 3,
-            "&:hover": { bgcolor: "#F1F5F9" },
+            "&:hover": { bgcolor: "var(--slate-100)" },
           }}
         >
           Cancel

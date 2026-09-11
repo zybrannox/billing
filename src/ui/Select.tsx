@@ -45,7 +45,7 @@ export const SemanticSelectEditCell = (props: SemanticSelectEditProps) => {
         // oversized and out of place against the rest of the row.
         fontSize: "0.85rem",
         borderRadius: "var(--border-radius-md, 6px)",
-        bgcolor: "#ffffff",
+        bgcolor: "var(--white)",
         transition: "background-color 0.2s ease, box-shadow 0.2s ease",
 
         "& .MuiSelect-select": {
@@ -58,10 +58,10 @@ export const SemanticSelectEditCell = (props: SemanticSelectEditProps) => {
           transition: "border-color 0.2s ease, box-shadow 0.2s ease",
         },
         "&:hover fieldset": {
-          borderColor: "var(--blue-300, #93c5fd)",
+          borderColor: "var(--blue-300, var(--blue-300))",
         },
         "&.Mui-focused fieldset": {
-          borderColor: "var(--blue-500, #3b82f6)",
+          borderColor: "var(--blue-500, var(--blue-500))",
           borderWidth: "1px",
           boxShadow: "0 0 0 3px rgba(59, 130, 246, 0.12)",
         },

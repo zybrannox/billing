@@ -17,9 +17,32 @@
   -moz-osx-font-smoothing: grayscale;
 } */
 :root {
-  --background: #0a0a0a;
-  --foreground: #ededed;
-  --blue-gradient: linear-gradient(to bottom right, #1e3a8a, #1e40af);
+  /* The base page background everywhere a component doesn't set its own -
+     explicit and white, not the previous unused-in-practice #0a0a0a (a
+     leftover dark-mode default nothing actually read). */
+  --background: #ffffff;
+  --foreground: #0f172a;
+  --white: #ffffff;
+  /* Read by the admin/employee MUI theme's typography.fontFamily (see
+     admin/Layout.tsx, employee/Layout.tsx) - this name is inherited from
+     an earlier font choice, but was never actually defined anywhere,
+     which meant `var(--font-noto-sans)` silently resolved to nothing and
+     every MUI component (buttons, inputs, DataGrid cells, dialogs - most
+     of the app's visible UI) was falling back to MUI's own default font
+     the whole time, never the one body/h1/etc were styled for below. */
+  --font-noto-sans: "Inter", system-ui, "Segoe UI", sans-serif;
+  /* The heading face (see the h1-h6 rule below) - also exposed as its own
+     token for headline-style text that isn't a real heading element (e.g.
+     the Dashboard hero's greeting/revenue figure is a styled MUI
+     Typography, not an <h1>, so the bare element selector below can't
+     reach it). */
+  --font-heading: "Manrope", "Inter", system-ui, "Segoe UI", sans-serif;
+  /* Landed here after a few rounds of tuning (see ui/Button.tsx's
+     "gradient" variant, the only reader of this token): the original
+     #1e3a8a -> #1e40af was too close in tone to read as a gradient at
+     all; swapping the dark stop for slate-900 read as too close to
+     black. This blue-600 -> blue-900 sweep is the one that stuck. */
+  --blue-gradient: linear-gradient(135deg, #2563eb 0%, #1e3a8a 100%);
   --blue-50: oklch(97% 0.014 254.604);
   --blue-100: oklch(93.2% 0.032 255.585);
   --blue-200: oklch(88.2% 0.059 254.128);
@@ -27,6 +50,7 @@
   --blue-400: oklch(70.7% 0.165 254.624);
   --blue-500: oklch(62.3% 0.214 259.815);
   --blue-600: oklch(54.6% 0.245 262.881);
+  --blue-700: #1d4ed8;
   --blue-800: oklch(42.4% 0.199 265.638);
   --blue-900: oklch(37.9% 0.146 265.522);
 
@@ -39,16 +63,82 @@
   --red-500: oklch(63.7% 0.237 25.33);
   --red-600: oklch(57.7% 0.245 27.32);
   --red-700: oklch(50.5% 0.213 27.52);
+  --red-800: #991b1b;
 
   /* --- Green Palette (Success, Active states, Confirmed) --- */
   --green-50: oklch(97.9% 0.021 166.11);
   --green-100: oklch(95% 0.052 163.05);
   --green-200: oklch(90.5% 0.093 164.15);
   --green-300: oklch(83.2% 0.143 163.22);
-  --green-400: oklch(74% 0.177 162.48);
+  --green-400: #4ade80;
   --green-500: oklch(62.7% 0.194 149.21);
   --green-600: oklch(52.7% 0.173 150.07);
   --green-700: oklch(44.8% 0.141 150.34);
+  --green-800: #166534;
+
+  /* --- Emerald Palette - a distinct, slightly cooler green already in
+     use alongside the warmer "green" scale above (e.g. "paid"/settled
+     money states vs. client-facing status chips), so both are kept
+     rather than forcing one hue to cover two different meanings. --- */
+  --emerald-50: #ecfdf5;
+  --emerald-200: #a7f3d0;
+  --emerald-400: #34d399;
+  --emerald-500: #10b981;
+  --emerald-600: #059669;
+  --emerald-800: #065f46;
+
+  /* --- Amber/Orange Palette (Warnings, pending states) --- */
+  --amber-50: #fffbeb;
+  --amber-100: #fef3c7;
+  --amber-200: #fde68a;
+  --amber-300: #fcd34d;
+  --amber-500: #f59e0b;
+  --amber-600: #d97706;
+  --amber-700: #b45309;
+  --amber-800: #92400e;
+  --orange-50: #fff7ed;
+  --orange-100: #ffedd5;
+  --orange-200: #fed7aa;
+  --orange-300: #fdba74;
+  --orange-600: #ea580c;
+
+  /* --- Indigo/Violet Palette (secondary accent, credit/special states) --- */
+  --indigo-50: #eef2ff;
+  --indigo-100: #e0e7ff;
+  --indigo-500: #6366f1;
+  --indigo-600: #4f46e5;
+  --violet-50: #f5f3ff;
+  --violet-200: #ddd6fe;
+  --violet-500: #8b5cf6;
+  --violet-600: #7c3aed;
+
+  /* --- Cyan/Sky Palette (info accents) --- */
+  --cyan-50: #ecfeff;
+  --cyan-600: #0891b2;
+  --sky-600: #0284c7;
+
+  /* --- Rose (a second red-family accent for delete/destructive icons) --- */
+  --rose-600: #e11d48;
+
+  --yellow-600: #ca8a04;
+  --orange-800: #9a3412;
+  --emerald-700: #047857;
+  --black: #000000;
+
+  /* --- Slate Palette (neutrals - text, borders, surfaces) - the single
+     most-used scale in the app; previously every one of these steps was
+     hardcoded as a raw hex literal in dozens of files instead of read
+     from here. --- */
+  --slate-50: #f8fafc;
+  --slate-100: #f1f5f9;
+  --slate-200: #e2e8f0;
+  --slate-300: #cbd5e1;
+  --slate-400: #94a3b8;
+  --slate-500: #64748b;
+  --slate-600: #475569;
+  --slate-700: #334155;
+  --slate-800: #1e293b;
+  --slate-900: #0f172a;
 
   --admin-body-bg: oklch(37.9% 0.146 265.522);
   --admin-body-bg-2: #0f1535;
@@ -82,22 +172,36 @@
   --card-spacer-y: 1rem;
 }
 
-/* Global font for the app */
+/* Global font for the app - Inter, the standard professional choice for
+   a data-dense SaaS dashboard (Linear, Vercel, GitHub all use it): built
+   for UI text specifically, stays legible at the small sizes this app
+   uses constantly (table cells, chip labels, captions), and its tabular
+   figures keep columns of numbers/invoice totals aligned. Replaces the
+   previous Roboto/Poppins/Noto Sans mix. */
 body {
-  font-family: "Roboto", "Poppins", "Noto Sans", sans-serif;
+  font-family: "Inter", system-ui, "Segoe UI", sans-serif;
   font-weight: 400;
-  color: #1a1a1a;
+  font-feature-settings: "cv11", "ss01", "tnum";
+  color: var(--slate-900);
+  background-color: var(--background);
 }
 
-/* Headings */
+/* Headings - a distinct display face from the Inter body text (every page
+   title across the app: "Dashboard", "Ongoing Activities", "Customer
+   Details", etc. are real <h1>s), not just a bolder weight of the same
+   font. Third pick after Plus Jakarta Sans (not readable enough) and
+   Lexend (read as too heavy/bold) - Manrope stays clean and refined even
+   at 600, rather than the dense, shouty look the previous two had at
+   comparable weights. */
 h1,
 h2,
 h3,
 h4,
 h5,
 h6 {
-  font-family: "Roboto", "Poppins", "Noto Sans", sans-serif;
-  font-weight: 500; /* slightly stronger than body */
+  font-family: var(--font-heading);
+  font-weight: 600;
+  letter-spacing: normal;
 }
 
 /* Body text */
@@ -105,21 +209,22 @@ p,
 span,
 li,
 td {
-  font-family: "Roboto", "Noto Sans", sans-serif;
+  font-family: "Inter", system-ui, "Segoe UI", sans-serif;
   font-weight: 400;
 }
 
 /* Example: bold labels */
 .label {
-  font-family: "Poppins", "Roboto", sans-serif;
+  font-family: "Inter", system-ui, sans-serif;
   font-weight: 700;
 }
 
 /* Example: invoice totals / numbers */
 .invoice-number,
 .total {
-  font-family: "Roboto", "Noto Sans", monospace;
-  font-weight: 500;
+  font-family: "Inter", system-ui, monospace;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Modern Status & Badge Classes */

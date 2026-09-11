@@ -8,16 +8,16 @@ import { Box, Typography } from "@mui/material";
 // tokens (see index.css's --blue-*), not the black/gray of a generic
 // invoice template - this is a Zybrannox document, not a stock one.
 export const invoiceTheme = {
-  headerBorder: "var(--blue-600, #2563eb)",
-  panelBg: "var(--blue-50, #eff6ff)",
-  panelBorder: "var(--blue-100, #dbeafe)",
-  tableHeaderBg: "var(--blue-50, #eff6ff)",
-  tableHeaderBorder: "var(--blue-600, #2563eb)",
-  tableHeaderText: "#1e3a8a", // blue-900
-  rowBorder: "var(--blue-100, #dbeafe)",
-  totalBg: "var(--blue-50, #eff6ff)",
-  totalBorder: "var(--blue-600, #2563eb)",
-  totalText: "#1e3a8a",
+  headerBorder: "var(--blue-600, var(--blue-600))",
+  panelBg: "var(--blue-50, var(--blue-50))",
+  panelBorder: "var(--blue-100, var(--blue-100))",
+  tableHeaderBg: "var(--blue-50, var(--blue-50))",
+  tableHeaderBorder: "var(--blue-600, var(--blue-600))",
+  tableHeaderText: "var(--blue-900)", // blue-900
+  rowBorder: "var(--blue-100, var(--blue-100))",
+  totalBg: "var(--blue-50, var(--blue-50))",
+  totalBorder: "var(--blue-600, var(--blue-600))",
+  totalText: "var(--blue-900)",
 };
 
 const gradientTextSx = {

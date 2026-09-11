@@ -65,17 +65,17 @@ export const addProjectFields: FieldDefinition[] = [
       {
         label: "Normal",
         value: "Normal",
-        color: "#2563EB", // Calm Blue (default / stable)
+        color: "var(--blue-600)", // Calm Blue (default / stable)
       },
       {
         label: "High",
         value: "High",
-        color: "#F59E0B", // Amber (attention)
+        color: "var(--amber-500)", // Amber (attention)
       },
       {
         label: "Urgent",
         value: "Urgent",
-        color: "#DC2626", // Strong Red (critical)
+        color: "var(--red-600)", // Strong Red (critical)
       },
     ],
     row: 1,
@@ -90,12 +90,12 @@ export const addProjectFields: FieldDefinition[] = [
       {
         label: "Confirmed",
         value: "Confirmed",
-        color: "#16A34A", // Green – approved / accepted
+        color: "var(--green-600)", // Green – approved / accepted
       },
       {
         label: "Correction",
         value: "Correction",
-        color: "#EA580C", // Orange – needs changes (not an error)
+        color: "var(--orange-600)", // Orange – needs changes (not an error)
       },
     ],
     row: 1,

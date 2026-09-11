@@ -15,11 +15,11 @@ const Button = ({
 }: CustomButtonProps) => {
   const variants = {
     gradient: {
-      background: "linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%)",
-      color: "#ffffff",
+      background: "linear-gradient(135deg, var(--blue-600) 0%, var(--blue-900) 100%)",
+      color: "var(--white)",
       boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
       "&:hover": {
-        background: "linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)",
+        background: "linear-gradient(135deg, var(--blue-500) 0%, var(--blue-900) 100%)",
         boxShadow: "0 2px 4px -1px rgba(0, 0, 0, 0.1)",
       },
       "&:focus-visible": {
@@ -27,39 +27,39 @@ const Button = ({
       },
     },
     blue: {
-      backgroundColor: "var(--blue-500, #3b82f6)",
-      color: "#ffffff",
+      backgroundColor: "var(--blue-500, var(--blue-500))",
+      color: "var(--white)",
       boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
       "&:hover": {
-        backgroundColor: "var(--blue-600, #2563eb)",
+        backgroundColor: "var(--blue-600, var(--blue-600))",
       },
       "&:focus-visible": {
         boxShadow: "0 0 0 3px rgba(59, 130, 246, 0.25)",
       },
     },
     pink: {
-      backgroundColor: "var(--red-500, #ef4444)",
-      color: "#ffffff",
+      backgroundColor: "var(--red-500, var(--red-500))",
+      color: "var(--white)",
       boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
       "&:hover": {
-        backgroundColor: "var(--red-600, #dc2626)",
+        backgroundColor: "var(--red-600, var(--red-600))",
       },
       "&:focus-visible": {
         boxShadow: "0 0 0 3px rgba(239, 68, 68, 0.25)",
       },
     },
     outline: {
-      backgroundColor: "#ffffff",
+      backgroundColor: "var(--white)",
       color: "text.primary",
       border: "1px solid rgba(0, 0, 0, 0.12)",
       boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
       "&:hover": {
-        borderColor: "var(--blue-300, #93c5fd)",
-        backgroundColor: "var(--blue-50, #eff6ff)",
-        color: "var(--blue-600, #2563eb)",
+        borderColor: "var(--blue-300, var(--blue-300))",
+        backgroundColor: "var(--blue-50, var(--blue-50))",
+        color: "var(--blue-600, var(--blue-600))",
       },
       "&:focus-visible": {
-        borderColor: "var(--blue-500, #3b82f6)",
+        borderColor: "var(--blue-500, var(--blue-500))",
         boxShadow: "0 0 0 3px rgba(59, 130, 246, 0.12)",
       },
     },

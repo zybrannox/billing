@@ -30,7 +30,7 @@ const statusColumn: GridColDef<ListOption & { isActive: boolean }> = {
       sx={{
         fontWeight: 600,
         fontSize: "0.75rem",
-        color: params.value ? "#059669" : "#64748B",
+        color: params.value ? "var(--emerald-600)" : "var(--slate-500)",
         backgroundColor: params.value
           ? "rgba(5, 150, 105, 0.1)"
           : "rgba(100, 116, 139, 0.1)",

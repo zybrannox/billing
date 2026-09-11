@@ -1,7 +1,7 @@
 import React from "react";
 import { Box } from "@mui/material";
 import { Outlet } from "react-router-dom";
-import { createTheme } from "@mui/material/styles";
+import { createTheme, ThemeProvider } from "@mui/material/styles";
 import IconButton from "@mui/material/IconButton";
 import { AppBar as MuiAppBar, Toolbar as MuiToolbar } from "@mui/material";
 import { MenuOutlined } from "@mui/icons-material";
@@ -9,10 +9,23 @@ import { adminNavigations } from "../config/admin";
 import Avatar from "../ui/Avatar";
 import Menu from "../ui/Menu";
 import Drawer from "../common/components/Drawer";
+import NotificationBell from "./components/NotificationBell";
 
+// Heading variants get their own fontFamily (see index.css's --font-
+// heading/h1-h6 rule) - a plain global `h1{...}` selector in index.css
+// can't reliably win against MUI's own emotion-generated styles, so the
+// theme itself is the only place this is guaranteed to apply to every
+// Typography variant="h1".."h6" in the admin app, regardless of which
+// element it actually renders as.
 const theme = createTheme({
   typography: {
     fontFamily: "var(--font-noto-sans)",
+    h1: { fontFamily: "var(--font-heading)" },
+    h2: { fontFamily: "var(--font-heading)" },
+    h3: { fontFamily: "var(--font-heading)" },
+    h4: { fontFamily: "var(--font-heading)" },
+    h5: { fontFamily: "var(--font-heading)" },
+    h6: { fontFamily: "var(--font-heading)" },
   },
 });
 
@@ -27,7 +40,14 @@ export default function AdminLayout() {
   const handleDrawerClose = () => setOpen(false);
 
   return (
-    <>
+    // `theme` was previously created but never actually provided to the
+    // tree - every MUI component (Typography, Button, TextField, dialogs,
+    // DataGrid...) has been silently using MUI's own built-in default
+    // theme this whole time, including its default Roboto/Helvetica/Arial
+    // font stack, regardless of what this file configured. This is the
+    // fix that makes the configured typography (Inter body, Plus Jakarta
+    // Sans headings - see the theme above) actually take effect.
+    <ThemeProvider theme={theme}>
       <Box sx={{ display: "flex" }}>
         {/* Drawer: component decides permanent vs temporary based on breakpoints */}
         <Drawer
@@ -55,14 +75,17 @@ export default function AdminLayout() {
                 <MenuOutlined sx={{ color: "#000" }} />
               </IconButton>
 
-              <Avatar />
-              <Menu />
+              <Box sx={{ display: "flex", alignItems: "center" }}>
+                <NotificationBell />
+                <Avatar />
+                <Menu />
+              </Box>
             </MuiToolbar>
           </MuiAppBar>
           {/* Page content */}
           <Outlet />
         </Box>
       </Box>
-    </>
+    </ThemeProvider>
   );
 }

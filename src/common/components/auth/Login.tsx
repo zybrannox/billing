@@ -3,6 +3,8 @@ import { useApiRequest } from "../../../hooks/useApiRequest";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useAppStore, type User } from "../../../store/useAppStore";
 import { API } from "../../../api/endpoints";
+import Button from "../../../ui/Button";
+import TextField from "../../../ui/TextField";
 
 function Login() {
   const { sendRequest, loading } = useApiRequest();
@@ -57,28 +59,24 @@ function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen flex">
       {/* Left Side - Login Form */}
-      <div className="w-full lg:w-1/2 bg-gray-50 flex items-center justify-center p-8">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
-          {/* Logo */}
-          <div className="mb-12">
-            <div className="w-14 h-14 bg-black rounded-full flex items-center justify-center">
-              <div className="w-10 h-10 bg-white rounded-full relative overflow-hidden">
-                <div
-                  className="absolute inset-0 bg-black"
-                  style={{ clipPath: "polygon(0 0, 100% 0, 100% 50%, 0 50%)" }}
-                ></div>
-              </div>
-            </div>
+          {/* Logo - the real app mark, same asset the sidebar uses (see
+              common/components/Drawer.tsx's DrawerLogo), not a generic
+              placeholder shape. */}
+          <div className="mb-12 flex items-center gap-2">
+            <img src="/images/logo.webp" alt="" className="h-9 w-auto" />
+            <img src="/images/logo_text.webp" alt="Zybrannox" className="h-6 w-auto" />
           </div>
 
           {/* Welcome Text */}
           <div className="mb-8">
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">
-              Welcome Back!
+            <h1 className="text-4xl font-bold text-slate-900 mb-2">
+              Welcome back
             </h1>
-            <p className="text-gray-500">Please enter log in details below</p>
+            <p className="text-slate-500">Sign in to manage orders, printing and billing</p>
           </div>
 
           {/* Login Form */}
@@ -89,107 +87,80 @@ function Login() {
               </div>
             )}
 
-            {/* Email Input */}
-            <div>
-              <label className="block text-sm text-gray-600 mb-2">Email</label>
-              <div className="relative">
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Zahra.uix@gmail.com"
-                  autoComplete="username"
-                  required
-                  disabled={loading}
-                  className="w-full px-4 py-3 border border-gray-300 text-black rounded-lg focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
-                />
-              </div>
-            </div>
+            {/* Email/Password - the same TextField every other form in the
+                app uses (ui/TextField.tsx), not one-off styled <input>s,
+                so focus states, sizing and the password show/hide toggle
+                all match the rest of the app for free. */}
+            <TextField
+              label="Email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@zybrannox.com"
+              autoComplete="username"
+              required
+              disabled={loading}
+            />
 
-            {/* Password Input */}
-            <div>
-              <label className="block text-sm text-gray-600 mb-2">
-                Password
-              </label>
-              <div className="relative">
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  autoComplete="current-password"
-                  required
-                  disabled={loading}
-                  className="w-full px-4 py-3 border border-gray-300 text-black rounded-lg focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
-                />
-              </div>
-            </div>
+            <TextField
+              label="Password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              autoComplete="current-password"
+              required
+              disabled={loading}
+            />
 
             {/* Forget Password */}
             <div className="text-right">
               <a
                 href="#"
-                className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                className="text-sm text-slate-500 hover:text-slate-700 transition-colors"
               >
-                Forget password?
+                Forgot password?
               </a>
             </div>
 
-            {/* Sign In Button */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-black text-white py-4 rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-            >
+            {/* Sign In Button - the same gradient Button used for every
+                other primary action in the app (Add Customer, Add Project,
+                etc. - see ui/Button.tsx), not a one-off styled element. */}
+            <Button type="submit" disabled={loading} fullWidth size="large" variantColor="gradient">
               {loading ? "Signing in..." : "Sign in"}
-            </button>
+            </Button>
           </form>
         </div>
       </div>
 
-      {/* Right Side - Illustration */}
+      {/* Right Side - same dark navy hero gradient the admin Dashboard's
+          own header/hero card uses (see admin/pages/Dashboard.tsx's
+          DarkStatCard, bg-linear-to-br from-blue-900 via-blue-800 to-
+          slate-900), so the login screen reads as the same product
+          instead of a generic template. The mark itself, softly glowing,
+          replaces an unrelated stock photo of a stranger. */}
       <div className="hidden lg:flex lg:w-1/2 rounded-2xl my-2 mr-2 bg-linear-to-br from-blue-900 via-blue-800 to-slate-900 relative overflow-hidden">
-        {/* Main Content Container */}
         <div className="relative z-10 flex flex-col items-center justify-center w-full px-12 text-center">
-          {/* Illustration Container with Hexagonal Frame */}
-          <div className="relative mb-12">
-            <div className="relative w-96 h-96 flex items-center justify-center">
-              {/* Hexagonal Frame */}
-              <div className="absolute inset-0 border-2 border-cyan-400/30 rounded-[3rem] transform rotate-6"></div>
-
-              {/* Character Illustration Area */}
-              <div className="relative z-10 w-80 h-80 rounded-3xl bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center overflow-hidden">
-                {/* Placeholder for character - using a gradient circle */}
-                <div className="relative">
-                  <div className="w-48 h-48 bg-gradient-to-br from-blue-300 to-purple-400 rounded-full opacity-60 blur-3xl absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"></div>
-                  <img
-                    src="https://images.pexels.com/photos/3184431/pexels-photo-3184431.jpeg?auto=compress&cs=tinysrgb&w=800"
-                    alt="Professional"
-                    className="w-64 h-64 object-cover rounded-2xl relative z-10"
-                  />
-                </div>
-              </div>
-
-              {/* Floating geometric decorations around illustration */}
-              <div className="absolute -top-8 left-1/2 transform -translate-x-1/2">
-                <div
-                  className="w-16 h-16 bg-gradient-to-br from-blue-400 to-purple-500 opacity-70"
-                  style={{
-                    clipPath: "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)",
-                  }}
-                ></div>
-              </div>
-            </div>
+          <div className="relative mb-12 flex items-center justify-center">
+            <div className="w-72 h-72 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-full opacity-30 blur-3xl absolute" />
+            {/* Same mark as the left side, forced white via filter (the
+                source asset is a dark indigo gradient - fine on the light
+                left panel, but low-contrast against this dark hero) rather
+                than maintaining a second logo file just for color. */}
+            <img
+              src="/images/logo.webp"
+              alt=""
+              className="w-40 h-40 object-contain relative z-10 brightness-0 invert drop-shadow-[0_8px_30px_rgba(37,99,235,0.35)]"
+            />
           </div>
 
-          {/* Text Content */}
           <div className="max-w-md">
             <h2 className="text-3xl font-bold text-white mb-4">
-              Monotor Your Work Effectively
+              Every order, start to delivery
             </h2>
-            <p className="text-gray-400 text-lg">
-              Monitor your work effectively to stay organized, track progress,
-              and achieve your goals
+            <p className="text-slate-400 text-lg">
+              Track design, print and delivery status, and keep billing
+              accurate - all in one place
             </p>
           </div>
         </div>

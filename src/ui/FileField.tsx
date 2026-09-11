@@ -132,7 +132,7 @@ const FileUploadField = forwardRef<HTMLInputElement, FileUploadFieldProps>(
             sx={{
               mb: 1,
               textAlign: "left",
-              color: disabled ? "#98A2B3" : "#000",
+              color: disabled ? "var(--slate-400)" : "#000",
               fontWeight: 500,
             }}
           >
@@ -165,32 +165,32 @@ const FileUploadField = forwardRef<HTMLInputElement, FileUploadFieldProps>(
             alignItems: "center",
             gap: 1.5,
             borderColor: displayError
-              ? "#DC3545"
+              ? "var(--red-600)"
               : isDragOver
-              ? "#2563EB"
-              : "#D0D5DD",
+              ? "var(--blue-600)"
+              : "var(--slate-300)",
             backgroundColor: disabled
-              ? "#F2F4F7"
+              ? "var(--slate-100)"
               : isDragOver
-              ? "#EFF6FF"
+              ? "var(--blue-50)"
               : "#FFF",
             transition: "all 0.15s ease-in-out",
             "&:hover": {
-              borderColor: disabled ? "#D0D5DD" : displayError ? "#DC3545" : "#000",
+              borderColor: disabled ? "var(--slate-300)" : displayError ? "var(--red-600)" : "#000",
             },
             "&:focus-visible": {
-              outline: "2px solid #2563EB",
+              outline: "2px solid var(--blue-600)",
               outlineOffset: "2px",
             },
           }}
         >
-          <UploadFile sx={{ color: disabled ? "#98A2B3" : "#000" }} />
+          <UploadFile sx={{ color: disabled ? "var(--slate-400)" : "#000" }} />
 
           <Box>
             <Typography
               variant="body2"
               sx={{
-                color: disabled ? "#98A2B3" : "#000",
+                color: disabled ? "var(--slate-400)" : "#000",
                 fontWeight: 500,
               }}
             >
@@ -202,7 +202,7 @@ const FileUploadField = forwardRef<HTMLInputElement, FileUploadFieldProps>(
             <Typography
               variant="caption"
               sx={{
-                color: disabled ? "#98A2B3" : "#667085",
+                color: disabled ? "var(--slate-400)" : "var(--slate-500)",
               }}
             >
               {multiple ? "Multiple files allowed (Up to 1GB per file)" : "Single file allowed"}
@@ -219,7 +219,7 @@ const FileUploadField = forwardRef<HTMLInputElement, FileUploadFieldProps>(
         {files.length > 0 && !displayError && (
           <Typography
             variant="caption"
-            sx={{ mt: 0.5, display: "block", color: "#667085" }}
+            sx={{ mt: 0.5, display: "block", color: "var(--slate-500)" }}
           >
             Total Size: {formatFileSize(totalSize)} / 2GB
           </Typography>
@@ -228,7 +228,7 @@ const FileUploadField = forwardRef<HTMLInputElement, FileUploadFieldProps>(
         {helperText && !displayError && (
           <Typography
             variant="caption"
-            sx={{ mt: 0.5, display: "block", color: "#667085" }}
+            sx={{ mt: 0.5, display: "block", color: "var(--slate-500)" }}
           >
             {helperText}
           </Typography>
@@ -252,7 +252,7 @@ const FileUploadField = forwardRef<HTMLInputElement, FileUploadFieldProps>(
             spacing={0}
             sx={{
               mt: 1.5,
-              border: "1px solid #E4E7EC",
+              border: "1px solid var(--slate-200)",
               borderRadius: 1,
               backgroundColor: "#FFF",
               overflow: "hidden",
@@ -269,17 +269,17 @@ const FileUploadField = forwardRef<HTMLInputElement, FileUploadFieldProps>(
                   gap: 1.5,
                   transition: "background-color 0.15s",
                   "&:hover": {
-                    backgroundColor: "#F9FAFB",
+                    backgroundColor: "var(--slate-50)",
                   },
                   "&:not(:last-child)": {
-                    borderBottom: "1px solid #E4E7EC",
+                    borderBottom: "1px solid var(--slate-200)",
                   },
                 }}
               >
                 <UploadFile
                   sx={{
                     fontSize: 20,
-                    color: "#667085",
+                    color: "var(--slate-500)",
                     flexShrink: 0,
                   }}
                 />
@@ -301,7 +301,7 @@ const FileUploadField = forwardRef<HTMLInputElement, FileUploadFieldProps>(
                   <Typography
                     variant="caption"
                     sx={{
-                      color: "#667085",
+                      color: "var(--slate-500)",
                     }}
                   >
                     {formatFileSize(file.size)}
@@ -316,9 +316,9 @@ const FileUploadField = forwardRef<HTMLInputElement, FileUploadFieldProps>(
                       removeFile(index);
                     }}
                     sx={{
-                      color: "#98A2B3",
+                      color: "var(--slate-400)",
                       "&:hover": {
-                        color: "#D92D20",
+                        color: "var(--red-600)",
                         backgroundColor: "rgba(217,45,32,0.08)",
                       },
                     }}

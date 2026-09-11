@@ -42,7 +42,7 @@ export default function ConfirmDialog({
       <Typography
         sx={{
           fontSize: "0.875rem",
-          color: "var(--slate-500, #64748b)",
+          color: "var(--slate-500, var(--slate-500))",
           lineHeight: 1.5,
         }}
       >

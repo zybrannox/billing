@@ -49,7 +49,7 @@ const RadioField = React.memo(
             }}
           >
             {options?.map((opt) => {
-              const activeColor = opt.color ?? "#334155";
+              const activeColor = opt.color ?? "var(--slate-700)";
 
               return (
                 <FormControlLabel
@@ -60,7 +60,7 @@ const RadioField = React.memo(
                     margin: 0,
                     marginRight: "4px",
                     "& .MuiFormControlLabel-label": {
-                      color: value === opt.value ? "#0f172a" : "#475569",
+                      color: value === opt.value ? "var(--slate-900)" : "var(--slate-600)",
                       fontSize: "0.85rem",
                       fontWeight: value === opt.value ? 500 : 400,
                       transition: "color 0.15s ease",
@@ -73,7 +73,7 @@ const RadioField = React.memo(
                       sx={{
                         padding: "4px",
                         marginRight: "4px",
-                        color: "#cbd5e1",
+                        color: "var(--slate-300)",
                         transition: "color 0.15s ease",
                         "&:hover": {
                           backgroundColor: "rgba(0, 0, 0, 0.04)",
@@ -98,7 +98,7 @@ const RadioField = React.memo(
                 marginLeft: 0,
                 marginTop: "4px",
                 fontSize: "0.75rem",
-                color: "#ef4444",
+                color: "var(--red-500)",
               }}
             >
               {error}
@@ -118,7 +118,7 @@ const RadioField = React.memo(
           sx={{
             margin: 0,
             "& .MuiFormControlLabel-label": {
-              color: error ? "#ef4444" : isSingleChecked ? "#0f172a" : "#475569",
+              color: error ? "var(--red-500)" : isSingleChecked ? "var(--slate-900)" : "var(--slate-600)",
               fontSize: "0.85rem",
               fontWeight: isSingleChecked ? 500 : 400,
               transition: "color 0.15s ease",
@@ -133,13 +133,13 @@ const RadioField = React.memo(
               sx={{
                 padding: "4px",
                 marginRight: "4px",
-                color: error ? "#fca5a5" : "#cbd5e1",
+                color: error ? "var(--red-300)" : "var(--slate-300)",
                 transition: "color 0.15s ease",
                 "&:hover": {
                   backgroundColor: "rgba(0, 0, 0, 0.04)",
                 },
                 "&.Mui-checked": {
-                  color: error ? "#ef4444" : "#334155",
+                  color: error ? "var(--red-500)" : "var(--slate-700)",
                 },
                 "& .MuiSvgIcon-root": {
                   fontSize: 18,
@@ -154,7 +154,7 @@ const RadioField = React.memo(
               marginLeft: 0,
               marginTop: "4px",
               fontSize: "0.75rem",
-              color: "#ef4444",
+              color: "var(--red-500)",
             }}
           >
             {error}

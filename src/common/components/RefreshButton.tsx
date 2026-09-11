@@ -30,7 +30,7 @@ export default function RefreshButton({
             <RefreshRounded
               sx={{
                 fontSize: 18,
-                color: "var(--blue-600, #2563eb)",
+                color: "var(--blue-600, var(--blue-600))",
                 transition: "color 0.15s ease",
                 animation: loading ? "spin 0.8s linear infinite" : "none",
                 "@keyframes spin": {
@@ -48,18 +48,18 @@ export default function RefreshButton({
             padding: 0,
             border: "1px solid rgba(0, 0, 0, 0.12)",
             borderRadius: "var(--border-radius-md, 6px)",
-            bgcolor: "#ffffff",
+            bgcolor: "var(--white)",
             boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
-            color: "var(--blue-600, #2563eb)",
+            color: "var(--blue-600, var(--blue-600))",
             transition:
               "background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease",
             "& .MuiButton-startIcon": { margin: 0 },
             "&:hover": {
-              borderColor: "var(--blue-300, #93c5fd)",
-              bgcolor: "var(--blue-50, #eff6ff)",
+              borderColor: "var(--blue-300, var(--blue-300))",
+              bgcolor: "var(--blue-50, var(--blue-50))",
             },
             "&.Mui-disabled": {
-              bgcolor: "#ffffff",
+              bgcolor: "var(--white)",
               borderColor: "rgba(0, 0, 0, 0.12)",
             },
             ...sx,

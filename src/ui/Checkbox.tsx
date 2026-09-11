@@ -65,7 +65,7 @@ const CheckboxField = React.memo(
                 sx={{
                   mr: direction === "row" ? 2.5 : 0,
                   "& .MuiFormControlLabel-label": {
-                    color: "#0F172A",
+                    color: "var(--slate-900)",
                     fontSize: "0.85rem",
                     fontWeight: 500,
                   },
@@ -76,9 +76,9 @@ const CheckboxField = React.memo(
                     checked={selectedValues.includes(opt.value)}
                     onChange={() => handleToggle(opt.value)}
                     sx={{
-                      color: "#94A3B8",
+                      color: "var(--slate-400)",
                       "&.Mui-checked": {
-                        color: "#0F172A",
+                        color: "var(--slate-900)",
                       },
                     }}
                   />
@@ -88,13 +88,13 @@ const CheckboxField = React.memo(
           </FormGroup>
 
           {error && (
-            <FormHelperText sx={{ mx: 0, mt: 0.5, color: "#EF4444", fontSize: "0.75rem" }}>
+            <FormHelperText sx={{ mx: 0, mt: 0.5, color: "var(--red-500)", fontSize: "0.75rem" }}>
               {error}
             </FormHelperText>
           )}
 
           {helperText && !error && (
-            <FormHelperText sx={{ mx: 0, mt: 0.5, color: "#64748B", fontSize: "0.75rem" }}>
+            <FormHelperText sx={{ mx: 0, mt: 0.5, color: "var(--slate-500)", fontSize: "0.75rem" }}>
               {helperText}
             </FormHelperText>
           )}
@@ -111,7 +111,7 @@ const CheckboxField = React.memo(
           label={label}
           sx={{
             "& .MuiFormControlLabel-label": {
-              color: "#0F172A",
+              color: "var(--slate-900)",
               fontSize: "0.85rem",
               fontWeight: 500,
             },
@@ -122,9 +122,9 @@ const CheckboxField = React.memo(
               checked={isChecked}
               onChange={(e) => onChange(e.target.checked)}
               sx={{
-                color: error ? "#EF4444" : "#94A3B8",
+                color: error ? "var(--red-500)" : "var(--slate-400)",
                 "&.Mui-checked": {
-                  color: error ? "#EF4444" : "#0F172A",
+                  color: error ? "var(--red-500)" : "var(--slate-900)",
                 },
               }}
             />
@@ -132,13 +132,13 @@ const CheckboxField = React.memo(
         />
 
         {error && (
-          <FormHelperText sx={{ mx: 0, mt: 0.25, color: "#EF4444", fontSize: "0.75rem" }}>
+          <FormHelperText sx={{ mx: 0, mt: 0.25, color: "var(--red-500)", fontSize: "0.75rem" }}>
             {error}
           </FormHelperText>
         )}
 
         {helperText && !error && (
-          <FormHelperText sx={{ mx: 0, mt: 0.25, color: "#64748B", fontSize: "0.75rem" }}>
+          <FormHelperText sx={{ mx: 0, mt: 0.25, color: "var(--slate-500)", fontSize: "0.75rem" }}>
             {helperText}
           </FormHelperText>
         )}

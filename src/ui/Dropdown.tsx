@@ -36,7 +36,7 @@ const icon = (
 const checkedIcon = (
   <CheckBoxIcon
     fontSize="small"
-    sx={{ color: "var(--blue-500, #3b82f6)", fontSize: 18 }}
+    sx={{ color: "var(--blue-500, var(--blue-500))", fontSize: 18 }}
   />
 );
 
@@ -174,7 +174,7 @@ export default function Dropdown({
                     color: "text.secondary",
                     transition: "color 0.15s ease",
                     "&:hover": {
-                      color: "var(--red-500, #ef4444)",
+                      color: "var(--red-500, var(--red-500))",
                     },
                   },
                 }}
@@ -191,7 +191,7 @@ export default function Dropdown({
             paddingX: "8px !important",
             fontSize: "0.85rem",
             borderRadius: "var(--border-radius-md, 6px)",
-            bgcolor: disabled ? "rgba(0, 0, 0, 0.02)" : "#ffffff",
+            bgcolor: disabled ? "rgba(0, 0, 0, 0.02)" : "var(--white)",
             transition: "background-color 0.2s ease, box-shadow 0.2s ease",
 
             "& fieldset": {
@@ -199,15 +199,15 @@ export default function Dropdown({
               transition: "border-color 0.2s ease, box-shadow 0.2s ease",
             },
             "&:hover fieldset": {
-              borderColor: "var(--blue-300, #93c5fd)",
+              borderColor: "var(--blue-300, var(--blue-300))",
             },
             "&.Mui-focused fieldset": {
-              borderColor: "var(--blue-500, #3b82f6)",
+              borderColor: "var(--blue-500, var(--blue-500))",
               borderWidth: "1px",
               boxShadow: "0 0 0 3px rgba(59, 130, 246, 0.12)",
             },
             "&.Mui-error fieldset": {
-              borderColor: "#ef4444",
+              borderColor: "var(--red-500)",
             },
           },
 
@@ -216,7 +216,7 @@ export default function Dropdown({
             borderRadius: "var(--border-radius-sm, 4px)",
             transition: "background-color 0.15s ease, color 0.15s ease",
             "&:hover": {
-              bgcolor: "var(--red-50, #fef2f2)",
+              bgcolor: "var(--red-50, var(--red-50))",
             },
           },
 

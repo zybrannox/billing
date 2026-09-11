@@ -66,6 +66,12 @@ interface TableProps<T extends GridRowModel> {
   pageSizeOptions?: number[];
   actionsWidth?: number;
   renderDetailPanel?: (row: T) => React.ReactNode;
+  // Skips appending the actions column entirely - every other caller
+  // renders one (even empty, via renderActions returning []), which is
+  // fine when there's really no per-row action, but a purely read-only,
+  // click-through table (see CustomerProfile.tsx/EmployeeProfile.tsx)
+  // shouldn't reserve 180px for a column that will only ever be blank.
+  hideActionsColumn?: boolean;
 }
 
 export default function Table<T extends GridRowModel>({
@@ -81,6 +87,7 @@ export default function Table<T extends GridRowModel>({
   // onAdd,
   onCancel,
   onToggle,
+  onRowSelect,
   onSelectionChange,
   rowSelectionModel,
   checkboxSelection,
@@ -96,18 +103,28 @@ export default function Table<T extends GridRowModel>({
   pageSizeOptions,
   actionsWidth,
   renderDetailPanel,
+  hideActionsColumn,
 }: TableProps<T>) {
 const gridSx = React.useMemo(
   () => ({
     borderRadius: "12px",
-    color: "#0F172A",
+    color: "var(--slate-900)",
     boxShadow: "none",
-    border: "1px solid #E2E8F0",
-    backgroundColor: "#FFFFFF",
-    "--DataGrid-rowBorderColor": "#F1F5F9",
+    border: "1px solid var(--slate-200)",
+    backgroundColor: "var(--white)",
+    "--DataGrid-rowBorderColor": "var(--slate-100)",
+
+    // A real click-through (see onRowSelect/handleRowClick) is otherwise
+    // indistinguishable at a glance from a plain, inert row - the cursor
+    // is the one cheap signal that this row goes somewhere.
+    ...(onRowSelect
+      ? {
+          "& .MuiDataGrid-row:not(.row-detail-panel)": { cursor: "pointer" },
+        }
+      : {}),
 
     "& .MuiCheckbox-root": {
-      color: "#64748B !important",
+      color: "var(--slate-500) !important",
       p: 0.75,
     },
     "& .MuiDataGrid-main": {
@@ -117,13 +134,13 @@ const gridSx = React.useMemo(
     },
     "& .MuiDataGrid-columnHeader .MuiDataGrid-columnHeaderTitleContainer .MuiCheckbox-root":
       {
-        color: "#475569 !important",
+        color: "var(--slate-600) !important",
       },
     "& .MuiDataGrid-columnHeader .Mui-checked": {
-      color: "#2563EB !important",
+      color: "var(--blue-600) !important",
     },
     "& .Mui-checked": {
-      color: "#2563EB !important",
+      color: "var(--blue-600) !important",
     },
     "& .MuiCheckbox-root:hover": {
       backgroundColor: "rgba(37, 99, 235, 0.04) !important",
@@ -136,7 +153,7 @@ const gridSx = React.useMemo(
       borderBottom: "none",
     },
     "& .MuiDataGrid-row": {
-      backgroundColor: "#FFFFFF",
+      backgroundColor: "var(--white)",
     },
     "& .MuiDataGrid-row.Mui-selected": {
       backgroundColor: "rgba(37, 99, 235, 0.04)",
@@ -145,33 +162,33 @@ const gridSx = React.useMemo(
       backgroundColor: "rgba(37, 99, 235, 0.08)",
     },
     "& .MuiDataGrid-row:hover": {
-      backgroundColor: "#F8FAFC",
+      backgroundColor: "var(--slate-50)",
     },
     "& .MuiDataGrid-columnHeader": {
-      color: "#475569",
-      backgroundColor: "#F8FAFC",
+      color: "var(--slate-600)",
+      backgroundColor: "var(--slate-50)",
     },
     "& .MuiDataGrid-columnHeaderTitle": {
-      color: "#334155",
+      color: "var(--slate-700)",
       fontWeight: 700,
       fontSize: "0.75rem",
       letterSpacing: "0.05em",
       textTransform: "uppercase",
     },
     "& .MuiDataGrid-columnHeaders": {
-      backgroundColor: "#F8FAFC",
-      borderBottom: "1px solid #E2E8F0",
+      backgroundColor: "var(--slate-50)",
+      borderBottom: "1px solid var(--slate-200)",
     },
     "& .MuiDataGrid-footerContainer": {
-      borderTop: "1px solid #E2E8F0 !important",
-      backgroundColor: "#FFFFFF",
+      borderTop: "1px solid var(--slate-200) !important",
+      backgroundColor: "var(--white)",
     },
     "& .MuiDataGrid-footerContainer .MuiDataGrid-pagination": {
-      color: "#475569",
+      color: "var(--slate-600)",
     },
-    "& .MuiTablePagination-title": { color: "#475569" },
-    "& .MuiTablePagination-displayedRows": { color: "#475569" },
-    "& .MuiTablePagination-selectLabel": { color: "#475569", fontSize: "0.8125rem" },
+    "& .MuiTablePagination-title": { color: "var(--slate-600)" },
+    "& .MuiTablePagination-displayedRows": { color: "var(--slate-600)" },
+    "& .MuiTablePagination-selectLabel": { color: "var(--slate-600)", fontSize: "0.8125rem" },
     // Minimal, matching the pagination prev/next buttons right next to it
     // (transparent by default, a soft hover pill, no persistent border/box)
     // rather than a fully outlined input - this is a footer control, not a
@@ -179,7 +196,7 @@ const gridSx = React.useMemo(
     "& .MuiTablePagination-select": {
       display: "flex",
       alignItems: "center",
-      color: "#334155",
+      color: "var(--slate-700)",
       fontSize: "0.8125rem",
       fontWeight: 500,
       borderRadius: "8px",
@@ -190,10 +207,10 @@ const gridSx = React.useMemo(
       },
     },
     "& .MuiTablePagination-selectIcon": {
-      color: "#64748B",
+      color: "var(--slate-500)",
       right: "2px",
     },
-    "& .MuiTablePagination-actions svg": { fill: "#64748B" },
+    "& .MuiTablePagination-actions svg": { fill: "var(--slate-500)" },
     "& .MuiTablePagination-actions button": {
       borderRadius: "8px",
       transition: "background-color 0.15s ease",
@@ -203,22 +220,22 @@ const gridSx = React.useMemo(
     // Editing row styles
     "& .MuiDataGrid-virtualScrollerRenderZone > div.MuiDataGrid-row.MuiDataGrid-row--editing":
       {
-        backgroundColor: "#EFF6FF !important",
+        backgroundColor: "var(--blue-50) !important",
         transition: "all 200ms ease-in-out",
       },
     "& .MuiOutlinedInput-notchedOutline": {
-      border: "1px solid #CBD5E1",
+      border: "1px solid var(--slate-300)",
     },
     "&:hover .MuiOutlinedInput-notchedOutline": {
-      border: "1px solid #94A3B8",
+      border: "1px solid var(--slate-400)",
     },
     "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-      border: "2px solid #2563EB",
+      border: "2px solid var(--blue-600)",
     },
     "& .MuiDataGrid-virtualScrollerRenderZone > div.MuiDataGrid-row.MuiDataGrid-row--editing .MuiDataGrid-cell":
       {
         backgroundColor: "transparent !important",
-        color: "#0F172A !important",
+        color: "var(--slate-900) !important",
       },
 
     // Save/Cancel row-edit actions - rounded pill + tinted hover, matching
@@ -228,7 +245,7 @@ const gridSx = React.useMemo(
     '& button[aria-label="Save"]': {
       padding: "5px",
       borderRadius: "8px",
-      color: "#059669",
+      color: "var(--emerald-600)",
       backgroundColor: "rgba(5, 150, 105, 0.06)",
       transition: "all 0.15s ease-in-out",
     },
@@ -238,7 +255,7 @@ const gridSx = React.useMemo(
     '& button[aria-label="Cancel"]': {
       padding: "5px",
       borderRadius: "8px",
-      color: "#E11D48",
+      color: "var(--rose-600)",
       backgroundColor: "rgba(225, 29, 72, 0.06)",
       transition: "all 0.15s ease-in-out",
     },
@@ -285,11 +302,11 @@ const gridSx = React.useMemo(
     // only disables it - it still rendered a visible grayed-out checkbox.
     // Hiding it here removes it from view entirely instead.
     "& .MuiDataGrid-row.row-detail-panel": {
-      backgroundColor: "#FAFBFC",
+      backgroundColor: "var(--slate-50)",
       cursor: "default",
     },
     "& .MuiDataGrid-row.row-detail-panel:hover": {
-      backgroundColor: "#FAFBFC",
+      backgroundColor: "var(--slate-50)",
     },
     "& .MuiDataGrid-row.row-detail-panel .MuiDataGrid-cell": {
       cursor: "default",
@@ -313,10 +330,10 @@ const gridSx = React.useMemo(
       backgroundColor: "rgba(37, 99, 235, 0.12)",
     },
     "& .MuiLinearProgress-bar": {
-      backgroundColor: "#2563EB",
+      backgroundColor: "var(--blue-600)",
     },
   }),
-  [],
+  [onRowSelect],
 );
 
   const apiRef = useGridApiRef();
@@ -565,6 +582,8 @@ const gridSx = React.useMemo(
       })
       : columns;
 
+    if (hideActionsColumn) return dataColumns;
+
     return [
       ...dataColumns,
       {
@@ -575,7 +594,7 @@ const gridSx = React.useMemo(
         getActions,
       },
     ];
-  }, [columns, getActions, actionsWidth, renderDetailPanel, rows]);
+  }, [columns, getActions, actionsWidth, renderDetailPanel, rows, hideActionsColumn]);
 
   // The synthetic detail row is spliced in right after its parent so it
   // renders adjacent to it, same as any accordion panel - only ever one at
@@ -669,13 +688,31 @@ const gridSx = React.useMemo(
 
   const handleRowClick = React.useCallback<GridEventListener<"rowClick">>(
     (params, event) => {
-      // Don't trigger row selection if clicking on checkbox
+      // Don't trigger row selection if clicking on checkbox or an action
+      // button (edit/delete/etc.) - those already have their own meaning,
+      // and with onRowSelect wired up (see below) letting the click bubble
+      // through would fire both at once, e.g. deleting a row AND
+      // navigating away from the page that delete was just triggered on.
       const target = event.target as HTMLElement;
       const isCheckbox =
         target.closest(".MuiCheckbox-root") ||
         target.closest('[data-field="__check__"]');
+      const isActionCell = target.closest('[data-field="actions"]');
 
-      if (isCheckbox) return;
+      if (isCheckbox || isActionCell) return;
+
+      // Callers that want a real click-through (e.g. Customers.tsx opening
+      // a customer's profile page) opt in via onRowSelect instead of this
+      // grid's own project-preview/detail-panel behavior below, which is
+      // specific to the Projects table and doesn't apply to every table
+      // this component renders. Skipped while the row is mid-edit (its
+      // cells are live inputs at that point) - navigating away on a click
+      // meant to place a text cursor would silently discard the edit.
+      const isEditingRow = rowModesModel[params.id]?.mode === GridRowModes.Edit;
+      if (onRowSelect && !isEditingRow) {
+        onRowSelect(params.row as T);
+        return;
+      }
 
       if (renderDetailPanel) {
         // Clicks land inside the detail panel too (it's rendered as this
@@ -689,7 +726,7 @@ const gridSx = React.useMemo(
 
       setSelectedProject(params.row);
     },
-    [setSelectedProject, renderDetailPanel],
+    [setSelectedProject, renderDetailPanel, onRowSelect, rowModesModel],
   );
 
   const preventDefaultCellDoubleClick = React.useCallback<

@@ -447,7 +447,7 @@ const renderLabel = (field: FieldDefinition): React.ReactNode => {
   if (!field.required) return field.label;
   return (
     <>
-      {field.label} <span style={{ color: "#ef4444" }}>*</span>
+      {field.label} <span style={{ color: "var(--red-500)" }}>*</span>
     </>
   );
 };
@@ -491,7 +491,7 @@ export default function CustomForm({
                   key={index}
                   onClick={() => (window.location.href = link.href)}
                   sx={{
-                    background: "#181f4a",
+                    background: "var(--blue-900)",
                     border: "1px solid rgba(255, 255, 255, 0.15)",
                   }}
                 >

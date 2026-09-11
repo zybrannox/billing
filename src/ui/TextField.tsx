@@ -69,11 +69,11 @@ const TextField = forwardRef<HTMLDivElement, CustomTextFieldProps>(
               display: "none",
             },
             "& input::placeholder, & textarea::placeholder": {
-              color: "#94a3b8",
+              color: "var(--slate-400)",
               opacity: 1,
             },
             "& .MuiFormHelperText-root": {
-              color: error ? undefined : "var(--admin-gray, #64748b)",
+              color: error ? undefined : "var(--admin-gray, var(--slate-500))",
               marginLeft: 0,
               marginTop: "4px",
               fontSize: "0.75rem",
@@ -85,23 +85,23 @@ const TextField = forwardRef<HTMLDivElement, CustomTextFieldProps>(
               minHeight: 36,
               fontSize: "0.85rem",
               borderRadius: "var(--border-radius-md, 6px)",
-              color: "#0f172a",
-              bgcolor: "#ffffff",
+              color: "var(--slate-900)",
+              bgcolor: "var(--white)",
               transition: "background-color 0.2s ease, box-shadow 0.2s ease",
               "& fieldset": {
                 borderColor: "rgba(0, 0, 0, 0.12)",
                 transition: "border-color 0.2s ease, box-shadow 0.2s ease",
               },
               "&:hover fieldset": {
-                borderColor: "var(--blue-300, #93c5fd)",
+                borderColor: "var(--blue-300, var(--blue-300))",
               },
               "&.Mui-focused fieldset": {
-                borderColor: "var(--blue-500, #3b82f6)",
+                borderColor: "var(--blue-500, var(--blue-500))",
                 borderWidth: "1px",
                 boxShadow: "0 0 0 3px rgba(59, 130, 246, 0.12)",
               },
               "&.Mui-error fieldset": {
-                borderColor: "#ef4444",
+                borderColor: "var(--red-500)",
               },
               "& input::-webkit-calendar-picker-indicator": {
                 cursor: "pointer",
@@ -113,7 +113,7 @@ const TextField = forwardRef<HTMLDivElement, CustomTextFieldProps>(
             ...slotProps,
             input: {
               notched: false,
-              sx: { color: "#0f172a" },
+              sx: { color: "var(--slate-900)" },
               endAdornment: isPassword ? (
                 <InputAdornment position="end">
                   <IconButton
@@ -127,11 +127,11 @@ const TextField = forwardRef<HTMLDivElement, CustomTextFieldProps>(
                   >
                     {showPassword ? (
                       <RemoveRedEyeOutlined
-                        sx={{ fontSize: 20, color: "var(--admin-gray, #64748b)" }}
+                        sx={{ fontSize: 20, color: "var(--admin-gray, var(--slate-500))" }}
                       />
                     ) : (
                       <VisibilityOff
-                        sx={{ fontSize: 20, color: "var(--admin-gray, #64748b)" }}
+                        sx={{ fontSize: 20, color: "var(--admin-gray, var(--slate-500))" }}
                       />
                     )}
                   </IconButton>

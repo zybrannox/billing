@@ -1,28 +1,34 @@
 
+// Every value here is a CSS variable reference (see src/index.css's :root)
+// rather than a hardcoded hex literal, so the palette itself lives in one
+// place. This works because semanticChipSx (ui/chipStyles.ts) builds its
+// translucent background via color-mix(), not by string-appending a hex
+// alpha suffix - that trick only ever worked on a literal 6-digit hex
+// string, and `var(--red-600)22` isn't valid CSS.
 export const SEMANTIC_COLORS = {
   priority: {
-    Normal: "#2563EB",
-    High: "#F59E0B",
-    Urgent: "#DC2626",
+    Normal: "var(--blue-600)",
+    High: "var(--amber-500)",
+    Urgent: "var(--red-600)",
   },
   clientStatus: {
-    Confirmed: "#16A34A",
-    Correction: "#EA580C",
+    Confirmed: "var(--green-600)",
+    Correction: "var(--orange-600)",
   },
   projectStatus: {
-    Pending: "#64748B",
-    "In Progress": "#2563EB",
-    Completed: "#16A34A",
-    Delayed: "#DC2626",
+    Pending: "var(--slate-500)",
+    "In Progress": "var(--blue-600)",
+    Completed: "var(--green-600)",
+    Delayed: "var(--red-600)",
   },
   printStatus:{
-    Pending: "#64748B",
-    "In Progress": "#2563EB",
-    Completed: "#16A34A",
+    Pending: "var(--slate-500)",
+    "In Progress": "var(--blue-600)",
+    Completed: "var(--green-600)",
   },
   status:{
-    Active: "#16A34A",
-    InActive: "#DC2626",
+    Active: "var(--green-600)",
+    InActive: "var(--red-600)",
   }
 } as const;
 
@@ -44,5 +50,5 @@ export const getSemanticColor = (
   // cast documents that instead of quietly widening the whole object to
   // `any`.
   const palette = SEMANTIC_COLORS[category] as Record<string, string>;
-  return palette[value] ?? "#64748B"; // fallback gray
+  return palette[value] ?? "var(--slate-500)"; // fallback gray
 };

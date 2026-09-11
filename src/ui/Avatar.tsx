@@ -39,7 +39,7 @@ const Avatar = React.memo(({ size = 32, className }: AvatarProps) => {
           fontSize: `${size * 0.42}px`,
           fontWeight: 600,
           background: "var(--blue-gradient)",
-          color: "#FFFFFF",
+          color: "var(--white)",
         }}
       >
         {getInitials(displayName)}

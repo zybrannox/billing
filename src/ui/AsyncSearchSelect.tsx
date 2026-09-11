@@ -215,24 +215,24 @@ export default function AsyncSearchSelect({
             paddingX: "8px !important",
             fontSize: "0.85rem",
             borderRadius: "var(--border-radius-md, 6px)",
-            bgcolor: disabled ? "rgba(0, 0, 0, 0.02)" : "#ffffff",
+            bgcolor: disabled ? "rgba(0, 0, 0, 0.02)" : "var(--white)",
             transition: "background-color 0.2s ease, box-shadow 0.2s ease",
 
             "& fieldset": {
               borderColor: error
-                ? "var(--red-500, #ef4444)"
+                ? "var(--red-500, var(--red-500))"
                 : "rgba(0, 0, 0, 0.12)",
               transition: "border-color 0.2s ease, box-shadow 0.2s ease",
             },
             "&:hover fieldset": {
               borderColor: error
-                ? "var(--red-500, #ef4444)"
-                : "var(--blue-300, #93c5fd)",
+                ? "var(--red-500, var(--red-500))"
+                : "var(--blue-300, var(--blue-300))",
             },
             "&.Mui-focused fieldset": {
               borderColor: error
-                ? "var(--red-500, #ef4444)"
-                : "var(--blue-500, #3b82f6)",
+                ? "var(--red-500, var(--red-500))"
+                : "var(--blue-500, var(--blue-500))",
               borderWidth: "1px",
               boxShadow: error
                 ? "0 0 0 3px rgba(239, 68, 68, 0.12)"
@@ -245,7 +245,7 @@ export default function AsyncSearchSelect({
             borderRadius: "var(--border-radius-sm, 4px)",
             transition: "background-color 0.15s ease, color 0.15s ease",
             "&:hover": {
-              bgcolor: "var(--red-50, #fef2f2)",
+              bgcolor: "var(--red-50, var(--red-50))",
             },
           },
 
@@ -275,7 +275,7 @@ export default function AsyncSearchSelect({
                     {loading ? (
                       <CircularProgress
                         size={15}
-                        sx={{ color: "var(--blue-500, #3b82f6)", mr: 0.5 }}
+                        sx={{ color: "var(--blue-500, var(--blue-500))", mr: 0.5 }}
                       />
                     ) : null}
                     {params.InputProps.endAdornment}

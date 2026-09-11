@@ -93,25 +93,25 @@ const FileRow = React.memo(function FileRow({
         display: "flex",
         alignItems: "center",
         gap: 1.5,
-        "&:hover": { backgroundColor: "#F8FAFC" },
-        "&:not(:last-child)": { borderBottom: "1px solid #F1F5F9" },
+        "&:hover": { backgroundColor: "var(--slate-50)" },
+        "&:not(:last-child)": { borderBottom: "1px solid var(--slate-100)" },
       }}
     >
       {item.status === "done" && (
-        <CheckCircle sx={{ fontSize: 18, color: "#10B981", flexShrink: 0 }} />
+        <CheckCircle sx={{ fontSize: 18, color: "var(--emerald-500)", flexShrink: 0 }} />
       )}
       {item.status === "error" && (
-        <ErrorOutline sx={{ fontSize: 18, color: "#EF4444", flexShrink: 0 }} />
+        <ErrorOutline sx={{ fontSize: 18, color: "var(--red-500)", flexShrink: 0 }} />
       )}
       {item.status === "uploading" && (
-        <UploadFile sx={{ fontSize: 18, color: "#64748B", flexShrink: 0 }} />
+        <UploadFile sx={{ fontSize: 18, color: "var(--slate-500)", flexShrink: 0 }} />
       )}
 
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Typography
           variant="body2"
           sx={{
-            color: "#0F172A",
+            color: "var(--slate-900)",
             fontWeight: 500,
             fontSize: "0.825rem",
             whiteSpace: "nowrap",
@@ -132,28 +132,28 @@ const FileRow = React.memo(function FileRow({
                   flex: 1,
                   height: 3,
                   borderRadius: 2,
-                  backgroundColor: "#E2E8F0",
-                  "& .MuiLinearProgress-bar": { backgroundColor: "#334155" },
+                  backgroundColor: "var(--slate-200)",
+                  "& .MuiLinearProgress-bar": { backgroundColor: "var(--slate-700)" },
                 }}
               />
-              <Typography variant="caption" sx={{ color: "#64748B", minWidth: 28, fontSize: "0.7rem" }}>
+              <Typography variant="caption" sx={{ color: "var(--slate-500)", minWidth: 28, fontSize: "0.7rem" }}>
                 {Math.round(item.progress)}%
               </Typography>
             </Box>
-            <Typography variant="caption" sx={{ color: "#94A3B8", fontSize: "0.7rem" }}>
+            <Typography variant="caption" sx={{ color: "var(--slate-400)", fontSize: "0.7rem" }}>
               {formatFileSize((item.progress / 100) * item.size)} of {formatFileSize(item.size)}
             </Typography>
           </>
         )}
 
         {item.status === "done" && (
-          <Typography variant="caption" sx={{ color: "#64748B", fontSize: "0.75rem" }}>
+          <Typography variant="caption" sx={{ color: "var(--slate-500)", fontSize: "0.75rem" }}>
             {formatFileSize(item.size)} · Uploaded
           </Typography>
         )}
 
         {item.status === "error" && (
-          <Typography variant="caption" sx={{ color: "#EF4444", fontSize: "0.75rem" }}>
+          <Typography variant="caption" sx={{ color: "var(--red-500)", fontSize: "0.75rem" }}>
             {item.errorMessage || "Upload failed"}
           </Typography>
         )}
@@ -163,7 +163,7 @@ const FileRow = React.memo(function FileRow({
         <IconButton
           size="small"
           onClick={() => onRetry(item.id)}
-          sx={{ color: "#64748B", "&:hover": { color: "#0F172A" } }}
+          sx={{ color: "var(--slate-500)", "&:hover": { color: "var(--slate-900)" } }}
         >
           <Replay sx={{ fontSize: 16 }} />
         </IconButton>
@@ -173,8 +173,8 @@ const FileRow = React.memo(function FileRow({
         size="small"
         onClick={() => onRemove(item.id)}
         sx={{
-          color: "#94A3B8",
-          "&:hover": { color: "#EF4444", backgroundColor: "rgba(239, 68, 68, 0.06)" },
+          color: "var(--slate-400)",
+          "&:hover": { color: "var(--red-500)", backgroundColor: "rgba(239, 68, 68, 0.06)" },
         }}
       >
         <Close sx={{ fontSize: 16 }} />
@@ -433,22 +433,22 @@ const GmailFileUploader = ({
           alignItems: "center",
           gap: 1.5,
           border: "1px dashed",
-          borderColor: error ? "#EF4444" : "#E2E8F0",
-          backgroundColor: "#F8FAFC",
+          borderColor: error ? "var(--red-500)" : "var(--slate-200)",
+          backgroundColor: "var(--slate-50)",
           transition: "all 0.15s ease-in-out",
           "&:hover": {
-            borderColor: error ? "#EF4444" : "#CBD5E1",
-            backgroundColor: "#F1F5F9",
+            borderColor: error ? "var(--red-500)" : "var(--slate-300)",
+            backgroundColor: "var(--slate-100)",
           },
         }}
       >
-        <UploadFile sx={{ color: "#64748B", fontSize: 20, flexShrink: 0 }} />
+        <UploadFile sx={{ color: "var(--slate-500)", fontSize: 20, flexShrink: 0 }} />
 
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography
             variant="body2"
             sx={{
-              color: "#0F172A",
+              color: "var(--slate-900)",
               fontWeight: 500,
               fontSize: "0.85rem",
               lineHeight: 1.2,
@@ -459,7 +459,7 @@ const GmailFileUploader = ({
           <Typography
             variant="caption"
             sx={{
-              color: "#64748B",
+              color: "var(--slate-500)",
               fontSize: "0.725rem",
               display: "block",
               whiteSpace: "nowrap",
@@ -481,14 +481,14 @@ const GmailFileUploader = ({
             px: 1.25,
             py: 0.5,
             borderRadius: "6px",
-            backgroundColor: "#FFFFFF",
-            border: "1px solid #E2E8F0",
+            backgroundColor: "var(--white)",
+            border: "1px solid var(--slate-200)",
             transition: "all 0.15s ease-in-out",
             flexShrink: 0,
             opacity: items.length === 0 ? 0.75 : 1,
             "&:hover": {
-              borderColor: "#94A3B8",
-              backgroundColor: "#F8FAFC",
+              borderColor: "var(--slate-400)",
+              backgroundColor: "var(--slate-50)",
               opacity: 1,
             },
           }}
@@ -496,13 +496,13 @@ const GmailFileUploader = ({
           <FolderZipOutlined
             sx={{
               fontSize: 16,
-              color: hasErrors ? "#EF4444" : items.length === 0 ? "#94A3B8" : "#475569",
+              color: hasErrors ? "var(--red-500)" : items.length === 0 ? "var(--slate-400)" : "var(--slate-600)",
             }}
           />
           <Typography
             variant="caption"
             sx={{
-              color: items.length === 0 ? "#64748B" : "#334155",
+              color: items.length === 0 ? "var(--slate-500)" : "var(--slate-700)",
               fontWeight: 600,
               fontSize: "0.75rem",
               whiteSpace: "nowrap",
@@ -514,10 +514,10 @@ const GmailFileUploader = ({
           <Typography
             variant="caption"
             sx={{
-              color: "#64748B",
+              color: "var(--slate-500)",
               fontSize: "0.725rem",
               fontWeight: 500,
-              borderLeft: "1px solid #CBD5E1",
+              borderLeft: "1px solid var(--slate-300)",
               pl: 1,
               ml: 0.25,
             }}
@@ -537,13 +537,13 @@ const GmailFileUploader = ({
       />
 
       {error && (
-        <Typography variant="caption" sx={{ mt: 0.75, display: "block", color: "#EF4444", fontSize: "0.75rem" }}>
+        <Typography variant="caption" sx={{ mt: 0.75, display: "block", color: "var(--red-500)", fontSize: "0.75rem" }}>
           {error}
         </Typography>
       )}
 
       {helperText && !error && (
-        <Typography variant="caption" sx={{ mt: 0.75, display: "block", color: "#64748B", fontSize: "0.75rem" }}>
+        <Typography variant="caption" sx={{ mt: 0.75, display: "block", color: "var(--slate-500)", fontSize: "0.75rem" }}>
           {helperText}
         </Typography>
       )}
@@ -558,7 +558,7 @@ const GmailFileUploader = ({
           elevation: 4,
           sx: {
             borderRadius: "10px",
-            border: "1px solid #E2E8F0",
+            border: "1px solid var(--slate-200)",
           },
         }}
       >
@@ -569,20 +569,20 @@ const GmailFileUploader = ({
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            borderBottom: "1px solid #F1F5F9",
+            borderBottom: "1px solid var(--slate-100)",
           }}
         >
           <Box>
-            <Typography variant="body2" sx={{ fontWeight: 600, color: "#0F172A", fontSize: "0.9rem" }}>
+            <Typography variant="body2" sx={{ fontWeight: 600, color: "var(--slate-900)", fontSize: "0.9rem" }}>
               Attached Files ({items.length})
             </Typography>
             {uploadingCount > 0 && (
-              <Typography variant="caption" sx={{ color: "#64748B", fontSize: "0.7rem" }}>
+              <Typography variant="caption" sx={{ color: "var(--slate-500)", fontSize: "0.7rem" }}>
                 {doneCount} of {items.length} uploaded · {formatFileSize(totalSize)} total
               </Typography>
             )}
           </Box>
-          <IconButton size="small" onClick={() => setModalOpen(false)} sx={{ color: "#94A3B8" }}>
+          <IconButton size="small" onClick={() => setModalOpen(false)} sx={{ color: "var(--slate-400)" }}>
             <Close sx={{ fontSize: 18 }} />
           </IconButton>
         </DialogTitle>
@@ -590,11 +590,11 @@ const GmailFileUploader = ({
         <DialogContent sx={{ p: 0, maxHeight: "360px" }}>
           {items.length === 0 ? (
             <Box sx={{ py: 5, px: 2, textAlign: "center" }}>
-              <FolderZipOutlined sx={{ fontSize: 36, color: "#CBD5E1", mb: 1 }} />
-              <Typography variant="body2" sx={{ color: "#475569", fontWeight: 500, fontSize: "0.85rem" }}>
+              <FolderZipOutlined sx={{ fontSize: 36, color: "var(--slate-300)", mb: 1 }} />
+              <Typography variant="body2" sx={{ color: "var(--slate-600)", fontWeight: 500, fontSize: "0.85rem" }}>
                 No files attached yet
               </Typography>
-              <Typography variant="caption" sx={{ color: "#94A3B8", fontSize: "0.75rem", display: "block", mt: 0.5 }}>
+              <Typography variant="caption" sx={{ color: "var(--slate-400)", fontSize: "0.75rem", display: "block", mt: 0.5 }}>
                 Click below to select and upload files.
               </Typography>
             </Box>
@@ -612,22 +612,22 @@ const GmailFileUploader = ({
           )}
         </DialogContent>
 
-        <DialogActions sx={{ px: 2, py: 1.25, borderTop: "1px solid #F1F5F9", justifyContent: "space-between" }}>
-          <Typography variant="caption" sx={{ color: "#64748B", fontSize: "0.75rem" }}>
+        <DialogActions sx={{ px: 2, py: 1.25, borderTop: "1px solid var(--slate-100)", justifyContent: "space-between" }}>
+          <Typography variant="caption" sx={{ color: "var(--slate-500)", fontSize: "0.75rem" }}>
             Total: {formatFileSize(totalSize)}
           </Typography>
           <Box sx={{ display: "flex", gap: 1 }}>
             <Button
               size="small"
               onClick={openPicker}
-              sx={{ textTransform: "none", fontSize: "0.75rem", color: "#334155", fontWeight: 500 }}
+              sx={{ textTransform: "none", fontSize: "0.75rem", color: "var(--slate-700)", fontWeight: 500 }}
             >
               + Add files
             </Button>
             <Button
               size="small"
               onClick={() => setModalOpen(false)}
-              sx={{ textTransform: "none", fontSize: "0.75rem", color: "#64748B" }}
+              sx={{ textTransform: "none", fontSize: "0.75rem", color: "var(--slate-500)" }}
             >
               Close
             </Button>

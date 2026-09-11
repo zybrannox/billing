@@ -30,7 +30,7 @@ function DownloadCard({ id, label, percent, loaded, total, fileCount, done }: Do
     >
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
         {done ? (
-          <CheckCircleRounded fontSize="small" sx={{ color: "var(--green-600, #059669)" }} />
+          <CheckCircleRounded fontSize="small" sx={{ color: "var(--green-600, var(--emerald-600))" }} />
         ) : (
           <FileDownloadRounded fontSize="small" sx={{ color: "var(--blue-600)" }} />
         )}
@@ -48,7 +48,7 @@ function DownloadCard({ id, label, percent, loaded, total, fileCount, done }: Do
           mb: 0.75,
           backgroundColor: "var(--blue-100)",
           "& .MuiLinearProgress-bar": {
-            background: done ? "var(--green-600, #059669)" : "var(--blue-500)",
+            background: done ? "var(--green-600, var(--emerald-600))" : "var(--blue-500)",
           },
         }}
       />

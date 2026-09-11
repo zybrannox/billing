@@ -1,5 +1,7 @@
 import type { GridColDef } from "@mui/x-data-grid";
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Box } from "@mui/material";
 import CrudActions from "../../ui/Actions";
 import Button from "../../ui/Button";
 import Table from "../../common/components/Table";
@@ -9,6 +11,8 @@ import AddCustomer from "../../common/pages/AddCustomer";
 import { useDialogStore } from "../../store/useDialogStore";
 import { useConfirmDialogStore } from "../../hooks/useconfirmDialogStore";
 import { apiService } from "../../api/service";
+import Chip from "../../ui/Chip";
+import { semanticChipSx } from "../../ui/chipStyles";
 
 interface Customer {
   id: number;
@@ -16,7 +20,17 @@ interface Customer {
   last_name: string;
   contact_number: string;
   email: string;
+  // Computed server-side per page load (see GET /customers) - who still
+  // owes money at a glance, without opening each customer's profile.
+  payment_status?: "paid" | "pending" | "no_invoices" | null;
+  outstanding_balance?: number | null;
 }
+
+const PAYMENT_STATUS_META: Record<string, { color: string; label: string }> = {
+  paid: { color: "var(--green-600)", label: "Paid" },
+  pending: { color: "var(--amber-600)", label: "Pending" },
+  no_invoices: { color: "var(--slate-500)", label: "No Invoices" },
+};
 
 interface CustomerListResponse {
   items: Customer[];
@@ -31,9 +45,30 @@ const baseColumns: GridColDef[] = [
   { field: "last_name", headerName: "Last Name", flex: 1, editable: true },
   { field: "contact_number", headerName: "Contact Number", flex: 1, editable: true },
   { field: "email", headerName: "Email", flex: 1.5, editable: true },
+  {
+    field: "payment_status",
+    headerName: "Payment Status",
+    flex: 1.4,
+    sortable: false,
+    filterable: false,
+    renderCell: ({ row }) => {
+      const meta = PAYMENT_STATUS_META[row.payment_status ?? "no_invoices"] ?? PAYMENT_STATUS_META.no_invoices;
+      return (
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, height: "inherit" }}>
+          <Chip label={meta.label} sx={semanticChipSx(meta.color)} />
+          {row.payment_status === "pending" && !!row.outstanding_balance && (
+            <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--amber-800)" }}>
+              ₹{row.outstanding_balance.toLocaleString("en-IN")}
+            </span>
+          )}
+        </Box>
+      );
+    },
+  },
 ];
 
 const Customers = () => {
+  const navigate = useNavigate();
   const { openDialog } = useDialogStore();
   const { showDialog, closeDialog, setLoading } = useConfirmDialogStore();
 
@@ -162,6 +197,7 @@ const Customers = () => {
         rows={rows}
         columns={columns}
         processRowUpdate={processRowUpdate}
+        onRowSelect={(row) => navigate(`/admin/customers/${row.id}`)}
         renderActions={(params, handlers) => [
           <CrudActions
             key="crud"

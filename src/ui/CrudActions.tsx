@@ -65,7 +65,7 @@ const CrudActions = ({
             size={size}
             onClick={onEdit}
             sx={{
-              // backgroundColor: "#0D6EFD", // Primary Blue
+              // backgroundColor: "var(--blue-600)", // Primary Blue
               color: "#fff",
               padding: "0",
               borderRadius: "var(--border-radius-md)",
@@ -76,7 +76,7 @@ const CrudActions = ({
               },
             }}
           >
-            <EditIcon fontSize={size} sx={{ color: "#0D6EFD" }} />
+            <EditIcon fontSize={size} sx={{ color: "var(--blue-600)" }} />
           </IconButton>
         </Tooltip>
       )}
@@ -87,7 +87,7 @@ const CrudActions = ({
             size={size}
             onClick={onDelete}
             sx={{
-              // backgroundColor: "#DC3545", // Bootstrap Danger
+              // backgroundColor: "var(--red-600)", // Bootstrap Danger
               color: "#fff",
               padding: "0",
               borderRadius: "var(--border-radius-md)",
@@ -98,7 +98,7 @@ const CrudActions = ({
               },
             }}
           >
-            <DeleteRounded fontSize={size} sx={{ color: "#DC3545" }} />
+            <DeleteRounded fontSize={size} sx={{ color: "var(--red-600)" }} />
           </IconButton>
         </Tooltip>
       )}

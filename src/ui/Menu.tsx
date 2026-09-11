@@ -57,9 +57,9 @@ const Menu = React.memo(() => {
           minWidth: 220,
           borderRadius: "10px",
           overflow: "visible",
-          border: "1px solid #E2E8F0",
+          border: "1px solid var(--slate-200)",
           boxShadow: "0px 4px 16px rgba(15, 23, 42, 0.08)",
-          backgroundColor: "#FFFFFF",
+          backgroundColor: "var(--white)",
 
           /* V-notch */
           "&::before": {
@@ -69,9 +69,9 @@ const Menu = React.memo(() => {
             right: 18,
             width: 10,
             height: 10,
-            borderLeft: "1px solid #E2E8F0",
-            borderTop: "1px solid #E2E8F0",
-            bgcolor: "#FFFFFF",
+            borderLeft: "1px solid var(--slate-200)",
+            borderTop: "1px solid var(--slate-200)",
+            bgcolor: "var(--white)",
             transform: "rotate(45deg)",
             zIndex: 0,
           },
@@ -95,7 +95,7 @@ const Menu = React.memo(() => {
         <Typography
           variant="subtitle2"
           sx={{
-            color: "#0F172A",
+            color: "var(--slate-900)",
             fontWeight: 600,
             fontSize: "0.875rem",
           }}
@@ -107,7 +107,7 @@ const Menu = React.memo(() => {
         <Typography
           variant="caption"
           sx={{
-            color: "#64748B",
+            color: "var(--slate-500)",
             fontSize: "0.75rem",
             mt: 0.25,
           }}
@@ -117,7 +117,7 @@ const Menu = React.memo(() => {
         </Typography>
       </Box>
 
-      <Divider sx={{ borderColor: "#F1F5F9" }} />
+      <Divider sx={{ borderColor: "var(--slate-100)" }} />
 
       {/* Actions */}
       <MenuItem
@@ -128,17 +128,17 @@ const Menu = React.memo(() => {
           px: 1.5,
           py: 1,
           borderRadius: "6px",
-          color: "#475569",
+          color: "var(--slate-600)",
           fontSize: "0.85rem",
           fontWeight: 500,
           transition: "all 0.15s ease-in-out",
 
           "&:hover": {
-            color: "#EF4444",
+            color: "var(--red-500)",
             backgroundColor: "rgba(239, 68, 68, 0.06)",
 
             "& .MuiListItemIcon-root": {
-              color: "#EF4444",
+              color: "var(--red-500)",
             },
           },
         }}
@@ -146,7 +146,7 @@ const Menu = React.memo(() => {
         <ListItemIcon
           sx={{
             minWidth: 28,
-            color: "#64748B",
+            color: "var(--slate-500)",
             transition: "color 0.15s ease-in-out",
           }}
         >
