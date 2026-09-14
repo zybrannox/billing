@@ -967,6 +967,13 @@ export default function Dashboard() {
   const lastRevenue = trend[trend.length - 1]?.revenue ?? 0;
   const prevRevenue = trend[trend.length - 2]?.revenue ?? 0;
   const deltaPct = prevRevenue > 0 ? ((lastRevenue - prevRevenue) / prevRevenue) * 100 : null;
+  // What the % badge below is actually comparing (the trend's last bucket
+  // vs. the one before it, at whatever granularity is selected) - it used
+  // to sit under stats.total_revenue (the lifetime total), which can't
+  // meaningfully move "X% vs previous period" the way one period's
+  // revenue can, so the badge was describing a completely different
+  // number than the one it was pinned under.
+  const PERIOD_NOUN: Record<Granularity, string> = { day: "today", week: "this week", month: "this month", year: "this year" };
 
   // Partitioned the same way getDueLabel prioritizes them (credit-unpaid
   // first, then overdue, everything else urgent) so these counts always
@@ -1017,7 +1024,7 @@ export default function Dashboard() {
                 never applies here - set directly instead of relying on
                 that cascade. */}
             <Typography component="h1" sx={{ color: "var(--white)", fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: { xs: "2.2rem", md: "2.75rem" }, lineHeight: 1.05, mt: 1.5, m: 0 }}>
-              {money(stats.total_revenue)}
+              {money(lastRevenue)}
             </Typography>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 1.5, flexWrap: "wrap" }}>
               {deltaPct !== null && (
@@ -1033,9 +1040,12 @@ export default function Dashboard() {
                 </Box>
               )}
               <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.5)", fontWeight: 500 }}>
-                {deltaPct !== null ? "vs previous period" : "All-time total"} · Total revenue
+                {deltaPct !== null ? "vs previous period" : "No prior period data"} · Revenue {PERIOD_NOUN[granularity]}
               </Typography>
             </Box>
+            <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.4)", fontWeight: 500, display: "block", mt: 0.75 }}>
+              All-time revenue: {money(stats.total_revenue)}
+            </Typography>
           </Box>
 
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap" }}>

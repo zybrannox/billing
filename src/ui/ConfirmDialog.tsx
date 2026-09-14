@@ -1,8 +1,14 @@
 "use client";
-import { Typography } from "@mui/material";
+import { Typography, Box } from "@mui/material";
 import { GenericDialog } from "./Dialog";
 import Button from "./Button";
 import Loader from "./Loader";
+import Dropdown from "./Dropdown";
+
+// Mirrors DeliveryCheck.tsx/GenerateInvoice.tsx's own copy - no payment
+// gateway anywhere in this app, so this is always a fixed, small set of
+// ways an admin manually recorded that money changed hands.
+const PAYMENT_METHODS = ["Cash", "UPI", "Bank Transfer", "Card", "Cheque", "Other"];
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -12,6 +18,9 @@ interface ConfirmDialogProps {
   cancelText?: string;
   isDestructive?: boolean;
   loading?: boolean;
+  paymentMethodRequired?: boolean;
+  paymentMethod?: string;
+  onPaymentMethodChange?: (paymentMethod: string) => void;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -24,6 +33,9 @@ export default function ConfirmDialog({
   cancelText = "Cancel",
   isDestructive = false,
   loading = false,
+  paymentMethodRequired = false,
+  paymentMethod = "",
+  onPaymentMethodChange,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -49,6 +61,18 @@ export default function ConfirmDialog({
         {description}
       </Typography>
 
+      {paymentMethodRequired && (
+        <Box sx={{ mt: 0.5 }}>
+          <Dropdown
+            placeholder="How was this paid?"
+            options={PAYMENT_METHODS}
+            value={paymentMethod || undefined}
+            onChange={(v) => onPaymentMethodChange?.((v as string) || "")}
+            disabled={loading}
+          />
+        </Box>
+      )}
+
       <div className="flex justify-end gap-2.5">
         <Button
           variantColor="outline"
@@ -61,7 +85,7 @@ export default function ConfirmDialog({
         <Button
           variantColor={isDestructive ? "pink" : "gradient"}
           onClick={onConfirm}
-          disabled={loading}
+          disabled={loading || (paymentMethodRequired && !paymentMethod)}
           autoFocus
           sx={{ minWidth: 90 }}
         >

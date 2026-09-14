@@ -18,7 +18,6 @@ import { useConfirmDialogStore } from "../../hooks/useconfirmDialogStore";
 import { useAppStore } from "../../store/useAppStore";
 import AddProject from "./AddProject";
 import AddCustomer from "./AddCustomer";
-import GenerateInvoice from "./GenerateInvoice";
 import DeliveryCheck from "./DeliveryCheck";
 import Button from "../../ui/Button";
 import { getRowClassName } from "../../utils/appSupport";
@@ -629,12 +628,6 @@ const Projects = () => {
           title="Customer"
           children={<AddCustomer />}
           maxWidth="xs"
-        />
-        <Dialog
-          type="invoiceDesignComplete"
-          title="Invoice"
-          children={<GenerateInvoice />}
-          maxWidth="md"
         />
         <Dialog
           type="deliveryCheck"

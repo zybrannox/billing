@@ -5,24 +5,17 @@ import {
   Typography,
   Button as MuiButton,
   CircularProgress,
-  IconButton,
   Alert,
   Paper,
   Divider,
   InputAdornment,
-  Tooltip,
 } from "@mui/material";
-import AddRoundedIcon from "@mui/icons-material/AddRounded";
-import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
 import FolderOpenRoundedIcon from "@mui/icons-material/FolderOpenRounded";
 import EventRoundedIcon from "@mui/icons-material/EventRounded";
-import CalculateRoundedIcon from "@mui/icons-material/CalculateRounded";
 import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
 import DiscountRoundedIcon from "@mui/icons-material/DiscountRounded";
-import ImageRoundedIcon from "@mui/icons-material/ImageRounded";
-import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 
 import { apiService } from "../../api/service";
 import { formatDate } from "../../utils/dateFormatter";
@@ -30,8 +23,19 @@ import TextField from "../../ui/TextField";
 import DateTimePicker from "../../ui/DateTimePicker";
 import Dropdown from "../../ui/Dropdown";
 import Button from "../../ui/Button";
+import AsyncSearchSelect from "../../ui/AsyncSearchSelect";
+import ItemLineEditor from "../components/ItemLineEditor";
+import {
+  newRow,
+  totalOf,
+  toNumber,
+  piecesOf,
+  type ItemRow,
+  type ItemTypeOption,
+} from "../components/itemLineUtils";
 import { useDialogStore } from "../../store/useDialogStore";
 import { useProjectStore } from "../../store/useProjectStore";
+import { useListOptionsStore } from "../../store/useListOptionsStore";
 import {
   InvoiceMetaPanel,
   InvoicePanelLabel,
@@ -40,15 +44,8 @@ import {
 
 interface ProjectFileSummary {
   original_name: string | null;
-  // A physical-size *estimate* in inches (assumed 96 DPI) - deliberately
-  // unused here. See pixel_width/pixel_height below.
   width: number | null;
   height: number | null;
-  // The file's actual pixel dimensions - an assumption-free fact, unlike
-  // width/height above. Shown to the user as a reference (see the caption
-  // under Item Description) instead of auto-filling Width/Height, since a
-  // wrong DPI guess would silently feed a wrong size into the invoice
-  // total. Width/Height in feet stay entirely user-entered.
   pixel_width: number | null;
   pixel_height: number | null;
 }
@@ -74,55 +71,6 @@ interface InvoicePreview {
   customer: CustomerSummary | null;
 }
 
-interface ItemTypeOption {
-  id: number;
-  value: string;
-  rate: number | null;
-}
-
-interface ItemRow {
-  key: string;
-  itemType: string;
-  description: string;
-  width: string;
-  height: string;
-  rate: string;
-  // Raw override for the Total Amount field, typed directly by the user -
-  // "" means "not overridden, just show rate × area" (see totalDisplayOf
-  // below). Editing Width/Height/Rate clears this back to "" so an old
-  // override never silently lingers and disagrees with the inputs that
-  // actually drive it; editing Total itself sets this AND back-derives
-  // Rate (the field the backend actually persists) to match, so the two
-  // never disagree on submit.
-  total: string;
-  // The source image's actual pixel size, if this row was seeded from one -
-  // display-only (see the caption under Item Description). Width/Height in
-  // feet are never derived from this: a raster image's pixel count doesn't
-  // imply a physical print size without knowing the file's real DPI, which
-  // isn't something the browser can read off an <img> - showing the exact
-  // pixel dimensions and letting the user enter the real feet size is more
-  // accurate than guessing a DPI and being wrong.
-  pixelWidth: number | null;
-  pixelHeight: number | null;
-}
-
-let rowCounter = 0;
-const newRow = (
-  description = "",
-  pixelWidth: number | null = null,
-  pixelHeight: number | null = null
-): ItemRow => ({
-  key: `row-${++rowCounter}`,
-  itemType: "",
-  description,
-  width: "",
-  height: "",
-  rate: "",
-  total: "",
-  pixelWidth,
-  pixelHeight,
-});
-
 const stripExtension = (name: string) => name.replace(/\.[^./\\]+$/, "");
 
 const buildInitialRows = (project: ProjectSummary): ItemRow[] => {
@@ -139,32 +87,6 @@ const buildInitialRows = (project: ProjectSummary): ItemRow[] => {
   );
 };
 
-const toNumber = (v: string): number => {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : 0;
-};
-
-const sqFtOf = (row: ItemRow) =>
-  row.width && row.height
-    ? Math.round(toNumber(row.width) * toNumber(row.height) * 100) / 100
-    : 0;
-
-// The real, authoritative total (rate × area) - used for every actual sum
-// (grand total, submission payload, etc). Always derived from rate, never
-// from row.total directly, so a manual Total override can never silently
-// drift from what's actually billed: editing Total back-derives rate (see
-// handleTotalChange), and this recomputes from that updated rate.
-const totalOf = (row: ItemRow) =>
-  Math.round(sqFtOf(row) * toNumber(row.rate) * 100) / 100;
-
-// What the Total Amount field itself should show: the user's raw typed
-// override while they're actively editing it, or the live computed value
-// otherwise. Never reformats an in-progress override (no toFixed on every
-// keystroke) - doing that here would re-inject extra characters mid-type
-// and corrupt whatever the user is entering.
-const totalDisplayOf = (row: ItemRow) =>
-  row.total !== "" ? row.total : totalOf(row) ? totalOf(row).toFixed(2) : "";
-
 const extractErrorMessage = (err: any): string => {
   const detail = err?.detail ?? err?.message;
   if (typeof detail === "string") return detail;
@@ -172,19 +94,6 @@ const extractErrorMessage = (err: any): string => {
   return "Something went wrong while generating the invoice. Please try again.";
 };
 
-const colHeaderSx = {
-  fontWeight: 700,
-  fontSize: "0.725rem",
-  letterSpacing: "0.05em",
-  textTransform: "uppercase" as const,
-  color: "var(--slate-500)",
-  userSelect: "none" as const,
-};
-
-// Precise grid layout preventing column drift and layout breaks
-const ITEM_ROW_GRID = "28px 170px 1fr 90px 90px 95px 110px 110px 36px";
-
-// Numeric text input constraints preventing clipping and arrow overlapping
 const numberFieldSx = {
   "& .MuiInputBase-root": {
     px: 1,
@@ -226,14 +135,48 @@ const textFieldSx = {
 
 const PAYMENT_METHODS = ["Cash", "UPI", "Bank Transfer", "Card", "Cheque", "Other"];
 
+interface ProjectOption {
+  id: number;
+  project_type: string;
+  customer_name: string | null;
+  assigned_to: string;
+}
+
+interface CustomerOption {
+  id: number;
+  first_name: string;
+  last_name: string;
+}
+
 export default function GenerateInvoice() {
   const navigate = useNavigate();
   const { editingId, closeDialog } = useDialogStore();
   const markDesignCompleted = useProjectStore((s) => s.markDesignCompleted);
-  const projectId = editingId;
+  const fetchActiveOptions = useListOptionsStore((s) => s.fetchActiveOptions);
+  const projectTypeOptions = useListOptionsStore((s) => s.activeByCategory["project_type"]);
+
+  // Three ways this screen is reached:
+  // 1. A specific project's own "Mark Design Completed" row action
+  //    (editingId set) - always an existing, already-tracked project.
+  // 2. The header "Create Invoice" shortcut, "Existing Project" mode - pick
+  //    an already-tracked project that just hasn't been invoiced yet.
+  // 3. The header shortcut's default, "New Job" mode - like Zoho Books'
+  //    New Invoice screen: just who it's billed to and what it's for
+  //    (customer, job type) are entered right here, on the exact same page
+  //    and the exact same Generate Invoice submit as the line items and
+  //    total - not a separate "create a project first" screen, and not a
+  //    work-tracking form (no assignee/dates/priority - see the New Job
+  //    fields below). The project and invoice are created together,
+  //    server-side, in one request (see app/invoices/repository.py's
+  //    create_invoice handling `new_project`).
+  const [mode, setMode] = useState<"new" | "existing">("new");
+  const [resolvedProjectId, setResolvedProjectId] = useState<number | null>(null);
+  const projectId = editingId ?? resolvedProjectId;
+  const isNewJob = !projectId && mode === "new";
+  const showExistingPicker = !projectId && mode === "existing";
 
   const [preview, setPreview] = useState<InvoicePreview | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -247,6 +190,22 @@ export default function GenerateInvoice() {
   const [discountAmount, setDiscountAmount] = useState("");
   const [discountError, setDiscountError] = useState<string | null>(null);
   const [itemTypeOptions, setItemTypeOptions] = useState<ItemTypeOption[]>([]);
+  const [selectedExistingId, setSelectedExistingId] = useState<number | undefined>(undefined);
+
+  // New Job fields - only read/used while isNewJob. Just who it's billed
+  // to and what it's for, like a real invoice - no work-tracking fields
+  // (assignee, priority, client status, schedule dates) and no free-text
+  // description (a real invoice doesn't carry one - the line items already
+  // say what's billed); those get fixed sensible defaults server-side (see
+  // app/invoices/repository.py's create_invoice) since this project exists
+  // only to hang the invoice off of.
+  const [newProjectType, setNewProjectType] = useState("");
+  const [newCustomerId, setNewCustomerId] = useState<number | undefined>(undefined);
+  const [newJobError, setNewJobError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchActiveOptions("project_type");
+  }, [fetchActiveOptions]);
 
   useEffect(() => {
     apiService
@@ -289,71 +248,17 @@ export default function GenerateInvoice() {
     [items]
   );
 
-  const totalSqFt = useMemo(
-    () => Math.round(items.reduce((sum, r) => sum + sqFtOf(r), 0) * 100) / 100,
-    [items]
-  );
-
-  const updateRow = (key: string, patch: Partial<ItemRow>) => {
-    setItems((prev) =>
-      prev.map((r) => (r.key === key ? { ...r, ...patch } : r))
-    );
-  };
-
-  // Picking a catalog type re-syncs the rate to it, but leaves the
-  // description alone - the description is often already meaningful
-  // (auto-seeded from the source image's filename, or something the user
-  // already typed), and silently clobbering it just because a type was
-  // picked afterward would throw that away.
-  const handleItemTypeChange = (key: string, value: string) => {
-    const match = itemTypeOptions.find((o) => o.value === value);
-    updateRow(key, {
-      itemType: value,
-      rate: match?.rate != null ? String(match.rate) : "",
-      // Whatever Total was showing no longer reflects this new rate -
-      // clear back to "auto" so it recomputes from it instead of
-      // displaying a now-stale override.
-      total: "",
-    });
-  };
-
-  // Total Amount is editable, but the backend only ever persists Rate
-  // (Width × Height × Rate) - there's no separate "total" column to save
-  // an override into. So typing a total here works by solving that same
-  // equation backwards: Rate = Total ÷ Area. Only meaningful once an area
-  // exists (the field is disabled with 0 area - see the JSX), so this is
-  // never called with sqft <= 0.
-  const handleTotalChange = (key: string, value: string) => {
-    setItems((prev) =>
-      prev.map((r) => {
-        if (r.key !== key) return r;
-        const area = sqFtOf(r);
-        if (area <= 0) return r;
-        const typed = toNumber(value);
-        // Rounding this to 2 decimals (like a real, user-entered rate)
-        // used to throw away enough precision that re-multiplying by area
-        // could land a few cents off the total actually typed - e.g. 9.25
-        // sq ft @ a typed ₹250 total came back as ₹250.03. This field is
-        // never shown to the user (see the "Hidden" rate cell below, only
-        // rendered while row.total is set) - it exists purely so the
-        // total÷area round-trip below reproduces the typed amount, so
-        // there's no UI reason to keep it low-precision.
-        const derivedRate = Math.round((typed / area) * 1_000_000) / 1_000_000;
-        return { ...r, total: value, rate: String(derivedRate) };
-      })
-    );
-  };
-
-  const addRow = () => setItems((prev) => [...prev, newRow()]);
-
-  const removeRow = (key: string) =>
-    setItems((prev) => (prev.length > 1 ? prev.filter((r) => r.key !== key) : prev));
-
   const handleGenerate = async () => {
     setSubmitError(null);
     setRowError(null);
     setAdvanceError(null);
     setDiscountError(null);
+    setNewJobError(null);
+
+    if (isNewJob && (!newProjectType || !newCustomerId)) {
+      setNewJobError("Pick a job type and a customer before generating.");
+      return;
+    }
 
     const usable: ItemRow[] = [];
     for (const row of items) {
@@ -365,10 +270,12 @@ export default function GenerateInvoice() {
         filled.length < 3 ||
         toNumber(row.width) <= 0 ||
         toNumber(row.height) <= 0 ||
-        toNumber(row.rate) < 0
+        toNumber(row.rate) < 0 ||
+        !Number.isInteger(toNumber(row.pieces)) ||
+        toNumber(row.pieces) < 1
       ) {
         setRowError(
-          "Each item needs a valid width, height, and rate (rate can be 0, dimensions must be > 0)."
+          "Each item needs a valid width, height, and rate (rate can be 0, dimensions must be > 0), and a whole number of pieces (1 or more)."
         );
         return;
       }
@@ -404,7 +311,14 @@ export default function GenerateInvoice() {
     setSubmitting(true);
     try {
       const invoice = await apiService.post<{ id: number }>("/invoices/", {
-        project_id: Number(projectId),
+        ...(isNewJob
+          ? {
+              new_project: {
+                project_type: newProjectType,
+                customer_id: newCustomerId,
+              },
+            }
+          : { project_id: Number(projectId) }),
         due_date: dueDate || undefined,
         discount_amount: discount > 0 ? discount : undefined,
         advance_amount: advance > 0 ? advance : undefined,
@@ -414,33 +328,34 @@ export default function GenerateInvoice() {
           description: r.description.trim() || undefined,
           width: toNumber(r.width),
           height: toNumber(r.height),
+          unit: r.unit,
           rate: toNumber(r.rate),
+          pieces: piecesOf(r),
           is_manual_total: r.total !== "",
         })),
       });
 
-      // The invoice itself is the source of truth and already exists at
-      // this point, so a failure here shouldn't block navigating to it -
-      // but silently swallowing it (as this used to) left the "Generate
-      // Invoice" button re-enabled with no sign anything was wrong,
-      // inviting a second invoice for the same project on retry (now
-      // rejected server-side - see service_create's pending-invoice
-      // guard - but that's a confusing error to hit blind). One retry
-      // covers the common transient case (a network blip); if it still
-      // fails, tell the user plainly instead of failing silently.
-      try {
-        await markDesignCompleted(String(projectId));
-      } catch {
+      // Only an *existing* project needs its own "design completed"
+      // milestone flipped after the fact - a brand-new one created via
+      // new_project is marked design_completed_at server-side at the same
+      // time it's created (see repository.create_invoice), since there
+      // was never a separate design phase to close out for a job that
+      // didn't exist as a project until this exact invoice.
+      if (!isNewJob) {
         try {
           await markDesignCompleted(String(projectId));
-        } catch (err) {
-          console.error(
-            "Invoice generated, but marking design completed failed twice",
-            err,
-          );
-          alert(
-            `Invoice ${invoice.id} was created, but this project couldn't be marked "design completed" automatically. Mark it manually from Projects - Generate Invoice will otherwise refuse a second one for this order.`,
-          );
+        } catch {
+          try {
+            await markDesignCompleted(String(projectId));
+          } catch (err) {
+            console.error(
+              "Invoice generated, but marking design completed failed twice",
+              err,
+            );
+            alert(
+              `Invoice ${invoice.id} was created, but this project couldn't be marked "design completed" automatically. Mark it manually from Projects - Generate Invoice will otherwise refuse a second one for this order.`,
+            );
+          }
         }
       }
 
@@ -454,7 +369,95 @@ export default function GenerateInvoice() {
     }
   };
 
-  if (loading) {
+  // Header banner + New Job/Existing Project toggle - shown whenever no
+  // project is settled on yet (not reachable at all once opened via a
+  // specific project's own row action, since editingId already answers
+  // this question).
+  const modeToggle = !editingId && (
+    <Box sx={{ display: "flex", bgcolor: "var(--slate-100)", borderRadius: 999, p: 0.5, gap: 0.5, flexShrink: 0 }}>
+      {(["new", "existing"] as const).map((m) => {
+        const active = m === mode;
+        return (
+          <Box
+            key={m}
+            component="button"
+            type="button"
+            onClick={() => setMode(m)}
+            sx={{
+              border: "none",
+              px: 2,
+              py: 0.75,
+              borderRadius: 999,
+              cursor: "pointer",
+              fontSize: "0.8rem",
+              fontWeight: 700,
+              fontFamily: "inherit",
+              color: active ? "var(--white)" : "var(--slate-500)",
+              bgcolor: active ? "var(--slate-900)" : "transparent",
+              transition: "all 0.15s ease",
+              "&:hover": { color: active ? "var(--white)" : "var(--slate-900)" },
+            }}
+          >
+            {m === "new" ? "New Job" : "Existing Project"}
+          </Box>
+        );
+      })}
+    </Box>
+  );
+
+  if (showExistingPicker) {
+    return (
+      <Box sx={{ maxWidth: 480, mx: "auto", p: { xs: 2, sm: 3 } }}>
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1.5, mb: 3, flexWrap: "wrap" }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            <Box sx={{ p: 1, bgcolor: "var(--blue-50)", borderRadius: 2, color: "var(--blue-600)", display: "flex" }}>
+              <ReceiptLongRoundedIcon fontSize="small" />
+            </Box>
+            <Box>
+              <Typography sx={{ fontWeight: 700, color: "var(--slate-800)" }}>
+                Create an Invoice
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Search for the project you want to invoice
+              </Typography>
+            </Box>
+          </Box>
+          {modeToggle}
+        </Box>
+
+        <AsyncSearchSelect
+          label="Project"
+          placeholder="Search by project type, customer, assignee..."
+          endpoint="/projects"
+          extraParams={{ page_size: 20 }}
+          getOptionLabel={(p: ProjectOption) =>
+            `${p.project_type}${p.customer_name ? ` — ${p.customer_name}` : ""} (${p.assigned_to})`
+          }
+          getOptionValue={(p: ProjectOption) => p.id}
+          value={selectedExistingId}
+          onChange={(v) => setSelectedExistingId(v as number | undefined)}
+        />
+
+        <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mt: 3, pt: 2, borderTop: "1px solid var(--slate-200)" }}>
+          <MuiButton
+            onClick={closeDialog}
+            sx={{ color: "var(--slate-500)", textTransform: "none", fontWeight: 600, px: 3, "&:hover": { bgcolor: "var(--slate-100)" } }}
+          >
+            Cancel
+          </MuiButton>
+          <Button
+            onClick={() => selectedExistingId && setResolvedProjectId(selectedExistingId)}
+            disabled={!selectedExistingId}
+            variant="contained"
+          >
+            Continue
+          </Button>
+        </Box>
+      </Box>
+    );
+  }
+
+  if (projectId && loading) {
     return (
       <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", py: 8, gap: 2 }}>
         <CircularProgress size={36} thickness={4} />
@@ -465,7 +468,7 @@ export default function GenerateInvoice() {
     );
   }
 
-  if (loadError || !preview) {
+  if (projectId && (loadError || !preview)) {
     return (
       <Paper elevation={0} sx={{ textAlign: "center", py: 6, px: 3, border: "1px dashed var(--slate-300)", borderRadius: 3 }}>
         <Typography variant="subtitle1" sx={{ fontWeight: 600, color: "var(--slate-600)" }}>
@@ -478,13 +481,23 @@ export default function GenerateInvoice() {
     );
   }
 
-  const { project, customer } = preview;
+  const project = preview?.project;
+  const customer = preview?.customer;
   const customerName = customer
     ? `${customer.first_name} ${customer.last_name}`
     : "Unassigned Customer";
 
   return (
-    <Box sx={{ maxWidth: 1040, margin: "0 auto", p: { xs: 1.5, sm: 2.5 } }}>
+    // width: "100%" + minWidth: 0 - this is a flex item of the
+    // invoiceDesignComplete dialog's DialogContent (see ui/Dialog.tsx),
+    // and a flex item with auto horizontal margins (the centering trick
+    // below) opts out of the default cross-axis stretch - without an
+    // explicit width it shrink-to-fits its own content instead of
+    // filling the dialog, so the line-item table's minWidth: 960 (see
+    // ItemLineEditor.tsx) forces this box - and the dialog around it -
+    // wider than the viewport instead of ever reaching ItemLineEditor's
+    // own horizontal scrollbar.
+    <Box sx={{ width: "100%", maxWidth: 1280, minWidth: 0, margin: "0 auto", p: { xs: 1.5, sm: 2.5 } }}>
       {/* Header Banner */}
       <Paper
         elevation={0}
@@ -496,20 +509,29 @@ export default function GenerateInvoice() {
           border: "1px solid var(--slate-200)",
           display: "flex",
           alignItems: "center",
+          justifyContent: "space-between",
           gap: 1.5,
+          flexWrap: "wrap",
         }}
       >
-        <Box sx={{ p: 1, bgcolor: "var(--blue-50)", borderRadius: 2, color: "var(--blue-600)", display: "flex" }}>
-          <ReceiptLongRoundedIcon fontSize="small" />
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+          <Box sx={{ p: 1, bgcolor: "var(--blue-50)", borderRadius: 2, color: "var(--blue-600)", display: "flex" }}>
+            <ReceiptLongRoundedIcon fontSize="small" />
+          </Box>
+          <Box>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "var(--slate-800)" }}>
+              {isNewJob ? "Create an Invoice" : "Invoice Generation & Handover"}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {isNewJob
+                ? "For name boards, signage, or any other job - a design file isn't required"
+                : (
+                  <>Generating this invoice automatically updates the project design status to <strong>Completed</strong>.</>
+                )}
+            </Typography>
+          </Box>
         </Box>
-        <Box>
-          <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "var(--slate-800)" }}>
-            Invoice Generation & Handover
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            Generating this invoice automatically updates the project design status to <strong>Completed</strong>.
-          </Typography>
-        </Box>
+        {modeToggle}
       </Paper>
 
       {/* Billing & Metadata Panel */}
@@ -524,27 +546,49 @@ export default function GenerateInvoice() {
         }}
       >
         <InvoiceMetaPanel>
-          <Box sx={{ display: "flex", gap: 1.5, alignItems: "flex-start" }}>
-            <Box sx={{ p: 1, bgcolor: "var(--slate-100)", borderRadius: 1.5, color: "var(--slate-600)", mt: 0.5 }}>
-              <PersonRoundedIcon fontSize="small" />
-            </Box>
-            <Box>
-              <InvoicePanelLabel>Billed To</InvoicePanelLabel>
-              <Typography sx={{ fontWeight: 700, color: "var(--slate-900)", fontSize: "0.95rem" }}>
-                {customerName}
-              </Typography>
-              {customer && (
-                <Box sx={{ mt: 0.25 }}>
-                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: "0.85rem", lineHeight: 1.4 }}>
-                    {customer.email}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: "0.85rem", lineHeight: 1.4 }}>
-                    {customer.contact_number}
-                  </Typography>
+          {isNewJob ? (
+            <Box sx={{ display: "flex", gap: 1.5, alignItems: "flex-start" }}>
+              <Box sx={{ p: 1, bgcolor: "var(--slate-100)", borderRadius: 1.5, color: "var(--slate-600)", mt: 0.5 }}>
+                <PersonRoundedIcon fontSize="small" />
+              </Box>
+              <Box sx={{ flex: 1 }}>
+                <InvoicePanelLabel>Billed To</InvoicePanelLabel>
+                <Box sx={{ mt: 0.75 }}>
+                  <AsyncSearchSelect
+                    placeholder="Search customers..."
+                    endpoint="/customers"
+                    extraParams={{ limit: 20, sort: "most_used" }}
+                    getOptionLabel={(c: CustomerOption) => `${c.first_name} ${c.last_name}`}
+                    getOptionValue={(c: CustomerOption) => c.id}
+                    value={newCustomerId}
+                    onChange={(v) => setNewCustomerId(v as number | undefined)}
+                  />
                 </Box>
-              )}
+              </Box>
             </Box>
-          </Box>
+          ) : (
+            <Box sx={{ display: "flex", gap: 1.5, alignItems: "flex-start" }}>
+              <Box sx={{ p: 1, bgcolor: "var(--slate-100)", borderRadius: 1.5, color: "var(--slate-600)", mt: 0.5 }}>
+                <PersonRoundedIcon fontSize="small" />
+              </Box>
+              <Box>
+                <InvoicePanelLabel>Billed To</InvoicePanelLabel>
+                <Typography sx={{ fontWeight: 700, color: "var(--slate-900)", fontSize: "0.95rem" }}>
+                  {customerName}
+                </Typography>
+                {customer && (
+                  <Box sx={{ mt: 0.25 }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: "0.85rem", lineHeight: 1.4 }}>
+                      {customer.email}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: "0.85rem", lineHeight: 1.4 }}>
+                      {customer.contact_number}
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+            </Box>
+          )}
 
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, alignItems: { xs: "flex-start", sm: "flex-end" } }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -563,22 +607,44 @@ export default function GenerateInvoice() {
 
         <Divider sx={{ my: 2, borderColor: "var(--slate-100)" }} />
 
-        {/* Project Summary */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, bgcolor: "var(--slate-50)", p: 1.5, borderRadius: 2 }}>
-          <FolderOpenRoundedIcon fontSize="small" sx={{ color: "var(--slate-500)" }} />
-          <Typography variant="body2" sx={{ fontWeight: 600, color: "var(--slate-700)" }}>
-            {project.project_type} Order
-            {project.description ? ` — ${project.description}` : ""}
-          </Typography>
-          {project.delivery_date && (
-            <Box sx={{ ml: "auto", display: "flex", alignItems: "center", gap: 0.5 }}>
-              <EventRoundedIcon sx={{ fontSize: "1rem", color: "var(--slate-400)" }} />
-              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
-                Target Delivery: {formatDate(project.delivery_date)}
-              </Typography>
+        {isNewJob ? (
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <Box sx={{ maxWidth: 320 }}>
+              <InvoicePanelLabel>Job Type</InvoicePanelLabel>
+              <Box sx={{ mt: 0.5 }}>
+                <Dropdown
+                  placeholder="e.g. Flex, Name Board..."
+                  options={(projectTypeOptions ?? []).map((o) => o.value)}
+                  value={newProjectType || undefined}
+                  onChange={(v) => setNewProjectType((v as string) || "")}
+                />
+              </Box>
             </Box>
-          )}
-        </Box>
+
+            {newJobError && (
+              <Alert severity="error" sx={{ borderRadius: 2 }}>
+                {newJobError}
+              </Alert>
+            )}
+          </Box>
+        ) : (
+          project && (
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, bgcolor: "var(--slate-50)", p: 1.5, borderRadius: 2 }}>
+              <FolderOpenRoundedIcon fontSize="small" sx={{ color: "var(--slate-500)" }} />
+              <Typography variant="body2" sx={{ fontWeight: 600, color: "var(--slate-700)" }}>
+                {project.project_type} Order
+              </Typography>
+              {project.delivery_date && (
+                <Box sx={{ ml: "auto", display: "flex", alignItems: "center", gap: 0.5 }}>
+                  <EventRoundedIcon sx={{ fontSize: "1rem", color: "var(--slate-400)" }} />
+                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
+                    Target Delivery: {formatDate(project.delivery_date)}
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+          )
+        )}
 
         <Divider sx={{ my: 2, borderColor: "var(--slate-100)" }} />
 
@@ -627,247 +693,9 @@ export default function GenerateInvoice() {
         </Box>
       </Paper>
 
-      {/* Dynamic Line Items Section */}
-      <Paper elevation={0} sx={{ border: "1px solid var(--slate-200)", borderRadius: 3, overflow: "hidden", mb: 2 }}>
-        <Box sx={{ overflowX: "auto" }}>
-          <Box sx={{ minWidth: 920 }}>
-            {/* Table Header */}
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: ITEM_ROW_GRID,
-                gap: 1.25,
-                bgcolor: "var(--slate-50)",
-                borderBottom: "1px solid var(--slate-200)",
-                px: 2,
-                py: 1.5,
-                alignItems: "center",
-              }}
-            >
-              <Typography sx={colHeaderSx}>#</Typography>
-              <Typography sx={colHeaderSx}>Item Type</Typography>
-              <Typography sx={colHeaderSx}>Item Description</Typography>
-              <Typography sx={{ ...colHeaderSx, textAlign: "right" }}>Width</Typography>
-              <Typography sx={{ ...colHeaderSx, textAlign: "right" }}>Height</Typography>
-              <Typography sx={{ ...colHeaderSx, textAlign: "right" }}>Area</Typography>
-              <Typography sx={{ ...colHeaderSx, textAlign: "right" }}>Rate</Typography>
-              <Typography sx={{ ...colHeaderSx, textAlign: "right" }}>Total Amount</Typography>
-              <Box />
-            </Box>
-
-            {/* Line Items Rows */}
-            <Box>
-              {items.map((row, idx) => (
-                <Box
-                  key={row.key}
-                  sx={{
-                    display: "grid",
-                    gridTemplateColumns: ITEM_ROW_GRID,
-                    gap: 1.25,
-                    px: 2,
-                    py: 1.25,
-                    alignItems: "center",
-                    borderTop: idx === 0 ? "none" : "1px solid var(--slate-100)",
-                    bgcolor: idx % 2 === 0 ? "var(--white)" : "var(--slate-50)",
-                  }}
-                >
-                  <Typography variant="body2" sx={{ color: "var(--slate-400)", fontWeight: 600, fontSize: "0.8rem" }}>
-                    {idx + 1}
-                  </Typography>
-
-                  <Dropdown
-                    placeholder="Select type"
-                    options={itemTypeOptions.map((o) => o.value)}
-                    value={row.itemType || undefined}
-                    onChange={(v) => handleItemTypeChange(row.key, (v as string) || "")}
-                  />
-
-                  <TextField
-                    placeholder="Item or Banner details"
-                    value={row.description}
-                    onChange={(e) => updateRow(row.key, { description: e.target.value })}
-                    sx={textFieldSx}
-                    fullWidth
-                    slotProps={
-                      row.pixelWidth && row.pixelHeight
-                        ? {
-                            input: {
-                              endAdornment: (
-                                <InputAdornment position="end">
-                                  {/* Row height must stay identical whether
-                                      or not a row has this - a caption line
-                                      that only sometimes appears is exactly
-                                      what broke row alignment before, so
-                                      this rides inside the field instead of
-                                      adding a second line beneath it. */}
-                                  <Tooltip title={`Source image is ${row.pixelWidth} × ${row.pixelHeight}px — enter the real print size in the fields to the right`}>
-                                    <ImageRoundedIcon sx={{ fontSize: 16, color: "var(--slate-400)" }} />
-                                  </Tooltip>
-                                </InputAdornment>
-                              ),
-                            },
-                          }
-                        : undefined
-                    }
-                  />
-                  <TextField
-                    type="number"
-                    placeholder="0"
-                    value={row.width}
-                    onChange={(e) => updateRow(row.key, { width: e.target.value, total: "" })}
-                    sx={numberFieldSx}
-                    slotProps={{
-                      input: {
-                        endAdornment: <InputAdornment position="end">ft</InputAdornment>,
-                      },
-                    }}
-                  />
-
-                  <TextField
-                    type="number"
-                    placeholder="0"
-                    value={row.height}
-                    onChange={(e) => updateRow(row.key, { height: e.target.value, total: "" })}
-                    sx={numberFieldSx}
-                    slotProps={{
-                      input: {
-                        endAdornment: <InputAdornment position="end">ft</InputAdornment>,
-                      },
-                    }}
-                  />
-
-                  <Typography variant="body2" sx={{ fontWeight: 600, color: "var(--slate-700)", textAlign: "right", pr: 0.5, fontSize: "0.85rem" }}>
-                    {sqFtOf(row)}{" "}
-                    <Typography component="span" sx={{ fontSize: "0.75rem", color: "var(--slate-500)", fontWeight: 500 }}>
-                      sq ft
-                    </Typography>
-                  </Typography>
-
-                  {row.total !== "" ? (
-                    // Total was typed directly - the rate on this row is
-                    // just total ÷ area solved backwards, not something
-                    // anyone actually entered, so it's hidden here (and on
-                    // the printed invoice - see InvoiceView.tsx) rather
-                    // than displayed as if it were real. Click reverts to
-                    // entering a rate directly.
-                    <Tooltip title="Rate is hidden because Total was entered directly for this item - click to enter a rate instead">
-                      <Box
-                        onClick={() => updateRow(row.key, { total: "" })}
-                        sx={{
-                          height: 40,
-                          px: 1,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "flex-end",
-                          gap: 0.5,
-                          borderRadius: "8px",
-                          border: "1px dashed var(--slate-300)",
-                          bgcolor: "var(--slate-50)",
-                          color: "var(--slate-400)",
-                          cursor: "pointer",
-                          "&:hover": { borderColor: "var(--slate-400)", color: "var(--slate-500)", bgcolor: "var(--slate-100)" },
-                        }}
-                      >
-                        <VisibilityOffRoundedIcon sx={{ fontSize: 15 }} />
-                        <Typography sx={{ fontSize: "0.75rem", fontWeight: 600, fontStyle: "italic" }}>
-                          Hidden
-                        </Typography>
-                      </Box>
-                    </Tooltip>
-                  ) : (
-                    <TextField
-                      type="number"
-                      placeholder="0.00"
-                      value={row.rate}
-                      onChange={(e) => updateRow(row.key, { rate: e.target.value, total: "" })}
-                      sx={numberFieldSx}
-                      slotProps={{
-                        input: {
-                          startAdornment: <InputAdornment position="start">₹</InputAdornment>,
-                        },
-                      }}
-                    />
-                  )}
-
-                  {/* Editable - typing here solves Rate = Total ÷ Area
-                      backwards (see handleTotalChange) so it stays exactly
-                      as authoritative as typing into Rate directly would
-                      be. Disabled with no area: a total can't mean
-                      anything until there's a size to divide it by. */}
-                  <Tooltip title={sqFtOf(row) <= 0 ? "Enter Width and Height first" : ""}>
-                    <span>
-                      <TextField
-                        type="number"
-                        placeholder="0.00"
-                        value={totalDisplayOf(row)}
-                        onChange={(e) => handleTotalChange(row.key, e.target.value)}
-                        disabled={sqFtOf(row) <= 0}
-                        sx={{
-                          ...numberFieldSx,
-                          "& .MuiInputBase-input.Mui-disabled": {
-                            WebkitTextFillColor: "var(--slate-400)",
-                          },
-                        }}
-                        slotProps={{
-                          input: {
-                            startAdornment: <InputAdornment position="start">₹</InputAdornment>,
-                          },
-                        }}
-                      />
-                    </span>
-                  </Tooltip>
-
-                  <Tooltip title={items.length === 1 ? "Minimum 1 item required" : "Remove item"}>
-                    <span>
-                      <IconButton
-                        size="small"
-                        onClick={() => removeRow(row.key)}
-                        disabled={items.length === 1}
-                        sx={{
-                          color: "var(--slate-400)",
-                          "&:hover": { color: "var(--red-500)", bgcolor: "var(--red-50)" },
-                          "&.Mui-disabled": { opacity: 0.3 },
-                        }}
-                      >
-                        <DeleteRoundedIcon fontSize="small" />
-                      </IconButton>
-                    </span>
-                  </Tooltip>
-                </Box>
-              ))}
-            </Box>
-          </Box>
-        </Box>
-      </Paper>
-
-      {/* Row Control & Quick Calculations */}
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
-        <MuiButton
-          size="medium"
-          startIcon={<AddRoundedIcon />}
-          onClick={addRow}
-          disableRipple
-          sx={{
-            textTransform: "none",
-            fontWeight: 600,
-            color: "var(--blue-600)",
-            bgcolor: "var(--blue-50)",
-            px: 2,
-            py: 0.8,
-            borderRadius: 2,
-            "&:hover": { bgcolor: "var(--blue-100)" },
-          }}
-        >
-          Add Item Line
-        </MuiButton>
-
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, color: "var(--slate-500)" }}>
-          <CalculateRoundedIcon fontSize="small" />
-          <Typography variant="body2" sx={{ fontWeight: 500 }}>
-            Total Printable Area: <strong>{totalSqFt} sq ft</strong>
-          </Typography>
-        </Box>
-      </Box>
+      {/* Dynamic Line Items Section - shared with GenerateQuotation.tsx,
+          see common/components/ItemLineEditor.tsx */}
+      <ItemLineEditor items={items} onChange={setItems} itemTypeOptions={itemTypeOptions} />
 
       {/* Validation Alert Notices */}
       {rowError && (

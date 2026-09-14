@@ -1,4 +1,4 @@
-import type { GridColDef } from "@mui/x-data-grid";
+import type { GridColDef, GridRowId } from "@mui/x-data-grid";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Box } from "@mui/material";
@@ -8,6 +8,7 @@ import Table from "../../common/components/Table";
 import TableSearchBar from "../../common/components/TableSearchBar";
 import Dialog from "../../ui/Dialog";
 import AddCustomer from "../../common/pages/AddCustomer";
+import CustomerInvoicesList from "../components/CustomerInvoicesList";
 import { useDialogStore } from "../../store/useDialogStore";
 import { useConfirmDialogStore } from "../../hooks/useconfirmDialogStore";
 import { apiService } from "../../api/service";
@@ -40,7 +41,7 @@ interface CustomerListResponse {
   total_pages: number;
 }
 
-const baseColumns: GridColDef[] = [
+const buildBaseColumns = (): GridColDef[] => [
   { field: "first_name", headerName: "First Name", flex: 1, editable: true },
   { field: "last_name", headerName: "Last Name", flex: 1, editable: true },
   { field: "contact_number", headerName: "Contact Number", flex: 1, editable: true },
@@ -75,6 +76,10 @@ const Customers = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoadingState] = useState(false);
+  // Which customer's invoice peek panel (see CustomerInvoicesList) is open
+  // - true accordion, one at a time, matching the Ongoing Activities/
+  // project-files pattern this mirrors (see Table.tsx's renderDetailPanel).
+  const [expandedCustomerId, setExpandedCustomerId] = useState<GridRowId | null>(null);
 
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -120,9 +125,6 @@ const Customers = () => {
 
   const rows = useMemo(() => customers.map((c) => ({ ...c, id: c.id })), [customers]);
 
-  // Server-side pagination means `rows` only holds the current page, so the
-  // displayed SI.NO offsets by the page start rather than the customer's id
-  // (which has gaps from deletions) - keeps it sequential 1-to-n overall.
   const columns: GridColDef[] = useMemo(
     () => [
       {
@@ -136,7 +138,7 @@ const Customers = () => {
           rows.findIndex((r) => r.id === row.id) +
           1,
       },
-      ...baseColumns,
+      ...buildBaseColumns(),
     ],
     [rows, paginationModel],
   );
@@ -197,16 +199,20 @@ const Customers = () => {
         rows={rows}
         columns={columns}
         processRowUpdate={processRowUpdate}
-        onRowSelect={(row) => navigate(`/admin/customers/${row.id}`)}
         renderActions={(params, handlers) => [
           <CrudActions
             key="crud"
             edit
             delete
+            viewCustomer
             onEdit={handlers.edit}
             onDelete={() => handleDelete(params.row.id)}
+            onViewCustomer={() => navigate(`/admin/customers/${params.row.id}`)}
           />,
         ]}
+        renderDetailPanel={(row) => <CustomerInvoicesList customerId={row.id} />}
+        expandedRowId={expandedCustomerId}
+        onExpandedRowIdChange={setExpandedCustomerId}
         paginationMode="server"
         rowCount={total}
         paginationModel={paginationModel}

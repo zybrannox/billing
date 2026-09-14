@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Box,
@@ -6,8 +6,13 @@ import {
   Button,
   CircularProgress,
   Paper,
-  Chip,
   Stack,
+  IconButton,
+  Tooltip,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
 } from "@mui/material";
 import PrintRoundedIcon from "@mui/icons-material/PrintRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
@@ -15,13 +20,17 @@ import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 import EventRoundedIcon from "@mui/icons-material/EventRounded";
 import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
 import FolderOpenRoundedIcon from "@mui/icons-material/FolderOpenRounded";
-import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlineRounded";
-import PendingOutlinedIcon from "@mui/icons-material/PendingOutlined";
-import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
+import FileDownloadRoundedIcon from "@mui/icons-material/FileDownloadRounded";
+import ShareRoundedIcon from "@mui/icons-material/ShareRounded";
+import WhatsAppIcon from "@mui/icons-material/WhatsApp";
+import IosShareRoundedIcon from "@mui/icons-material/IosShareRounded";
+import { saveAs } from "file-saver";
 
 import { apiService } from "../../api/service";
 import { useAppStore } from "../../store/useAppStore";
 import { formatDate } from "../../utils/dateFormatter";
+import { generateInvoicePdf } from "../../utils/generateInvoicePdf";
+import { shareToWhatsAppAfter } from "../../utils/shareToWhatsApp";
 import {
   InvoiceHeader,
   InvoiceMetaPanel,
@@ -35,8 +44,10 @@ interface InvoiceItem {
   description: string | null;
   width: number;
   height: number;
+  unit: "ft" | "in";
   sq_ft: number;
   rate: number;
+  pieces: number;
   total: number;
   // True when this line's Total was typed directly at creation (see
   // GenerateInvoice.tsx) - `rate` is still populated (back-derived as
@@ -75,35 +86,13 @@ interface InvoiceDetail {
   items: InvoiceItem[];
 }
 
-const STATUS_CONFIG: Record<
-  string,
-  { bg: string; color: string; border: string; label: string; icon: React.ReactElement }
-> = {
-  pending: {
-    bg: "var(--amber-100)",
-    color: "var(--amber-800)",
-    border: "var(--amber-300)",
-    label: "Payment Pending",
-    icon: <PendingOutlinedIcon sx={{ fontSize: "0.9rem !important" }} />,
-  },
-  paid: {
-    bg: "var(--green-100)",
-    color: "var(--green-800)",
-    border: "var(--green-300)",
-    label: "Paid in Full",
-    icon: <CheckCircleOutlineRoundedIcon sx={{ fontSize: "0.9rem !important" }} />,
-  },
-  cancelled: {
-    bg: "var(--red-100)",
-    color: "var(--red-800)",
-    border: "var(--red-300)",
-    label: "Cancelled",
-    icon: <CancelOutlinedIcon sx={{ fontSize: "0.9rem !important" }} />,
-  },
-};
-
 const formatCurrency = (val: number) =>
   `₹${val.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+// Feet uses the ' mark, inches uses " - whichever the line was actually
+// measured in (see GenerateInvoice.tsx's per-row unit toggle), not always
+// feet regardless of what was entered.
+const formatDimension = (value: number, unit: "ft" | "in") => `${value}${unit === "in" ? '"' : "'"}`;
 
 export default function InvoiceView() {
   const { id } = useParams<{ id: string }>();
@@ -119,6 +108,15 @@ export default function InvoiceView() {
   const [invoice, setInvoice] = useState<InvoiceDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const [exporting, setExporting] = useState<"download" | "share" | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [shareMenuAnchor, setShareMenuAnchor] = useState<HTMLElement | null>(null);
+  // Feature-detected once, not on every render - a browser without the Web
+  // Share API (most desktop browsers) shouldn't show a menu option that
+  // can only ever fail when clicked. WhatsApp itself is always offered
+  // regardless (see handleShareWhatsApp) - it doesn't depend on this API.
+  const canShare = typeof navigator !== "undefined" && !!navigator.share;
 
   // This invoice can be reached from more than one place now (Billing's
   // "View", Projects' "View Invoice", or straight from generating one in
@@ -133,6 +131,118 @@ export default function InvoiceView() {
     const canGoBack = (window.history.state as { idx?: number } | null)?.idx ?? 0;
     if (canGoBack > 0) navigate(-1);
     else navigate(defaultBackTo);
+  };
+
+  // Renders the same .invoice-sheet DOM node visible on screen to a PDF
+  // (see utils/generateInvoicePdf.ts) - shared by both Download and Share
+  // below, so the two never risk producing different-looking documents.
+  // The "pdf-exporting" class (see the print stylesheet below) strips the
+  // on-screen card's border/shadow/rounded corners first - html2canvas
+  // rasterizes exactly what's on screen, and a bordered, shadowed card
+  // read as a screenshotted web widget rather than a printed page. The
+  // Print button already avoids this via @media print, which only applies
+  // to the browser's own print pipeline, not to this canvas capture.
+  const buildPdfFile = async () => {
+    if (!sheetRef.current || !invoice) return null;
+    const node = sheetRef.current;
+    node.classList.add("pdf-exporting");
+    try {
+      return await generateInvoicePdf(node, `Invoice-${invoice.invoice_number}.pdf`);
+    } finally {
+      node.classList.remove("pdf-exporting");
+    }
+  };
+
+  const handleDownload = async () => {
+    setExportError(null);
+    setExporting("download");
+    try {
+      const file = await buildPdfFile();
+      if (file) saveAs(file, file.name);
+    } catch (err) {
+      console.error("Failed to generate invoice PDF", err);
+      setExportError("Couldn't generate the PDF. Please try again.");
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const handleShareNative = async () => {
+    setExportError(null);
+    setExporting("share");
+    try {
+      const file = await buildPdfFile();
+      if (!file || !invoice) return;
+
+      const shareData = {
+        files: [file],
+        title: `Invoice ${invoice.invoice_number}`,
+        text: `Invoice ${invoice.invoice_number} - ${formatCurrency(invoice.amount)}`,
+      };
+
+      // Sharing an actual file (not a link) - this invoice's page needs
+      // the viewer to be logged in, so a shared URL would be useless to a
+      // customer without a Zybrannox account; the generated PDF works for
+      // anyone, in whichever app the OS's own share sheet offers (which
+      // WhatsApp - see handleShareWhatsApp below - usually isn't, on
+      // desktop, since desktop WhatsApp typically doesn't register itself
+      // as an OS share target the way it does on mobile).
+      if (navigator.canShare?.(shareData)) {
+        await navigator.share(shareData);
+      } else if (navigator.share) {
+        // Some browsers support navigator.share but not file attachments -
+        // still worth sharing the summary rather than doing nothing.
+        await navigator.share({ title: shareData.title, text: shareData.text });
+      }
+    } catch (err) {
+      // AbortError just means the user closed the OS share sheet without
+      // picking anything - not a real failure worth surfacing as one.
+      if ((err as DOMException)?.name !== "AbortError") {
+        console.error("Failed to share invoice", err);
+        setExportError("Couldn't share the invoice. Please try again.");
+      }
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  // WhatsApp (desktop especially) usually isn't registered as an OS share
+  // target, so it never shows up in handleShareNative's native share
+  // sheet no matter how the button is clicked - this is a separate,
+  // explicit path that always works. wa.me can only pre-fill text, never
+  // attach a file, so getting the actual PDF into the chat means sharing
+  // a link to it instead of the file itself: this uploads the same PDF
+  // buildPdfFile() already renders to a small server-side endpoint (see
+  // app/shared_documents), which hands back a public, token-addressed
+  // URL - no login wall, since the person opening it in WhatsApp has no
+  // Zybrannox account - and shares that link as the WhatsApp text.
+  //
+  // Uses shareToWhatsAppAfter (see utils/shareToWhatsApp.ts), not
+  // shareToWhatsApp directly - this needs to upload the PDF first to know
+  // the real link, and opening the wa.me window only after that async
+  // work finishes would get it silently popup-blocked.
+  const handleShareWhatsApp = async () => {
+    if (!invoice) return;
+    setExportError(null);
+    setExporting("share");
+    try {
+      await shareToWhatsAppAfter(async () => {
+        const file = await buildPdfFile();
+        if (!file) throw new Error("Failed to generate the invoice PDF");
+        const formData = new FormData();
+        formData.append("file", file, file.name);
+        const { url } = await apiService.post<{ url: string }>(
+          `/invoices/${invoice.id}/share-link`,
+          formData,
+        );
+        return `Invoice ${invoice.invoice_number} - ${formatCurrency(invoice.amount)}\n${url}`;
+      });
+    } catch (err) {
+      console.error("Failed to share invoice link to WhatsApp", err);
+      setExportError("Couldn't prepare the invoice link. Please try again.");
+    } finally {
+      setExporting(null);
+    }
   };
 
   useEffect(() => {
@@ -189,7 +299,6 @@ export default function InvoiceView() {
     );
   }
 
-  const status = STATUS_CONFIG[invoice.status] ?? STATUS_CONFIG.pending;
   const customerName = invoice.customer
     ? `${invoice.customer.first_name} ${invoice.customer.last_name}`
     : "—";
@@ -233,7 +342,81 @@ export default function InvoiceView() {
             Back
           </Button>
 
-          <Stack direction="row" spacing={1.5}>
+          <Stack direction="row" spacing={1}>
+            <Tooltip title="Download as PDF">
+              <span>
+                <IconButton
+                  onClick={handleDownload}
+                  disabled={exporting !== null}
+                  sx={{
+                    border: "1px solid var(--slate-200)",
+                    borderRadius: 2,
+                    color: "var(--slate-700)",
+                    "&:hover": { bgcolor: "var(--slate-100)" },
+                  }}
+                >
+                  {exporting === "download" ? (
+                    <CircularProgress size={20} thickness={5} />
+                  ) : (
+                    <FileDownloadRoundedIcon fontSize="small" />
+                  )}
+                </IconButton>
+              </span>
+            </Tooltip>
+
+            <Tooltip title="Share">
+              <span>
+                <IconButton
+                  onClick={(e) => setShareMenuAnchor(e.currentTarget)}
+                  disabled={exporting !== null}
+                  sx={{
+                    border: "1px solid var(--slate-200)",
+                    borderRadius: 2,
+                    color: "var(--slate-700)",
+                    "&:hover": { bgcolor: "var(--slate-100)" },
+                  }}
+                >
+                  {exporting === "share" ? (
+                    <CircularProgress size={20} thickness={5} />
+                  ) : (
+                    <ShareRoundedIcon fontSize="small" />
+                  )}
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Menu
+              anchorEl={shareMenuAnchor}
+              open={!!shareMenuAnchor}
+              onClose={() => setShareMenuAnchor(null)}
+              anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+              transformOrigin={{ vertical: "top", horizontal: "right" }}
+            >
+              <MenuItem
+                onClick={() => {
+                  setShareMenuAnchor(null);
+                  handleShareWhatsApp();
+                }}
+              >
+                <ListItemIcon>
+                  <WhatsAppIcon fontSize="small" sx={{ color: "#25D366" }} />
+                </ListItemIcon>
+                <ListItemText>Share to WhatsApp</ListItemText>
+              </MenuItem>
+              {canShare && (
+                <MenuItem
+                  onClick={() => {
+                    setShareMenuAnchor(null);
+                    handleShareNative();
+                  }}
+                >
+                  <ListItemIcon>
+                    <IosShareRoundedIcon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText>Share via...</ListItemText>
+                </MenuItem>
+              )}
+            </Menu>
+
             <Button
               variant="contained"
               disableElevation
@@ -249,14 +432,22 @@ export default function InvoiceView() {
                 "&:hover": { bgcolor: "var(--slate-800)" },
               }}
             >
-              Print / Save PDF
+              Print
             </Button>
           </Stack>
         </Box>
+        {exportError && (
+          <Box sx={{ maxWidth: 840, mx: "auto", px: { xs: 2, sm: 3 }, pt: 1 }}>
+            <Typography variant="caption" sx={{ color: "var(--red-600)", fontWeight: 600 }}>
+              {exportError}
+            </Typography>
+          </Box>
+        )}
       </Box>
 
       {/* Printable Invoice Sheet */}
       <Paper
+        ref={sheetRef}
         className="invoice-sheet"
         elevation={0}
         sx={{
@@ -315,28 +506,12 @@ export default function InvoiceView() {
                   </Typography>
                 </Box>
               )}
-              <Box sx={{ pt: 0.5 }}>
-                <Chip
-                  icon={status.icon}
-                  label={status.label}
-                  size="small"
-                  sx={{
-                    bgcolor: status.bg,
-                    color: status.color,
-                    border: `1px solid ${status.border}`,
-                    fontWeight: 700,
-                    fontSize: "0.75rem",
-                    letterSpacing: "0.02em",
-                    "& .MuiChip-icon": { color: status.color },
-                  }}
-                />
-              </Box>
             </Stack>
           </Box>
         </InvoiceMetaPanel>
 
         {/* Project Context Box */}
-        {(invoice.project?.description || invoice.project?.delivery_date || invoice.project?.project_type) && (
+        {(invoice.project?.delivery_date || invoice.project?.project_type) && (
           <Box
             sx={{
               mb: 1.5,
@@ -354,11 +529,6 @@ export default function InvoiceView() {
               <Typography variant="body2" sx={{ fontWeight: 700, color: "var(--slate-900)" }}>
                 {invoice.project?.project_type ?? "Custom Work"} Order
               </Typography>
-              {invoice.project?.description && (
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25, fontSize: "0.85rem" }}>
-                  {invoice.project.description}
-                </Typography>
-              )}
             </Box>
             {invoice.project?.delivery_date && (
               <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, bgcolor: "var(--white)", px: 1.5, py: 0.5, borderRadius: 1.5, border: "1px solid var(--slate-200)" }}>
@@ -384,7 +554,7 @@ export default function InvoiceView() {
           <Box
             sx={{
               display: "grid",
-              gridTemplateColumns: "28px 2.5fr 1.2fr 1fr 1.2fr",
+              gridTemplateColumns: "28px 2.2fr 1.1fr 0.6fr 1fr 1.2fr",
               bgcolor: "var(--slate-50)",
               borderBottom: "1px solid var(--slate-200)",
               px: 2,
@@ -401,6 +571,9 @@ export default function InvoiceView() {
             <Typography variant="caption" sx={{ fontWeight: 700, color: "var(--slate-500)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
               Size / Area
             </Typography>
+            <Typography variant="caption" sx={{ fontWeight: 700, textAlign: "right", color: "var(--slate-500)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              Pieces
+            </Typography>
             <Typography variant="caption" sx={{ fontWeight: 700, color: "var(--slate-500)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
               Rate (₹)
             </Typography>
@@ -416,7 +589,7 @@ export default function InvoiceView() {
               className="invoice-row"
               sx={{
                 display: "grid",
-                gridTemplateColumns: "28px 2.5fr 1.2fr 1fr 1.2fr",
+                gridTemplateColumns: "28px 2.2fr 1.1fr 0.6fr 1fr 1.2fr",
                 px: 2,
                 py: 0.9,
                 gap: 1.5,
@@ -434,7 +607,11 @@ export default function InvoiceView() {
               </Typography>
 
               <Typography variant="body2" sx={{ color: "var(--slate-700)" }}>
-                {item.width}' × {item.height}' ({item.sq_ft} sq ft)
+                {formatDimension(item.width, item.unit)} × {formatDimension(item.height, item.unit)} ({item.sq_ft} sq ft)
+              </Typography>
+
+              <Typography variant="body2" sx={{ color: "var(--slate-700)", textAlign: "right" }}>
+                {item.pieces}
               </Typography>
 
               <Typography variant="body2" color="text.secondary">
@@ -470,6 +647,18 @@ export default function InvoiceView() {
 
       {/* Global CSS for Print Optimization */}
       <style>{`
+        /* Toggled on .invoice-sheet only for the instant html2canvas
+           captures it (see buildPdfFile above) - the on-screen card chrome
+           (border/shadow/rounded corners) has no place in a downloaded or
+           shared PDF, same reasoning as @media print below stripping it
+           for the browser's own print pipeline, which this capture never
+           goes through. */
+        .invoice-sheet.pdf-exporting {
+          box-shadow: none !important;
+          border: none !important;
+          border-radius: 0 !important;
+        }
+
         @media print {
           @page {
             margin: 12mm;

@@ -639,6 +639,23 @@ const CrudActions = ({
         </Tooltip>
       )}
 
+      {viewCustomer && (
+        <Tooltip title="View Customer">
+          <IconButton
+            size={size}
+            onClick={onViewCustomer}
+            sx={{
+              ...actionIconSx,
+              color: "var(--cyan-600)",
+              backgroundColor: "rgba(8, 145, 178, 0.06)",
+              "&:hover": { backgroundColor: "rgba(8, 145, 178, 0.12)" },
+            }}
+          >
+            <PersonRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
+          </IconButton>
+        </Tooltip>
+      )}
+
       {markPaid && (
         <Tooltip
           title={

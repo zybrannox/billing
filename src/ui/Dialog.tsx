@@ -76,7 +76,19 @@ export function GenericDialog({
           backgroundColor: "var(--white)",
           backgroundImage: "none",
           width: width ?? (maxWidth ? undefined : "30rem"),
-          maxWidth: fullScreen ? "100%" : "calc(100% - 32px)",
+          // Only override MUI's own breakpoint-driven max-width when there's
+          // an explicit fixed `width` to protect (so it doesn't overflow a
+          // narrow viewport) - otherwise leave this unset so the `maxWidth`
+          // prop's own xs/sm/md/lg/xl class actually caps the dialog like
+          // callers expect. This used to unconditionally force
+          // "calc(100% - 32px)" regardless of what maxWidth was passed,
+          // which silently made every non-fullWidth dialog in the app just
+          // shrink-to-fit its content up to nearly the full viewport -
+          // harmless for narrow forms, but it meant "xs"/"sm"/"md" never
+          // actually capped anything, and any dialog whose content grew
+          // wide (see admin/Layout.tsx's invoice/quotation dialogs) could
+          // silently balloon past its intended size.
+          maxWidth: fullScreen ? "100%" : width ? "calc(100% - 32px)" : undefined,
           borderRadius: fullScreen ? 0 : "var(--border-radius-lg, 16px)",
           boxShadow: fullScreen
             ? "none"
@@ -164,6 +176,14 @@ export function GenericDialog({
           display: "flex",
           flexDirection: "column",
           gap: 2.5,
+          // Flex items default to a min-width equal to their content's
+          // natural width, not 0 - without this, a wide descendant (e.g.
+          // GenerateInvoice's line-item table, which scrolls internally
+          // via its own overflowX: auto wrapper) forces this whole flex
+          // column wider instead of ever triggering that inner scrollbar,
+          // and the excess gets clipped by the dialog paper's own
+          // overflow: hidden rather than staying reachable.
+          minWidth: 0,
           "& .MuiFormControl-root": {
             mb: 0,
           },

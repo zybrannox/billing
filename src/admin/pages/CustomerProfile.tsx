@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Box, Typography, Paper, CircularProgress } from "@mui/material";
 import type { GridColDef } from "@mui/x-data-grid";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
@@ -11,11 +11,13 @@ import CurrencyRupeeRoundedIcon from "@mui/icons-material/CurrencyRupeeRounded";
 import HourglassBottomRoundedIcon from "@mui/icons-material/HourglassBottomRounded";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
+import RequestQuoteRoundedIcon from "@mui/icons-material/RequestQuoteRounded";
 import { apiService } from "../../api/service";
 import { formatDateTime } from "../../utils/dateFormatter";
 import { getSemanticColor } from "../../utils/colors";
 import { getInitials } from "../../utils/appSupport";
 import { useInvoiceStore } from "../../store/useInvoiceStore";
+import { useConfirmDialogStore } from "../../hooks/useconfirmDialogStore";
 import Chip from "../../ui/Chip";
 import { semanticChipSx } from "../../ui/chipStyles";
 import CrudActions from "../../ui/Actions";
@@ -58,11 +60,22 @@ interface BillingItem {
   created_at: string;
 }
 
+interface QuotationItem {
+  id: number;
+  quotation_number: string;
+  project_type: string;
+  amount: number;
+  status: "pending" | "accepted" | "rejected" | "converted";
+  valid_until: string | null;
+  created_at: string;
+}
+
 interface CustomerProfileData {
   customer: CustomerData;
   stats: CustomerStats;
   projects: OrderItem[];
   invoices: BillingItem[];
+  quotations: QuotationItem[];
 }
 
 const money = (v: number) =>
@@ -163,6 +176,50 @@ const billingColumns: GridColDef<BillingItem>[] = [
   },
 ];
 
+// Same status set/coloring as QuotationView.tsx's own STATUS_CONFIG.
+const quotationColumns: GridColDef<QuotationItem>[] = [
+  { field: "quotation_number", headerName: "Quotation #", flex: 1 },
+  { field: "project_type", headerName: "Job Type", flex: 1 },
+  {
+    field: "amount",
+    headerName: "Amount",
+    flex: 1,
+    valueFormatter: (value: number) => `₹${value?.toLocaleString()}`,
+  },
+  {
+    field: "status",
+    headerName: "Status",
+    flex: 1,
+    renderCell: ({ value }) => (
+      <Chip
+        label={value === "converted" ? "Converted" : value}
+        sx={semanticChipSx(
+          getSemanticColor(
+            "printStatus",
+            value === "accepted" || value === "converted"
+              ? "Completed"
+              : value === "rejected"
+                ? "Delayed"
+                : "In Progress",
+          ),
+        )}
+      />
+    ),
+  },
+  {
+    field: "valid_until",
+    headerName: "Valid Until",
+    flex: 1,
+    valueFormatter: (value: string | null) => (value ? formatDateTime(value) : "—"),
+  },
+  {
+    field: "created_at",
+    headerName: "Date",
+    flex: 1.2,
+    valueFormatter: (value) => formatDateTime(value),
+  },
+];
+
 // Same pill-switcher visual language as the Dashboard's own Recent
 // Activity toggle (see admin/pages/Dashboard.tsx's ActivityTabToggle) -
 // kept as its own local copy rather than a shared import since the two
@@ -173,13 +230,14 @@ function ProfileTabToggle({
   onChange,
   counts,
 }: {
-  value: "orders" | "billing";
-  onChange: (v: "orders" | "billing") => void;
-  counts: Record<"orders" | "billing", number>;
+  value: "orders" | "billing" | "quotations";
+  onChange: (v: "orders" | "billing" | "quotations") => void;
+  counts: Record<"orders" | "billing" | "quotations", number>;
 }) {
-  const tabs: { value: "orders" | "billing"; label: string }[] = [
+  const tabs: { value: "orders" | "billing" | "quotations"; label: string }[] = [
     { value: "orders", label: "Orders" },
     { value: "billing", label: "Billing" },
+    { value: "quotations", label: "Quotations" },
   ];
   return (
     <Box sx={{ display: "flex", bgcolor: "var(--slate-100)", borderRadius: 999, p: 0.5, gap: 0.5, flexShrink: 0 }}>
@@ -217,10 +275,18 @@ export default function CustomerProfile() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { updateInvoice } = useInvoiceStore();
+  const { showDialog } = useConfirmDialogStore();
+  const [searchParams] = useSearchParams();
   const [data, setData] = useState<CustomerProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [tab, setTab] = useState<"orders" | "billing">("orders");
+  // Lets a caller land directly on a specific tab (e.g. the Customers
+  // list's inline invoice peek linking "View Full Billing History" to
+  // ?tab=billing) instead of always opening on Orders.
+  const initialTab = searchParams.get("tab");
+  const [tab, setTab] = useState<"orders" | "billing" | "quotations">(
+    initialTab === "billing" || initialTab === "quotations" ? initialTab : "orders",
+  );
 
   const load = () => {
     setLoading(true);
@@ -239,9 +305,34 @@ export default function CustomerProfile() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  const handleMarkPaid = async (invoiceId: number) => {
-    await updateInvoice(invoiceId, { status: "paid" });
-    load();
+  // Goes through the dedicated PATCH /invoices/{id}/mark-paid endpoint
+  // (see app/invoices/service.py's service_mark_paid), not the generic
+  // updateInvoice({status: "paid"}) this used to call directly - that
+  // generic path never touched advance_amount, so an invoice marked paid
+  // that way kept whatever balance_due it already had (often nonzero),
+  // and since every outstanding/pending aggregate (Dashboard, the
+  // Customers list's payment_status) filters on status === "pending",
+  // that leftover balance would silently vanish from all of them the
+  // moment status flipped to "paid" - real, uncollected money the app
+  // would stop tracking anywhere. The dedicated endpoint fixes
+  // advance_amount to the full amount and requires a payment method,
+  // same as the one other place in the app that marks an invoice paid
+  // (DeliveryCheck.tsx's "Complete Payment" panel) - collected here via
+  // the shared confirm dialog's payment-method picker instead of firing
+  // blind.
+  const handleMarkPaid = (invoiceId: number) => {
+    showDialog({
+      title: "Mark Invoice as Paid",
+      description: "This records the invoice as paid in full. How was it paid?",
+      confirmText: "Mark as Paid",
+      paymentMethodRequired: true,
+      onConfirm: async (paymentMethod) => {
+        await apiService.patch(`/invoices/${invoiceId}/mark-paid`, {
+          payment_method: paymentMethod,
+        });
+        load();
+      },
+    });
   };
 
   const handleCancel = async (invoiceId: number) => {
@@ -289,7 +380,7 @@ export default function CustomerProfile() {
     );
   }
 
-  const { customer, stats, projects, invoices } = data;
+  const { customer, stats, projects, invoices, quotations } = data;
   const fullName = `${customer.first_name} ${customer.last_name}`;
 
   return (
@@ -402,17 +493,25 @@ export default function CustomerProfile() {
         />
       </Box>
 
-      {/* Orders / Billing */}
+      {/* Orders / Billing / Quotations */}
       <SectionCard
-        icon={tab === "orders" ? <AssignmentRoundedIcon fontSize="small" /> : <ReceiptLongRoundedIcon fontSize="small" />}
-        iconColor={tab === "orders" ? "var(--indigo-600)" : "var(--emerald-600)"}
-        iconBg={tab === "orders" ? "var(--indigo-50)" : "var(--emerald-50)"}
+        icon={
+          tab === "orders" ? (
+            <AssignmentRoundedIcon fontSize="small" />
+          ) : tab === "billing" ? (
+            <ReceiptLongRoundedIcon fontSize="small" />
+          ) : (
+            <RequestQuoteRoundedIcon fontSize="small" />
+          )
+        }
+        iconColor={tab === "orders" ? "var(--indigo-600)" : tab === "billing" ? "var(--emerald-600)" : "var(--violet-600)"}
+        iconBg={tab === "orders" ? "var(--indigo-50)" : tab === "billing" ? "var(--emerald-50)" : "var(--violet-50)"}
         title={fullName}
         action={
           <ProfileTabToggle
             value={tab}
             onChange={setTab}
-            counts={{ orders: projects.length, billing: invoices.length }}
+            counts={{ orders: projects.length, billing: invoices.length, quotations: quotations.length }}
           />
         }
       >
@@ -429,26 +528,39 @@ export default function CustomerProfile() {
               onRowSelect={(row) => navigate(`/admin/projects?projectId=${row.id}`)}
             />
           )
-        ) : invoices.length === 0 ? (
+        ) : tab === "billing" ? (
+          invoices.length === 0 ? (
+            <Typography variant="body2" color="text.secondary" sx={{ py: 3, textAlign: "center" }}>
+              No invoices raised yet.
+            </Typography>
+          ) : (
+            <Table<BillingItem>
+              rows={invoices}
+              columns={billingColumns}
+              renderActions={(params) => [
+                <CrudActions
+                  key="crud"
+                  viewInvoice
+                  markPaid
+                  cancelInvoice
+                  invoiceStatus={params.row.status}
+                  onViewInvoice={() => navigate(`/admin/invoices/${params.row.id}`)}
+                  onMarkPaid={() => handleMarkPaid(params.row.id)}
+                  onCancelInvoice={() => handleCancel(params.row.id)}
+                />,
+              ]}
+            />
+          )
+        ) : quotations.length === 0 ? (
           <Typography variant="body2" color="text.secondary" sx={{ py: 3, textAlign: "center" }}>
-            No invoices raised yet.
+            No quotations raised yet.
           </Typography>
         ) : (
-          <Table<BillingItem>
-            rows={invoices}
-            columns={billingColumns}
-            renderActions={(params) => [
-              <CrudActions
-                key="crud"
-                viewInvoice
-                markPaid
-                cancelInvoice
-                invoiceStatus={params.row.status}
-                onViewInvoice={() => navigate(`/admin/invoices/${params.row.id}`)}
-                onMarkPaid={() => handleMarkPaid(params.row.id)}
-                onCancelInvoice={() => handleCancel(params.row.id)}
-              />,
-            ]}
+          <Table<QuotationItem>
+            rows={quotations}
+            columns={quotationColumns}
+            hideActionsColumn
+            onRowSelect={(row) => navigate(`/admin/quotations/${row.id}`)}
           />
         )}
       </SectionCard>

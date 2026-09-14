@@ -9,9 +9,13 @@ import { z } from "zod";
 // express.
 export const addProjectSchema = z
   .object({
-    project_type: z.enum(["Flex", "Photo Frame", "Gift"], {
-      message: "Select a project type",
-    }),
+    // Not a closed enum - Project Type is admin-managed (see
+    // admin/pages/SystemSetup.tsx's list_options table) and AddProject.tsx
+    // pulls live options from it, so any active value there (e.g. a
+    // "Name Board" type with no equivalent in a hardcoded set) must
+    // validate. The backend already treats this as a plain string
+    // (app/projects/model.py's ProjectBase.project_type).
+    project_type: z.string().min(1, "Select a project type"),
     customer_id: z
       .union([z.string(), z.number()])
       .refine((v) => v !== "" && v !== undefined && v !== null, {

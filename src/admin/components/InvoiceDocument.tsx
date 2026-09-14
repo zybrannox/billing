@@ -20,13 +20,27 @@ export const invoiceTheme = {
   totalText: "var(--blue-900)",
 };
 
-const gradientTextSx = {
-  background: "var(--blue-gradient)",
-  WebkitBackgroundClip: "text",
-  WebkitTextFillColor: "transparent",
+// Was a gradient-text effect (background-clip: text + transparent fill) -
+// html2canvas doesn't support that CSS technique reliably (its own
+// rendering docs flag background-clip as partial/broken), so the
+// downloaded/shared PDF showed the gradient as a solid rectangle sitting
+// on top of the text instead of clipped to the letterforms. A flat brand
+// color renders identically on screen, in print, and in the PDF, and
+// reads as more appropriate for a formal document than a gradient anyway.
+const brandTextSx = {
+  color: "var(--blue-700)",
 };
 
-export function InvoiceHeader({ invoiceNumber }: { invoiceNumber?: ReactNode }) {
+export function InvoiceHeader({
+  invoiceNumber,
+  documentLabel = "INVOICE",
+}: {
+  invoiceNumber?: ReactNode;
+  // Lets QuotationView.tsx reuse this exact same header chrome for
+  // "QUOTATION" instead of forking a near-identical copy - same document,
+  // different label, same reasoning as the rest of this shared file.
+  documentLabel?: string;
+}) {
   return (
     <Box
       sx={{
@@ -60,7 +74,7 @@ export function InvoiceHeader({ invoiceNumber }: { invoiceNumber?: ReactNode }) 
           />
         </Box>
         <Box>
-          <Typography sx={{ fontSize: "1.15rem", fontWeight: 800, letterSpacing: "-0.5px", lineHeight: 1.2, ...gradientTextSx }}>
+          <Typography sx={{ fontSize: "1.15rem", fontWeight: 800, letterSpacing: "-0.5px", lineHeight: 1.2, ...brandTextSx }}>
             Zybrannox
           </Typography>
           <Typography variant="caption" color="text.secondary" sx={{ display: "block", lineHeight: 1.2 }}>
@@ -69,7 +83,7 @@ export function InvoiceHeader({ invoiceNumber }: { invoiceNumber?: ReactNode }) 
         </Box>
       </Box>
       <Box sx={{ textAlign: "right" }}>
-        <Typography sx={{ fontSize: "1.2rem", fontWeight: 800, lineHeight: 1.2, ...gradientTextSx }}>INVOICE</Typography>
+        <Typography sx={{ fontSize: "1.2rem", fontWeight: 800, lineHeight: 1.2, ...brandTextSx }}>{documentLabel}</Typography>
         <Typography variant="caption" color="text.secondary">
           {invoiceNumber ?? "Number assigned on generate"}
         </Typography>
@@ -242,7 +256,11 @@ export function InvoiceTotalCard({
   );
 }
 
-export function InvoiceFooter() {
+export function InvoiceFooter({
+  children = "Thank you for your business. For questions about this invoice, please contact Zybrannox support.",
+}: {
+  children?: ReactNode;
+}) {
   return (
     <Box
       sx={{
@@ -253,7 +271,7 @@ export function InvoiceFooter() {
       }}
     >
       <Typography variant="caption" color="text.secondary">
-        Thank you for your business. For questions about this invoice, please contact Zybrannox support.
+        {children}
       </Typography>
     </Box>
   );

@@ -72,6 +72,17 @@ interface TableProps<T extends GridRowModel> {
   // click-through table (see CustomerProfile.tsx/EmployeeProfile.tsx)
   // shouldn't reserve 180px for a column that will only ever be blank.
   hideActionsColumn?: boolean;
+  // Controlled variant of the detail-panel accordion - when both of these
+  // are provided, the caller owns which row's panel is open (row clicks
+  // call onExpandedRowIdChange instead of Table's own internal state, and
+  // Table skips its Projects-specific setSelectedProject side effect,
+  // which only ProjectFilesList.tsx actually reads - see Customers.tsx,
+  // whose renderDetailPanel renders a customer's invoices, not a
+  // project's files). Omitted (the default), Table falls back to its own
+  // internal expandedRowId state and the setSelectedProject call exactly
+  // as before - fully backward compatible with Projects.tsx.
+  expandedRowId?: GridRowId | null;
+  onExpandedRowIdChange?: (id: GridRowId | null) => void;
 }
 
 export default function Table<T extends GridRowModel>({
@@ -104,6 +115,8 @@ export default function Table<T extends GridRowModel>({
   actionsWidth,
   renderDetailPanel,
   hideActionsColumn,
+  expandedRowId: expandedRowIdProp,
+  onExpandedRowIdChange,
 }: TableProps<T>) {
 const gridSx = React.useMemo(
   () => ({
@@ -114,10 +127,11 @@ const gridSx = React.useMemo(
     backgroundColor: "var(--white)",
     "--DataGrid-rowBorderColor": "var(--slate-100)",
 
-    // A real click-through (see onRowSelect/handleRowClick) is otherwise
-    // indistinguishable at a glance from a plain, inert row - the cursor
-    // is the one cheap signal that this row goes somewhere.
-    ...(onRowSelect
+    // A real click-through (see onRowSelect/handleRowClick) - or a row
+    // whose click expands an inline panel (renderDetailPanel) - is
+    // otherwise indistinguishable at a glance from a plain, inert row.
+    // The cursor is the one cheap signal that this row does something.
+    ...(onRowSelect || renderDetailPanel
       ? {
           "& .MuiDataGrid-row:not(.row-detail-panel)": { cursor: "pointer" },
         }
@@ -333,7 +347,7 @@ const gridSx = React.useMemo(
       backgroundColor: "var(--blue-600)",
     },
   }),
-  [onRowSelect],
+  [onRowSelect, renderDetailPanel],
 );
 
   const apiRef = useGridApiRef();
@@ -344,9 +358,12 @@ const gridSx = React.useMemo(
   const [rowModesModel, setRowModesModel] = React.useState<GridRowModesModel>(
     {},
   );
-  const [expandedRowId, setExpandedRowId] = React.useState<GridRowId | null>(
+  const [internalExpandedRowId, setExpandedRowId] = React.useState<GridRowId | null>(
     null,
   );
+  // See the expandedRowId prop's doc comment - controlled when the caller
+  // passes it, otherwise Table's own click-driven state (unchanged).
+  const expandedRowId = expandedRowIdProp !== undefined ? expandedRowIdProp : internalExpandedRowId;
 
   // Refs for callbacks to avoid stale closures and unnecessary deps
   const onDeleteRef = React.useRef(onDelete);
@@ -701,6 +718,16 @@ const gridSx = React.useMemo(
 
       if (isCheckbox || isActionCell) return;
 
+      // The synthetic detail-panel row (see rowsWithDetail) isn't a real
+      // data row - whatever's inside it (see renderDetailPanel) handles
+      // its own clicks, or doesn't need to. Checked before onRowSelect
+      // below: a caller combining onRowSelect with renderDetailPanel (see
+      // Customers.tsx, where a specific cell - not the row - opens the
+      // panel) would otherwise have onRowSelect fire with this row's
+      // garbage synthetic data (no real id, none of T's fields) whenever
+      // the user clicks non-interactive space inside the expanded panel.
+      if ((params.row as any)?.__detailPanelFor !== undefined) return;
+
       // Callers that want a real click-through (e.g. Customers.tsx opening
       // a customer's profile page) opt in via onRowSelect instead of this
       // grid's own project-preview/detail-panel behavior below, which is
@@ -715,18 +742,24 @@ const gridSx = React.useMemo(
       }
 
       if (renderDetailPanel) {
-        // Clicks land inside the detail panel too (it's rendered as this
-        // row's content) - a click there hits the synthetic detail row's
-        // id, not a real one, so this just no-ops instead of toggling.
-        if ((params.row as any)?.__detailPanelFor !== undefined) return;
-        setExpandedRowId((prev) => (prev === params.id ? null : params.id));
-        setSelectedProject(params.row);
+        if (onExpandedRowIdChange) {
+          // Controlled - the caller owns this state (see Customers.tsx)
+          // and renders its own row data straight from renderDetailPanel's
+          // row argument, so the legacy setSelectedProject side effect
+          // below (which only ProjectFilesList.tsx actually reads) is
+          // skipped entirely rather than writing this table's row shape
+          // into a store that has nothing to do with it.
+          onExpandedRowIdChange(expandedRowId === params.id ? null : params.id);
+        } else {
+          setExpandedRowId((prev) => (prev === params.id ? null : params.id));
+          setSelectedProject(params.row);
+        }
         return;
       }
 
       setSelectedProject(params.row);
     },
-    [setSelectedProject, renderDetailPanel, onRowSelect, rowModesModel],
+    [setSelectedProject, renderDetailPanel, onRowSelect, onExpandedRowIdChange, expandedRowId, rowModesModel],
   );
 
   const preventDefaultCellDoubleClick = React.useCallback<

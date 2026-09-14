@@ -19,6 +19,7 @@ import Projects from "./common/pages/Projects";
 import Customers from "./admin/pages/Customers";
 import CustomerProfile from "./admin/pages/CustomerProfile";
 import InvoiceView from "./admin/pages/InvoiceView";
+import QuotationView from "./admin/pages/QuotationView";
 import SystemSetup from "./admin/pages/SystemSetup";
 import Dashboard from "./admin/pages/Dashboard";
 import ProtectedRoute from "./common/components/auth/ProtectedRoute";
@@ -34,6 +35,9 @@ function App() {
     cancelText,
     loading,
     isDestructive,
+    paymentMethodRequired,
+    paymentMethod,
+    setPaymentMethod,
     onConfirm,
     onCancel,
   } = useConfirmDialogStore();
@@ -105,6 +109,7 @@ function App() {
                 shouldn't include the sidebar/app chrome either way. */}
             <Route element={<ProtectedRoute allowedRoles={["admin", "user", "moderator"]} />}>
               <Route path="/admin/invoices/:id" element={<InvoiceView />} />
+              <Route path="/admin/quotations/:id" element={<QuotationView />} />
             </Route>
 
             {/* USER ROUTES */}
@@ -130,6 +135,9 @@ function App() {
         cancelText={cancelText}
         loading={loading}
         isDestructive={isDestructive}
+        paymentMethodRequired={paymentMethodRequired}
+        paymentMethod={paymentMethod}
+        onPaymentMethodChange={setPaymentMethod}
         onConfirm={onConfirm}
         onCancel={onCancel}
       />

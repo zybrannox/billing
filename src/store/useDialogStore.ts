@@ -17,12 +17,17 @@ export type EditingType =
   | "certificate"
   | "project"
   | "customer"
-  // Opened from the "Design completed" row action (see GenerateInvoice.tsx)
-  // - the standalone "Invoice" menu action was removed, since generating an
-  // invoice from this flow also marks the design done, replacing that
-  // action's old plain confirm dialog entirely rather than being a second,
-  // redundant way to invoice.
+  // Opened either from a project's own "Design completed" row action (id
+  // already known - see GenerateInvoice.tsx) or from the admin topbar's
+  // "Create Invoice" shortcut (see admin/Layout.tsx) with no id at all, in
+  // which case GenerateInvoice shows its own project picker first. Both
+  // paths land on the exact same form, so there's only one "create an
+  // invoice" implementation to keep in sync.
   | "invoiceDesignComplete"
+  // Opened from the admin topbar's "Create Quotation" shortcut (see
+  // admin/Layout.tsx) - a pre-invoice estimate for a customer, with no
+  // project involved at all (see GenerateQuotation.tsx).
+  | "quotation"
   // Opened from the "Deliver" row action (see DeliveryCheck.tsx) - shows
   // the order's full line-item/payment breakdown instead of a plain
   // "are you sure?" confirm, and is itself the gate on payment being
