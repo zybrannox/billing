@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   Box,
   Typography,
@@ -149,8 +148,7 @@ interface CustomerOption {
 }
 
 export default function GenerateInvoice() {
-  const navigate = useNavigate();
-  const { editingId, closeDialog } = useDialogStore();
+  const { editingId, closeDialog, openDialog } = useDialogStore();
   const markDesignCompleted = useProjectStore((s) => s.markDesignCompleted);
   const fetchActiveOptions = useListOptionsStore((s) => s.fetchActiveOptions);
   const projectTypeOptions = useListOptionsStore((s) => s.activeByCategory["project_type"]);
@@ -360,7 +358,7 @@ export default function GenerateInvoice() {
       }
 
       closeDialog();
-      navigate(`/admin/invoices/${invoice.id}`);
+      openDialog("viewInvoice", invoice.id, "view");
     } catch (err: any) {
       console.error("Error generating invoice", err);
       setSubmitError(extractErrorMessage(err?.response?.data || err));

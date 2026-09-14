@@ -30,6 +30,7 @@ import {
   PushPinOutlined,
   ReceiptLongRounded,
   PersonRounded,
+  WhatsApp,
 } from "@mui/icons-material";
 import { formatDateTime } from "../utils/dateFormatter";
 
@@ -52,6 +53,11 @@ interface CrudActionsProps {
   viewInvoice?: boolean;
   markPaid?: boolean;
   cancelInvoice?: boolean;
+  // Shares this row's invoice straight to WhatsApp (see
+  // admin/pages/InvoiceView.tsx's handleShareWhatsApp) without opening it
+  // first - used where a row already has everything needed to identify
+  // the invoice (see admin/components/CustomerInvoicesList.tsx).
+  shareInvoice?: boolean;
   // Jumps from a project row (Ongoing Activities) straight to the
   // customer profile it belongs to (see admin/pages/CustomerProfile.tsx).
   viewCustomer?: boolean;
@@ -71,6 +77,7 @@ interface CrudActionsProps {
   onMarkPaid?: () => void;
   onCancelInvoice?: () => void;
   onViewCustomer?: () => void;
+  onShareInvoice?: () => void;
 
   isActive?: boolean;
   isPinned?: boolean;
@@ -191,6 +198,7 @@ const CrudActions = ({
   markPaid = false,
   cancelInvoice = false,
   viewCustomer = false,
+  shareInvoice = false,
   data,
 
   onEdit,
@@ -207,6 +215,7 @@ const CrudActions = ({
   onMarkPaid,
   onCancelInvoice,
   onViewCustomer,
+  onShareInvoice,
 
   isActive = false,
   isPinned = false,
@@ -443,7 +452,7 @@ const CrudActions = ({
   );
 
   if (orderMilestones) {
-    const hasMoreActions = download || preview || edit || del || info || toggle || viewInvoice || viewCustomer;
+    const hasMoreActions = download || preview || edit || del || info || toggle || viewInvoice || viewCustomer || shareInvoice;
 
     return (
       <Box sx={{ display: "inline-flex", gap: 0.75, alignItems: "center" }}>
@@ -494,6 +503,16 @@ const CrudActions = ({
                   </ListItemIcon>
                   <ListItemText primaryTypographyProps={{ fontSize: "0.8125rem", fontWeight: 500 }}>
                     View Invoice
+                  </ListItemText>
+                </MenuItem>
+              )}
+              {shareInvoice && (
+                <MenuItem onClick={runAndClose(onShareInvoice)} sx={{ py: 0.875 }}>
+                  <ListItemIcon>
+                    <WhatsApp fontSize="small" sx={{ color: "#25D366" }} />
+                  </ListItemIcon>
+                  <ListItemText primaryTypographyProps={{ fontSize: "0.8125rem", fontWeight: 500 }}>
+                    Share to WhatsApp
                   </ListItemText>
                 </MenuItem>
               )}
@@ -635,6 +654,23 @@ const CrudActions = ({
             }}
           >
             <VisibilityRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
+          </IconButton>
+        </Tooltip>
+      )}
+
+      {shareInvoice && (
+        <Tooltip title="Share to WhatsApp">
+          <IconButton
+            size={size}
+            onClick={onShareInvoice}
+            sx={{
+              ...actionIconSx,
+              color: "#25D366",
+              backgroundColor: "rgba(37, 211, 102, 0.08)",
+              "&:hover": { backgroundColor: "rgba(37, 211, 102, 0.16)" },
+            }}
+          >
+            <WhatsApp sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
           </IconButton>
         </Tooltip>
       )}

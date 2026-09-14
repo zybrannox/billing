@@ -34,6 +34,12 @@ export type EditingType =
   // complete before delivery is allowed.
   | "deliveryCheck"
   | "changePassword"
+  // Opened from any "View Invoice" action across the app (Projects,
+  // Customers' invoice peek, a customer's own Billing tab, Dashboard's
+  // recent invoices, a just-generated/converted invoice) - a dialog
+  // instead of the old standalone /admin/invoices/:id page, so viewing
+  // one never navigates away from wherever that action was clicked.
+  | "viewInvoice"
   | null;
 
 type DialogMode = "add" | "edit" | "view";
@@ -52,7 +58,7 @@ interface UIState {
   closeDialog: () => void;
 }
 
-export const useDialogStore = create<UIState>((set) => ({
+export const useDialogStore = create<UIState>((set, get) => ({
   isDialogOpen: false,
   editingId: null,
   editingType: null,
@@ -68,13 +74,22 @@ export const useDialogStore = create<UIState>((set) => ({
 
   closeDialog: () => {
     set({ isDialogOpen: false });
-    // Delay resetting the state to allow the exit animation to complete
+    // Delay resetting the state to allow the exit animation to complete -
+    // but only if nothing else opened a *different* dialog in the
+    // meantime (e.g. GenerateInvoice.tsx closing its own "add invoice"
+    // dialog and immediately opening the new invoice's "viewInvoice" one -
+    // see common/pages/GenerateInvoice.tsx). Without this check, this
+    // stale timeout would still fire 300ms later and wipe out that
+    // freshly-opened dialog's editingType/editingId, closing it right
+    // back out from under the user.
     setTimeout(() => {
-      set({
-        editingType: null,
-        editingId: null,
-        mode: "add",
-      });
+      if (!get().isDialogOpen) {
+        set({
+          editingType: null,
+          editingId: null,
+          mode: "add",
+        });
+      }
     }, 300);
   },
 }));

@@ -389,7 +389,7 @@ const Projects = () => {
       const invoice = await apiService.get<{ id: number }>(
         `/invoices/project/${id}/latest`,
       );
-      navigate(`/admin/invoices/${invoice.id}`);
+      openDialog("viewInvoice", invoice.id, "view");
     } catch {
       showDialog({
         title: "No Invoice Yet",

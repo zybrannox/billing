@@ -10,6 +10,7 @@ import AddEmployee from "./admin/pages/AddEmployee";
 import EmployeeLayout from "./employee/Layout";
 
 import ConfirmDialog from "./ui/ConfirmDialog";
+import Dialog from "./ui/Dialog";
 import DownloadProgressIndicator from "./ui/DownloadProgressIndicator";
 import { useConfirmDialogStore } from "./hooks/useconfirmDialogStore";
 import { useAppStore, type User } from "./store/useAppStore";
@@ -20,6 +21,8 @@ import Customers from "./admin/pages/Customers";
 import CustomerProfile from "./admin/pages/CustomerProfile";
 import InvoiceView from "./admin/pages/InvoiceView";
 import QuotationView from "./admin/pages/QuotationView";
+import GenerateInvoice from "./common/pages/GenerateInvoice";
+import GenerateQuotation from "./common/pages/GenerateQuotation";
 import SystemSetup from "./admin/pages/SystemSetup";
 import Dashboard from "./admin/pages/Dashboard";
 import ProtectedRoute from "./common/components/auth/ProtectedRoute";
@@ -98,17 +101,13 @@ function App() {
               </Route>
             </Route>
 
-            {/* Every project's invoice(s) need to be viewable from the
-                project itself (the More-actions menu's "View Invoice" -
-                see Projects.tsx/Actions.tsx), for whoever is looking at
-                that project - not just admins, since employees work their
-                own projects through this same page. Kept at the same
-                /admin/invoices/:id path (Billing.tsx and Dashboard.tsx
-                already link there) but outside the admin-only guard above,
-                and outside AdminLayout - a full-page printable document
-                shouldn't include the sidebar/app chrome either way. */}
+            {/* Quotations are still their own routed page (unlike invoices -
+                see the global <Dialog type="viewInvoice"> below) - outside
+                the admin-only guard above and outside AdminLayout, since a
+                full-page printable document shouldn't include the sidebar/
+                app chrome, and employees can reach one too (converting
+                their own project's quotation). */}
             <Route element={<ProtectedRoute allowedRoles={["admin", "user", "moderator"]} />}>
-              <Route path="/admin/invoices/:id" element={<InvoiceView />} />
               <Route path="/admin/quotations/:id" element={<QuotationView />} />
             </Route>
 
@@ -141,6 +140,29 @@ function App() {
         onConfirm={onConfirm}
         onCancel={onCancel}
       />
+
+      {/* Global "View Invoice" dialog - mounted here, outside both
+          AdminLayout and EmployeeLayout, so every "View Invoice" action in
+          the app (admin or employee) can open it regardless of which
+          layout/route triggered it, the same way ConfirmDialog above is
+          available everywhere. See admin/pages/InvoiceView.tsx's own
+          top comment for why this replaced a standalone routed page. */}
+      <Dialog type="viewInvoice" title="Invoice" children={<InvoiceView />} maxWidth="md" />
+
+      {/* Same reasoning as viewInvoice above, moved here from
+          admin/Layout.tsx - a project's own "Mark design as completed"
+          row action (see common/pages/Projects.tsx, rendered under
+          EmployeeLayout too) opens this same "invoiceDesignComplete"
+          dialog type for an employee working their own project, not just
+          from the admin topbar's "Create Invoice" shortcut. Mounting it
+          only in AdminLayout meant that action silently did nothing for
+          an employee - openDialog set the store's state, but nothing in
+          their tree was listening for it. xl, not md - both forms host a
+          full line-item table (see common/components/ItemLineEditor.tsx)
+          that wants up to ~1280px to avoid its own internal horizontal
+          scrollbar. */}
+      <Dialog type="invoiceDesignComplete" title="Invoice" children={<GenerateInvoice />} maxWidth="xl" />
+      <Dialog type="quotation" title="Quotation" children={<GenerateQuotation />} maxWidth="xl" />
 
       <DownloadProgressIndicator />
     </>

@@ -10,12 +10,9 @@ import RequestQuoteRoundedIcon from "@mui/icons-material/RequestQuoteRounded";
 import { adminNavigations } from "../config/admin";
 import Avatar from "../ui/Avatar";
 import Menu from "../ui/Menu";
-import Dialog from "../ui/Dialog";
 import Drawer from "../common/components/Drawer";
 import NotificationBell from "./components/NotificationBell";
 import { useDialogStore } from "../store/useDialogStore";
-import GenerateInvoice from "../common/pages/GenerateInvoice";
-import GenerateQuotation from "../common/pages/GenerateQuotation";
 
 // Heading variants get their own fontFamily (see index.css's --font-
 // heading/h1-h6 rule) - a plain global `h1{...}` selector in index.css
@@ -128,15 +125,15 @@ export default function AdminLayout() {
         </Box>
       </Box>
 
-      {/* xl, not md - both forms host a full line-item table (see
-          common/components/ItemLineEditor.tsx) that wants up to ~1280px to
-          avoid its own internal horizontal scrollbar (see
-          GenerateInvoice.tsx/GenerateQuotation.tsx's own content maxWidth);
-          now that Dialog.tsx's maxWidth prop actually caps the dialog
-          (rather than always auto-growing to the viewport), these need a
-          wide enough breakpoint or they'd shrink back to md's 900px. */}
-      <Dialog type="invoiceDesignComplete" title="Invoice" children={<GenerateInvoice />} maxWidth="xl" />
-      <Dialog type="quotation" title="Quotation" children={<GenerateQuotation />} maxWidth="xl" />
+      {/* invoiceDesignComplete/quotation dialogs themselves now live in
+          App.tsx, mounted globally (see that file's comment) - not here.
+          They used to be admin-only by accident: an employee's own
+          "Mark design as completed" row action (see common/pages/
+          Projects.tsx, which EmployeeLayout also renders at "/") opens
+          the exact same "invoiceDesignComplete" dialog type, but with
+          the <Dialog> only mounted in this admin-only layout, nothing
+          was listening for that state change on the employee side - the
+          dialog would silently never appear for them. */}
     </ThemeProvider>
   );
 }

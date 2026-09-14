@@ -17,6 +17,7 @@ import { formatDateTime } from "../../utils/dateFormatter";
 import { getSemanticColor } from "../../utils/colors";
 import { getInitials } from "../../utils/appSupport";
 import { useInvoiceStore } from "../../store/useInvoiceStore";
+import { useDialogStore } from "../../store/useDialogStore";
 import { useConfirmDialogStore } from "../../hooks/useconfirmDialogStore";
 import Chip from "../../ui/Chip";
 import { semanticChipSx } from "../../ui/chipStyles";
@@ -276,6 +277,7 @@ export default function CustomerProfile() {
   const navigate = useNavigate();
   const { updateInvoice } = useInvoiceStore();
   const { showDialog } = useConfirmDialogStore();
+  const { openDialog } = useDialogStore();
   const [searchParams] = useSearchParams();
   const [data, setData] = useState<CustomerProfileData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -544,7 +546,7 @@ export default function CustomerProfile() {
                   markPaid
                   cancelInvoice
                   invoiceStatus={params.row.status}
-                  onViewInvoice={() => navigate(`/admin/invoices/${params.row.id}`)}
+                  onViewInvoice={() => openDialog("viewInvoice", params.row.id, "view")}
                   onMarkPaid={() => handleMarkPaid(params.row.id)}
                   onCancelInvoice={() => handleCancel(params.row.id)}
                 />,

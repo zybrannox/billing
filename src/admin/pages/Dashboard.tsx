@@ -18,6 +18,7 @@ import { formatDate } from "../../utils/dateFormatter";
 import { getSemanticColor } from "../../utils/colors";
 import { getDeliveryBadge, type RecentDelivery } from "../../utils/deliveryStatus";
 import { useAppStore } from "../../store/useAppStore";
+import { useDialogStore } from "../../store/useDialogStore";
 
 type Granularity = "day" | "week" | "month" | "year";
 
@@ -912,6 +913,7 @@ export function SectionCard({
 // ---------------------------------------------------------------------
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { openDialog } = useDialogStore();
   const username = useAppStore((s) => s.user?.username);
   const [data, setData] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1251,7 +1253,7 @@ export default function Dashboard() {
                 return (
                   <Box
                     key={inv.id}
-                    onClick={() => navigate(`/admin/invoices/${inv.id}`)}
+                    onClick={() => openDialog("viewInvoice", inv.id, "view")}
                     sx={{
                       display: "grid",
                       gridTemplateColumns: "2.2fr 1fr 1fr 0.9fr 0.9fr",

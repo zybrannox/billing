@@ -10,6 +10,8 @@ import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 import { apiService } from "../../api/service";
 import { formatDateTime } from "../../utils/dateFormatter";
 import { getSemanticColor } from "../../utils/colors";
+import { useDialogStore } from "../../store/useDialogStore";
+import { shareInvoiceToWhatsApp } from "../../utils/shareInvoiceToWhatsApp";
 import Chip from "../../ui/Chip";
 import { semanticChipSx } from "../../ui/chipStyles";
 import CrudActions from "../../ui/Actions";
@@ -54,6 +56,7 @@ const PAGE_SIZE = 10;
 
 export default function CustomerInvoicesList({ customerId }: { customerId: number }) {
   const navigate = useNavigate();
+  const { openDialog } = useDialogStore();
   // `invoices === null` doubles as the loading flag instead of a separate
   // boolean set synchronously at the top of the effect (a cascading-render
   // footgun the lint rule below specifically exists to catch) - the
@@ -169,7 +172,13 @@ export default function CustomerInvoicesList({ customerId }: { customerId: numbe
 
           <CrudActions
             viewInvoice
-            onViewInvoice={() => navigate(`/admin/invoices/${inv.id}`)}
+            onViewInvoice={() => openDialog("viewInvoice", inv.id, "view")}
+            shareInvoice
+            onShareInvoice={() =>
+              shareInvoiceToWhatsApp(inv.id).catch((err) =>
+                console.error("Failed to share invoice to WhatsApp", err),
+              )
+            }
             size="small"
           />
         </Box>

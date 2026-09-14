@@ -36,6 +36,7 @@ import IosShareRoundedIcon from "@mui/icons-material/IosShareRounded";
 import { saveAs } from "file-saver";
 
 import { apiService } from "../../api/service";
+import { useDialogStore } from "../../store/useDialogStore";
 import { formatDate } from "../../utils/dateFormatter";
 import { generateInvoicePdf } from "../../utils/generateInvoicePdf";
 import { shareToWhatsAppAfter } from "../../utils/shareToWhatsApp";
@@ -133,6 +134,7 @@ const formatDimension = (value: number, unit: "ft" | "in") => `${value}${unit ==
 export default function QuotationView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { openDialog } = useDialogStore();
   const [quotation, setQuotation] = useState<QuotationDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -300,7 +302,14 @@ export default function QuotationView() {
         start_date: convertStartDate,
         delivery_date: convertDeliveryDate,
       });
-      navigate(`/admin/invoices/${invoice.id}`);
+      setConvertOpen(false);
+      // Now that "View Invoice" is a dialog (see admin/pages/InvoiceView.tsx)
+      // rather than a navigation away, this page stays put underneath it -
+      // reload so it reflects the quotation's new "converted" status
+      // (Convert button gone, etc.) once the invoice dialog is closed,
+      // instead of showing stale pre-conversion state.
+      load();
+      openDialog("viewInvoice", invoice.id, "view");
     } catch (err) {
       console.error("Failed to convert quotation", err);
       setConvertError("Couldn't convert this quotation to an invoice. Please try again.");
@@ -508,7 +517,7 @@ export default function QuotationView() {
             <Button
               variant="outlined"
               startIcon={<ReceiptLongRoundedIcon />}
-              onClick={() => navigate(`/admin/invoices/${quotation.converted_invoice_id}`)}
+              onClick={() => openDialog("viewInvoice", quotation.converted_invoice_id, "view")}
               sx={{ textTransform: "none", fontWeight: 600, borderRadius: 2 }}
             >
               View Invoice
