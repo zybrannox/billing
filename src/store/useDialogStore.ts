@@ -40,6 +40,14 @@ export type EditingType =
   // instead of the old standalone /admin/invoices/:id page, so viewing
   // one never navigates away from wherever that action was clicked.
   | "viewInvoice"
+  // Opened from the "Edit" action on a pending invoice's own "View
+  // Invoice" dialog (admin-only - see admin/pages/InvoiceView.tsx and
+  // EditInvoice.tsx) - lets an admin correct a mistake on an invoice
+  // that's already been generated (line items, due date, discount)
+  // instead of having to cancel and re-raise the whole thing. Same
+  // "only while pending" rule the backend enforces (service_update) -
+  // once paid/cancelled, this isn't offered at all.
+  | "editInvoice"
   | null;
 
 type DialogMode = "add" | "edit" | "view";

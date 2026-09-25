@@ -18,10 +18,12 @@ import FileDownloadRoundedIcon from "@mui/icons-material/FileDownloadRounded";
 import ShareRoundedIcon from "@mui/icons-material/ShareRounded";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import IosShareRoundedIcon from "@mui/icons-material/IosShareRounded";
+import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import { saveAs } from "file-saver";
 
 import { apiService } from "../../api/service";
 import { useDialogStore } from "../../store/useDialogStore";
+import { useAppStore } from "../../store/useAppStore";
 import { generateInvoicePdf } from "../../utils/generateInvoicePdf";
 import { shareToWhatsAppAfter } from "../../utils/shareToWhatsApp";
 import InvoiceSheet from "../components/InvoiceSheet";
@@ -40,8 +42,15 @@ import { formatCurrency, type InvoiceDetail } from "../components/invoiceSheetUt
 // utils/shareInvoiceToWhatsApp.ts, which renders the same InvoiceSheet
 // off-screen instead).
 export default function InvoiceView() {
-  const { editingId, closeDialog } = useDialogStore();
+  const { editingId, closeDialog, openDialog } = useDialogStore();
   const id = editingId;
+  // Editing (line items, due date, discount) is an admin-only, financial-
+  // oversight action, same reasoning as the discount editor already gated
+  // this way in DeliveryCheck.tsx - and only offered while still pending,
+  // matching what the backend actually allows (service_update rejects an
+  // items/discount edit on anything else).
+  const { user } = useAppStore();
+  const isAdmin = user?.role === "admin";
   const [invoice, setInvoice] = useState<InvoiceDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -237,6 +246,22 @@ export default function InvoiceView() {
         }}
       >
         <Stack direction="row" spacing={1}>
+          {isAdmin && invoice.status === "pending" && (
+            <Tooltip title="Edit Invoice">
+              <IconButton
+                onClick={() => openDialog("editInvoice", invoice.id, "edit")}
+                disabled={exporting !== null}
+                sx={{
+                  border: "1px solid var(--slate-200)",
+                  borderRadius: 2,
+                  color: "var(--slate-700)",
+                  "&:hover": { bgcolor: "var(--slate-100)" },
+                }}
+              >
+                <EditRoundedIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
           <Tooltip title="Download as PDF">
             <span>
               <IconButton

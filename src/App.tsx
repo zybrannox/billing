@@ -20,6 +20,7 @@ import Projects from "./common/pages/Projects";
 import Customers from "./admin/pages/Customers";
 import CustomerProfile from "./admin/pages/CustomerProfile";
 import InvoiceView from "./admin/pages/InvoiceView";
+import EditInvoice from "./admin/pages/EditInvoice";
 import QuotationView from "./admin/pages/QuotationView";
 import GenerateInvoice from "./common/pages/GenerateInvoice";
 import GenerateQuotation from "./common/pages/GenerateQuotation";
@@ -148,6 +149,12 @@ function App() {
           available everywhere. See admin/pages/InvoiceView.tsx's own
           top comment for why this replaced a standalone routed page. */}
       <Dialog type="viewInvoice" title="Invoice" children={<InvoiceView />} maxWidth="md" />
+
+      {/* Admin-only (see InvoiceView.tsx's "Edit" action, the only place
+          this is opened from) - reuses the same xl width as
+          invoiceDesignComplete below since it hosts the same line-item
+          table. */}
+      <Dialog type="editInvoice" title="Edit Invoice" children={<EditInvoice />} maxWidth="xl" />
 
       {/* Same reasoning as viewInvoice above, moved here from
           admin/Layout.tsx - a project's own "Mark design as completed"
