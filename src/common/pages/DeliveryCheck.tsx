@@ -67,7 +67,7 @@ const colHeaderSx = {
 
 export default function DeliveryCheck() {
   const { editingId, closeDialog } = useDialogStore();
-  const { markDelivered } = useProjectStore();
+  const markDelivered = useProjectStore((state) => state.markDelivered);
   const { showDialog } = useConfirmDialogStore();
   const { user } = useAppStore();
   const isAdmin = user?.role === "admin";

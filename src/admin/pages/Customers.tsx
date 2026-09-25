@@ -52,6 +52,7 @@ const buildBaseColumns = (): GridColDef[] => [
     flex: 1.4,
     sortable: false,
     filterable: false,
+    editable: false,
     renderCell: ({ row }) => {
       const meta = PAYMENT_STATUS_META[row.payment_status ?? "no_invoices"] ?? PAYMENT_STATUS_META.no_invoices;
       return (
@@ -133,6 +134,7 @@ const Customers = () => {
         width: 90,
         sortable: false,
         filterable: false,
+        editable: false,
         valueGetter: (_value, row) =>
           paginationModel.page * paginationModel.pageSize +
           rows.findIndex((r) => r.id === row.id) +

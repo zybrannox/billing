@@ -66,21 +66,7 @@ interface TableProps<T extends GridRowModel> {
   pageSizeOptions?: number[];
   actionsWidth?: number;
   renderDetailPanel?: (row: T) => React.ReactNode;
-  // Skips appending the actions column entirely - every other caller
-  // renders one (even empty, via renderActions returning []), which is
-  // fine when there's really no per-row action, but a purely read-only,
-  // click-through table (see CustomerProfile.tsx/EmployeeProfile.tsx)
-  // shouldn't reserve 180px for a column that will only ever be blank.
   hideActionsColumn?: boolean;
-  // Controlled variant of the detail-panel accordion - when both of these
-  // are provided, the caller owns which row's panel is open (row clicks
-  // call onExpandedRowIdChange instead of Table's own internal state, and
-  // Table skips its Projects-specific setSelectedProject side effect,
-  // which only ProjectFilesList.tsx actually reads - see Customers.tsx,
-  // whose renderDetailPanel renders a customer's invoices, not a
-  // project's files). Omitted (the default), Table falls back to its own
-  // internal expandedRowId state and the setSelectedProject call exactly
-  // as before - fully backward compatible with Projects.tsx.
   expandedRowId?: GridRowId | null;
   onExpandedRowIdChange?: (id: GridRowId | null) => void;
 }
@@ -95,7 +81,6 @@ export default function Table<T extends GridRowModel>({
   onDelete,
   onEdit,
   onDownload,
-  // onAdd,
   onCancel,
   onToggle,
   onRowSelect,
@@ -127,10 +112,6 @@ const gridSx = React.useMemo(
     backgroundColor: "var(--white)",
     "--DataGrid-rowBorderColor": "var(--slate-100)",
 
-    // A real click-through (see onRowSelect/handleRowClick) - or a row
-    // whose click expands an inline panel (renderDetailPanel) - is
-    // otherwise indistinguishable at a glance from a plain, inert row.
-    // The cursor is the one cheap signal that this row does something.
     ...(onRowSelect || renderDetailPanel
       ? {
           "& .MuiDataGrid-row:not(.row-detail-panel)": { cursor: "pointer" },
@@ -352,9 +333,13 @@ const gridSx = React.useMemo(
 
   const apiRef = useGridApiRef();
   // Pull dialog methods once to avoid repeated getter calls.
-  const { showDialog, closeDialog, setLoading } = useConfirmDialogStore();
-  const { deleteProject, setSelectedProject, downloadProject, refreshProject } =
-    useProjectStore();
+  const showDialog = useConfirmDialogStore((state) => state.showDialog);
+  const closeDialog = useConfirmDialogStore((state) => state.closeDialog);
+  const setLoading = useConfirmDialogStore((state) => state.setLoading);
+  const deleteProject = useProjectStore((state) => state.deleteProject);
+  const setSelectedProject = useProjectStore((state) => state.setSelectedProject);
+  const downloadProject = useProjectStore((state) => state.downloadProject);
+  const refreshProject = useProjectStore((state) => state.refreshProject);
   const [rowModesModel, setRowModesModel] = React.useState<GridRowModesModel>(
     {},
   );
@@ -573,8 +558,12 @@ const gridSx = React.useMemo(
 
   const mergedColumns: GridColDef[] = React.useMemo(() => {
     const totalColumnSpan = columns.length + 1; 
+    const editableColumns = columns.map((col) => ({
+      ...col,
+      editable: col.editable ?? Boolean(processRowUpdate),
+    }));
     const dataColumns = renderDetailPanel
-      ? columns.map((col, idx) => {
+      ? editableColumns.map((col, idx) => {
         if (idx !== 0) return col;
         return {
           ...col,
@@ -597,7 +586,7 @@ const gridSx = React.useMemo(
           },
         };
       })
-      : columns;
+      : editableColumns;
 
     if (hideActionsColumn) return dataColumns;
 
@@ -611,7 +600,7 @@ const gridSx = React.useMemo(
         getActions,
       },
     ];
-  }, [columns, getActions, actionsWidth, renderDetailPanel, rows, hideActionsColumn]);
+  }, [columns, getActions, actionsWidth, renderDetailPanel, rows, hideActionsColumn, processRowUpdate]);
 
   // The synthetic detail row is spliced in right after its parent so it
   // renders adjacent to it, same as any accordion panel - only ever one at

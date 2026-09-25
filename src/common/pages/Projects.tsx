@@ -70,24 +70,22 @@ const filterFields: FilterFieldDefinition[] = [
 ];
 
 const Projects = () => {
-  const { user } = useAppStore();
+  const user = useAppStore((s) => s.user);
   // Bulk delete and invoice generation stay admin-only - project deletion at
   // scale and billing are admin-level operations, unlike search/filter/add
   // customer which are just as useful day-to-day for employees.
   const isAdmin = user?.role === "admin";
 
-  const { openDialog } = useDialogStore();
+  const openDialog = useDialogStore((s) => s.openDialog);
   const projects = useProjectStore((s) => s.projects);
   const projectsTotal = useProjectStore((s) => s.projectsTotal);
   const projectsLoading = useProjectStore((s) => s.projectsLoading);
   const fetchProjects = useProjectStore((s) => s.fetchProjects);
-  const {
-    updateProject,
-    deleteProject,
-    deleteProjects,
-    markPrintCompleted,
-    togglePinProject,
-  } = useProjectStore();
+  const updateProject = useProjectStore((s) => s.updateProject);
+  const deleteProject = useProjectStore((s) => s.deleteProject);
+  const deleteProjects = useProjectStore((s) => s.deleteProjects);
+  const markPrintCompleted = useProjectStore((s) => s.markPrintCompleted);
+  const togglePinProject = useProjectStore((s) => s.togglePinProject);
 
   const columns: GridColDef[] = useMemo(
     () => [
@@ -271,7 +269,9 @@ const Projects = () => {
   }, [projects]);
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const { showDialog, closeDialog, setLoading } = useConfirmDialogStore();
+  const showDialog = useConfirmDialogStore((s) => s.showDialog);
+  const closeDialog = useConfirmDialogStore((s) => s.closeDialog);
+  const setLoading = useConfirmDialogStore((s) => s.setLoading);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 

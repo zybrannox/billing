@@ -95,7 +95,8 @@ const displayName = (f: string | FileObject) =>
  * clicking a chip opens a lightbox on demand.
  */
 const ProjectFilesList = () => {
-  const { selectedProject, refreshProject } = useProjectStore();
+  const selectedProject = useProjectStore((state) => state.selectedProject);
+  const refreshProject = useProjectStore((state) => state.refreshProject);
   const { showDialog } = useConfirmDialogStore();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
