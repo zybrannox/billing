@@ -30,6 +30,7 @@ import FilterMenu, {
 } from "../components/FilterMenu";
 import BulkDeleteButton from "../components/BulkDeleteButton";
 import RefreshButton from "../components/RefreshButton";
+import { notifyClientWhatsApp } from "../../utils/notifyClientWhatsApp";
 
 const priorityOrder: Record<string, number> = {
   Urgent: 1,
@@ -86,6 +87,7 @@ const Projects = () => {
   const deleteProjects = useProjectStore((s) => s.deleteProjects);
   const markPrintCompleted = useProjectStore((s) => s.markPrintCompleted);
   const togglePinProject = useProjectStore((s) => s.togglePinProject);
+  const notifyClient = useProjectStore((s) => s.notifyClient);
 
   const columns: GridColDef[] = useMemo(
     () => [
@@ -262,6 +264,8 @@ const Projects = () => {
       print_completed_by: p.print_completed_by,
       delivered_at: p.delivered_at,
       delivered_by: p.delivered_by,
+      notified_at: p.notified_at,
+      notified_by: p.notified_by,
       customer_id: p.customer_id,
       customer_name: p.customer_name,
       pinned: p.pinned,
@@ -413,6 +417,16 @@ const Projects = () => {
     loadProjects();
   };
 
+  // Opens WhatsApp with a pre-filled message (see notifyClientWhatsApp.ts -
+  // addressless, same as every other WhatsApp share in this app; staff
+  // picks the actual recipient in WhatsApp itself) and separately records
+  // that a notify happened (PATCH /projects/{id}/notify), independent of
+  // whether the wa.me tab is actually used to send anything.
+  const handleNotifyClient = (row: Project) => {
+    notifyClientWhatsApp({ project_type: row.project_type, customer_name: row.customer_name });
+    notifyClient(String(row.id));
+  };
+
   const handleBulkDelete = () => {
     showDialog({
       title: "Delete Selected?",
@@ -559,6 +573,8 @@ const Projects = () => {
                 onViewInvoice={() => handleViewInvoice(params.row.id)}
                 viewCustomer={isAdmin && !!params.row.customer_id}
                 onViewCustomer={() => navigate(`/admin/customers/${params.row.customer_id}`)}
+                notifyClient={!!params.row.customer_id}
+                onNotifyClient={() => handleNotifyClient(params.row)}
                 data={params.row}
                 isPinned={!!params.row.pinned}
                 onTogglePin={() => handleTogglePin(params.row.id)}

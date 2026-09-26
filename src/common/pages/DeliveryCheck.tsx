@@ -13,8 +13,9 @@ import Button from "../../ui/Button";
 import {
   InvoiceMetaPanel,
   InvoicePanelLabel,
+  InvoiceLineItemsSection,
+  InvoiceLineItem,
   InvoiceTotalCard,
-  invoiceTheme,
 } from "../../admin/components/InvoiceDocument";
 
 // No payment gateway anywhere in this app - recorded manually by an admin
@@ -55,14 +56,6 @@ const STATUS_STYLES: Record<string, { bg: string; color: string; label: string }
   pending: { bg: "var(--amber-100)", color: "var(--amber-800)", label: "Pending" },
   paid: { bg: "var(--green-100)", color: "var(--green-800)", label: "Paid" },
   cancelled: { bg: "var(--red-100)", color: "var(--red-800)", label: "Cancelled" },
-};
-
-const colHeaderSx = {
-  fontWeight: 700,
-  fontSize: "0.7rem",
-  letterSpacing: "0.05em",
-  textTransform: "uppercase" as const,
-  color: invoiceTheme.tableHeaderText,
 };
 
 export default function DeliveryCheck() {
@@ -295,57 +288,23 @@ export default function DeliveryCheck() {
       )}
 
       {/* Order breakdown - every line item that makes up this order, with
-          its own size and rate, not just the invoice's bottom-line total. */}
-      <Box sx={{ border: `1px solid ${invoiceTheme.panelBorder}`, borderRadius: 2, overflow: "hidden", mb: 2 }}>
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: "28px 2fr 1fr 1fr 1.1fr",
-            gap: 1,
-            bgcolor: invoiceTheme.tableHeaderBg,
-            borderBottom: `2px solid ${invoiceTheme.tableHeaderBorder}`,
-            px: 2,
-            py: 1,
-            alignItems: "center",
-          }}
-        >
-          <Typography sx={colHeaderSx}>No.</Typography>
-          <Typography sx={colHeaderSx}>Order</Typography>
-          <Typography sx={colHeaderSx}>Size</Typography>
-          <Typography sx={colHeaderSx}>Rate</Typography>
-          <Typography sx={{ ...colHeaderSx, textAlign: "right" }}>Price</Typography>
-        </Box>
+          its own size and rate, not just the invoice's bottom-line total.
+          Same shared component the printable invoice/quotation use (see
+          admin/components/InvoiceDocument.tsx) rather than its own copy of
+          the same grid. */}
+      <InvoiceLineItemsSection>
         {invoice.items.map((item, idx) => (
-          <Box
+          <InvoiceLineItem
             key={item.id}
-            sx={{
-              display: "grid",
-              gridTemplateColumns: "28px 2fr 1fr 1fr 1.1fr",
-              gap: 1,
-              px: 2,
-              py: 1.1,
-              alignItems: "center",
-              borderTop: idx === 0 ? "none" : `1px solid ${invoiceTheme.rowBorder}`,
-            }}
-          >
-            <Typography variant="body2" color="text.secondary">
-              {idx + 1}
-            </Typography>
-            <Typography variant="body2" sx={{ fontWeight: 600 }}>
-              {item.description || "—"}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {item.width} × {item.height} ({item.sq_ft} sq ft)
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {item.is_manual_total ? "—" : `₹${item.rate.toLocaleString()}`}
-            </Typography>
-            <Typography sx={{ fontWeight: 700, textAlign: "right" }}>
-              ₹{item.total.toLocaleString()}
-            </Typography>
-          </Box>
+            index={idx + 1}
+            isFirst={idx === 0}
+            description={item.description || "—"}
+            meta={`${item.width} × ${item.height} (${item.sq_ft} sq ft)`}
+            rate={item.is_manual_total ? undefined : `₹${item.rate.toLocaleString()}`}
+            amount={`₹${item.total.toLocaleString()}`}
+          />
         ))}
-      </Box>
+      </InvoiceLineItemsSection>
 
       {/* Discount - admin-only, and only while the invoice is still
           pending (see service_update's own enforcement of the same rule
@@ -393,8 +352,8 @@ export default function DeliveryCheck() {
             mb: 3,
             p: 2,
             borderRadius: 2,
-            bgcolor: invoiceTheme.panelBg,
-            border: `1px solid ${invoiceTheme.panelBorder}`,
+            bgcolor: "var(--blue-50)",
+            border: "1px solid var(--blue-100)",
           }}
         >
           <InvoicePanelLabel>Complete Payment</InvoicePanelLabel>

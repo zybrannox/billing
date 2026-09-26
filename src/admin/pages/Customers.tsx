@@ -14,6 +14,8 @@ import { useConfirmDialogStore } from "../../hooks/useconfirmDialogStore";
 import { apiService } from "../../api/service";
 import Chip from "../../ui/Chip";
 import { semanticChipSx } from "../../ui/chipStyles";
+import { shareToWhatsAppAfter } from "../../utils/shareToWhatsApp";
+import { getApiErrorMessage } from "../../utils/apiError";
 
 interface Customer {
   id: number;
@@ -21,10 +23,17 @@ interface Customer {
   last_name: string;
   contact_number: string;
   email: string;
+  // B2B company this customer is a contact of, if any (see app/companies).
+  company_id?: number | null;
   // Computed server-side per page load (see GET /customers) - who still
   // owes money at a glance, without opening each customer's profile.
   payment_status?: "paid" | "pending" | "no_invoices" | null;
   outstanding_balance?: number | null;
+}
+
+interface CompanyOption {
+  id: number;
+  name: string;
 }
 
 const PAYMENT_STATUS_META: Record<string, { color: string; label: string }> = {
@@ -41,17 +50,31 @@ interface CustomerListResponse {
   total_pages: number;
 }
 
-const buildBaseColumns = (): GridColDef[] => [
+// Takes the fetched company list, not a static array - the Company column's
+// valueOptions (and its resolved display label, via singleSelect's own
+// default renderCell) depend on it. Factory rather than a plain constant
+// for the same reason buildBaseColumns already is one elsewhere in this
+// codebase - a module-level constant can't close over component state.
+const buildBaseColumns = (companies: CompanyOption[]): GridColDef[] => [
   { field: "first_name", headerName: "First Name", flex: 1, editable: true },
   { field: "last_name", headerName: "Last Name", flex: 1, editable: true },
   { field: "contact_number", headerName: "Contact Number", flex: 1, editable: true },
   { field: "email", headerName: "Email", flex: 1.5, editable: true },
   {
+    field: "company_id",
+    headerName: "Company",
+    flex: 1.2,
+    editable: true,
+    type: "singleSelect",
+    valueOptions: [
+      { value: null, label: "No Company" },
+      ...companies.map((c) => ({ value: c.id, label: c.name })),
+    ],
+  },
+  {
     field: "payment_status",
     headerName: "Payment Status",
     flex: 1.4,
-    sortable: false,
-    filterable: false,
     editable: false,
     renderCell: ({ row }) => {
       const meta = PAYMENT_STATUS_META[row.payment_status ?? "no_invoices"] ?? PAYMENT_STATUS_META.no_invoices;
@@ -77,6 +100,11 @@ const Customers = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoadingState] = useState(false);
+  // Fetched once, not paginated with the customer list itself - a print
+  // shop's realistic B2B account count stays in the dozens/low hundreds,
+  // so a single generous page covers the Company column's valueOptions
+  // without needing a searchable async picker for inline grid editing.
+  const [companies, setCompanies] = useState<CompanyOption[]>([]);
   // Which customer's invoice peek panel (see CustomerInvoicesList) is open
   // - true accordion, one at a time, matching the Ongoing Activities/
   // project-files pattern this mirrors (see Table.tsx's renderDetailPanel).
@@ -124,6 +152,13 @@ const Customers = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paginationModel, debouncedSearch]);
 
+  useEffect(() => {
+    apiService
+      .get<{ items: CompanyOption[] }>("/companies", { params: { page_size: 100 } })
+      .then((res) => setCompanies(res.items))
+      .catch((err) => console.error("Error fetching companies", err));
+  }, []);
+
   const rows = useMemo(() => customers.map((c) => ({ ...c, id: c.id })), [customers]);
 
   const columns: GridColDef[] = useMemo(
@@ -140,9 +175,9 @@ const Customers = () => {
           rows.findIndex((r) => r.id === row.id) +
           1,
       },
-      ...buildBaseColumns(),
+      ...buildBaseColumns(companies),
     ],
-    [rows, paginationModel],
+    [rows, paginationModel, companies],
   );
 
   const processRowUpdate = async (newRow: Customer, oldRow: Customer) => {
@@ -151,6 +186,7 @@ const Customers = () => {
       last_name: newRow.last_name,
       contact_number: newRow.contact_number,
       email: newRow.email,
+      company_id: newRow.company_id ?? null,
     };
 
     const hasChanges = Object.keys(payload).some(
@@ -182,6 +218,35 @@ const Customers = () => {
     });
   };
 
+  // Staff-invited portal access (no public self-service signup - see
+  // app/client_auth) - the invite link is built client-side (no
+  // FRONTEND_URL exists on the backend, matching every other cross-page
+  // link in this app) then handed to the same manual wa.me share every
+  // other WhatsApp send in the app already uses; staff still picks the
+  // actual recipient themselves.
+  //
+  // shareToWhatsAppAfter, not shareToWhatsApp directly - this has to POST
+  // for the invite token before the wa.me text is known, and opening the
+  // wa.me window only after that async request finishes gets silently
+  // popup-blocked (same reasoning as InvoiceView.tsx's handleShareWhatsApp).
+  // shareToWhatsAppAfter opens the tab synchronously, inside this click,
+  // and redirects it once the token comes back.
+  const handleSendPortalInvite = (customer: Customer) => {
+    shareToWhatsAppAfter(async () => {
+      const { invite_token } = await apiService.post<{ invite_token: string }>(
+        `/client-auth/invite/${customer.id}`,
+      );
+      const activateUrl = `${window.location.origin}/portal/activate?token=${invite_token}`;
+      return `Hi ${customer.first_name}, here's your Zybrannox client portal invite - use this link to set up your account and view your orders and billing: ${activateUrl}`;
+    }).catch((err) => {
+      showDialog({
+        title: "Couldn't send invite",
+        description: getApiErrorMessage(err, "Something went wrong. Please try again."),
+        confirmText: "OK",
+      });
+    });
+  };
+
   return (
     <main className="h-full p-4 m-4 md:p-10 min-w-0 rounded-3xl bg-blue-50 shadow">
       <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
@@ -207,9 +272,11 @@ const Customers = () => {
             edit
             delete
             viewCustomer
+            sendPortalInvite
             onEdit={handlers.edit}
             onDelete={() => handleDelete(params.row.id)}
             onViewCustomer={() => navigate(`/admin/customers/${params.row.id}`)}
+            onSendPortalInvite={() => handleSendPortalInvite(params.row)}
           />,
         ]}
         renderDetailPanel={(row) => <CustomerInvoicesList customerId={row.id} />}

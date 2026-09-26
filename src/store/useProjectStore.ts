@@ -48,6 +48,11 @@ export interface Project {
   // invoice's current status, which can change later (e.g. once it's
   // actually paid) without altering how the delivery itself happened.
   delivered_on_credit?: boolean;
+  // Staff-triggered "Notify Client (WhatsApp)" action - see PATCH
+  // /projects/{id}/notify. A "last notified" fact, not a one-time
+  // milestone, so a repeat notify just overwrites it.
+  notified_at?: string | null;
+  notified_by?: string | null;
   customer_id?: number | null;
   customer_name?: string | null;
   // Pinned projects sort to the top of the list server-side (see
@@ -106,6 +111,7 @@ interface ProjectState {
   markPrintCompleted: (id: string) => Promise<void>;
   markDelivered: (id: string, onCredit?: boolean) => Promise<void>;
   togglePinProject: (id: string) => Promise<void>;
+  notifyClient: (id: string) => Promise<void>;
 }
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
@@ -278,6 +284,21 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   // to reload the list.
   togglePinProject: async (id) => {
     const updated = await apiService.patch<Project>(`/projects/${id}/pin`);
+    const current = get().selectedProject;
+    set((state) => ({
+      selectedProject:
+        current && String(current.id) === String(id) ? updated : current,
+      projects: state.projects.map((p) =>
+        String(p.id) === String(id) ? updated : p,
+      ),
+    }));
+  },
+
+  // Records that staff notified this client (see notifyClientWhatsApp.ts,
+  // which opens the actual wa.me tab separately - this just persists the
+  // "last notified" fact server-side).
+  notifyClient: async (id) => {
+    const updated = await apiService.patch<Project>(`/projects/${id}/notify`);
     const current = get().selectedProject;
     set((state) => ({
       selectedProject:

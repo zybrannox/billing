@@ -23,8 +23,6 @@ import {
 import PrintRoundedIcon from "@mui/icons-material/PrintRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import RequestQuoteRoundedIcon from "@mui/icons-material/RequestQuoteRounded";
-import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
-import FolderOpenRoundedIcon from "@mui/icons-material/FolderOpenRounded";
 import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlineRounded";
 import PendingOutlinedIcon from "@mui/icons-material/PendingOutlined";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
@@ -48,8 +46,11 @@ import {
   InvoiceHeader,
   InvoiceMetaPanel,
   InvoicePanelLabel,
+  InvoiceLineItemsSection,
+  InvoiceLineItem,
   InvoiceTotalCard,
   InvoiceFooter,
+  invoiceTheme,
 } from "../components/InvoiceDocument";
 
 interface QuotationItem {
@@ -536,96 +537,63 @@ export default function QuotationView() {
         <InvoiceHeader invoiceNumber={quotation.quotation_number} documentLabel="QUOTATION" />
 
         <InvoiceMetaPanel>
-          <Box sx={{ display: "flex", gap: 1.5 }}>
-            <Box sx={{ p: 1, bgcolor: "var(--slate-100)", borderRadius: 1.5, color: "var(--slate-600)", height: "fit-content" }}>
-              <PersonRoundedIcon fontSize="small" />
-            </Box>
-            <Box>
-              <InvoicePanelLabel>Quoted To</InvoicePanelLabel>
-              <Typography sx={{ fontWeight: 700, color: "var(--slate-900)", fontSize: "1.05rem", mt: 0.2 }}>
-                {customerName}
-              </Typography>
-              {quotation.customer && (
-                <Stack spacing={0.2} sx={{ mt: 0.5 }}>
-                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: "0.85rem" }}>
-                    {quotation.customer.email}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: "0.85rem" }}>
-                    {quotation.customer.contact_number}
-                  </Typography>
-                </Stack>
-              )}
-            </Box>
+          <Box>
+            <InvoicePanelLabel>Quoted To</InvoicePanelLabel>
+            <Typography sx={{ fontWeight: 700, color: invoiceTheme.ink, fontSize: "1rem", mt: 0.5 }}>
+              {customerName}
+            </Typography>
+            {quotation.customer && (
+              <Box sx={{ mt: 0.5 }}>
+                <Typography sx={{ fontSize: "0.85rem", color: invoiceTheme.inkMuted }}>{quotation.customer.email}</Typography>
+                <Typography sx={{ fontSize: "0.85rem", color: invoiceTheme.inkMuted }}>{quotation.customer.contact_number}</Typography>
+              </Box>
+            )}
           </Box>
 
           <Box sx={{ textAlign: { xs: "left", sm: "right" }, mt: { xs: 2, sm: 0 } }}>
-            <Stack spacing={0.5} alignItems={{ xs: "flex-start", sm: "flex-end" }}>
-              <Box sx={{ display: "flex", justifyContent: { sm: "flex-end" }, gap: 1 }}>
-                <Typography variant="body2" color="text.secondary">
-                  Quotation Date:
-                </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 600, color: "var(--slate-700)" }}>
-                  {formatDate(quotation.created_at)}
+            <Box sx={{ display: "flex", justifyContent: { xs: "flex-start", sm: "flex-end" }, gap: 1 }}>
+              <Typography sx={{ fontSize: "0.85rem", color: invoiceTheme.inkMuted }}>Quotation Date</Typography>
+              <Typography sx={{ fontSize: "0.85rem", fontWeight: 600, color: invoiceTheme.ink }}>
+                {formatDate(quotation.created_at)}
+              </Typography>
+            </Box>
+            {quotation.valid_until && (
+              <Box sx={{ display: "flex", justifyContent: { xs: "flex-start", sm: "flex-end" }, gap: 1, mt: 0.4 }}>
+                <Typography sx={{ fontSize: "0.85rem", color: invoiceTheme.inkMuted }}>Valid Until</Typography>
+                <Typography sx={{ fontSize: "0.85rem", fontWeight: 600, color: invoiceTheme.ink }}>
+                  {formatDate(quotation.valid_until)}
                 </Typography>
               </Box>
-              {quotation.valid_until && (
-                <Box sx={{ display: "flex", justifyContent: { sm: "flex-end" }, gap: 1 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    Valid Until:
-                  </Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 600, color: "var(--slate-700)" }}>
-                    {formatDate(quotation.valid_until)}
-                  </Typography>
-                </Box>
-              )}
-              <Box sx={{ pt: 0.5 }}>
-                <Chip
-                  icon={status.icon}
-                  label={status.label}
-                  size="small"
-                  sx={{ bgcolor: status.bg, color: status.color, border: `1px solid ${status.border}`, fontWeight: 700, fontSize: "0.75rem", letterSpacing: "0.02em", "& .MuiChip-icon": { color: status.color } }}
-                />
-              </Box>
-            </Stack>
+            )}
+            {quotation.project_type && (
+              <Typography sx={{ fontSize: "0.8rem", color: invoiceTheme.inkMuted, mt: 0.8 }}>
+                {quotation.project_type}
+              </Typography>
+            )}
+            <Box sx={{ display: "flex", justifyContent: { xs: "flex-start", sm: "flex-end" }, mt: 1 }}>
+              <Chip
+                icon={status.icon}
+                label={status.label}
+                size="small"
+                sx={{ bgcolor: status.bg, color: status.color, border: `1px solid ${status.border}`, fontWeight: 700, fontSize: "0.75rem", letterSpacing: "0.02em", "& .MuiChip-icon": { color: status.color } }}
+              />
+            </Box>
           </Box>
         </InvoiceMetaPanel>
 
-        {quotation.project_type && (
-          <Box sx={{ mb: 1.5, p: 1.25, borderRadius: 2, bgcolor: "var(--slate-50)", border: "1px solid var(--slate-200)", display: "flex", alignItems: "flex-start", gap: 1.5 }}>
-            <FolderOpenRoundedIcon sx={{ color: "var(--slate-500)", mt: 0.2 }} fontSize="small" />
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="body2" sx={{ fontWeight: 700, color: "var(--slate-900)" }}>
-                {quotation.project_type} Order
-              </Typography>
-            </Box>
-          </Box>
-        )}
-
-        <Box sx={{ border: "1px solid var(--slate-200)", borderRadius: 2.5, overflow: "hidden", mb: 1.5 }}>
-          <Box sx={{ display: "grid", gridTemplateColumns: "28px 2.2fr 1.1fr 0.6fr 1fr 1.2fr", bgcolor: "var(--slate-50)", borderBottom: "1px solid var(--slate-200)", px: 2, py: 0.75, gap: 1.5 }}>
-            <Typography variant="caption" sx={{ fontWeight: 700, color: "var(--slate-500)", textTransform: "uppercase", letterSpacing: "0.05em" }}>#</Typography>
-            <Typography variant="caption" sx={{ fontWeight: 700, color: "var(--slate-500)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Item Description</Typography>
-            <Typography variant="caption" sx={{ fontWeight: 700, color: "var(--slate-500)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Size / Area</Typography>
-            <Typography variant="caption" sx={{ fontWeight: 700, textAlign: "right", color: "var(--slate-500)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Pieces</Typography>
-            <Typography variant="caption" sx={{ fontWeight: 700, color: "var(--slate-500)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Rate (₹)</Typography>
-            <Typography variant="caption" sx={{ fontWeight: 700, textAlign: "right", color: "var(--slate-500)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Total Amount</Typography>
-          </Box>
-
+        <InvoiceLineItemsSection>
           {quotation.items.map((item, idx) => (
-            <Box
+            <InvoiceLineItem
               key={item.id}
-              className="invoice-row"
-              sx={{ display: "grid", gridTemplateColumns: "28px 2.2fr 1.1fr 0.6fr 1fr 1.2fr", px: 2, py: 0.9, gap: 1.5, alignItems: "center", borderTop: idx === 0 ? "none" : "1px solid var(--slate-100)", bgcolor: idx % 2 === 0 ? "var(--white)" : "var(--slate-50)" }}
-            >
-              <Typography variant="body2" sx={{ color: "var(--slate-400)", fontWeight: 600 }}>{idx + 1}</Typography>
-              <Typography variant="body2" sx={{ fontWeight: 600, color: "var(--slate-800)" }}>{item.description || "Standard Item"}</Typography>
-              <Typography variant="body2" sx={{ color: "var(--slate-700)" }}>{formatDimension(item.width, item.unit)} × {formatDimension(item.height, item.unit)} ({item.sq_ft} sq ft)</Typography>
-              <Typography variant="body2" sx={{ color: "var(--slate-700)", textAlign: "right" }}>{item.pieces}</Typography>
-              <Typography variant="body2" color="text.secondary">{item.is_manual_total ? "—" : `₹${item.rate.toLocaleString("en-IN")}`}</Typography>
-              <Typography variant="body2" sx={{ fontWeight: 700, textAlign: "right", color: "var(--slate-900)", whiteSpace: "nowrap" }}>{formatCurrency(item.total)}</Typography>
-            </Box>
+              index={idx + 1}
+              isFirst={idx === 0}
+              description={item.description || "Standard Item"}
+              meta={`${formatDimension(item.width, item.unit)} × ${formatDimension(item.height, item.unit)} (${item.sq_ft} sq ft) · Qty ${item.pieces}`}
+              rate={item.is_manual_total ? undefined : `₹${item.rate.toLocaleString("en-IN")}/sq ft`}
+              amount={formatCurrency(item.total)}
+            />
           ))}
-        </Box>
+        </InvoiceLineItemsSection>
 
         <InvoiceTotalCard subtotal={quotation.subtotal} discountAmount={quotation.discount_amount} />
 

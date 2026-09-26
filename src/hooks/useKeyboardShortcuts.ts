@@ -19,7 +19,17 @@ export function useKeyboardShortcuts(
   enabled: boolean = true,
 ) {
   const handlersRef = useRef(handlers);
-  handlersRef.current = handlers;
+
+  // Keeps the ref fresh after every render, same effect as writing it
+  // inline during render used to have - but a render can be discarded/
+  // retried without committing, so mutating a ref as a render side effect
+  // is unsafe under React's own rules (react-hooks/refs). No dependency
+  // array: this should run after every commit, not just when `enabled`
+  // changes, so a handler map that changes without `enabled` changing
+  // (e.g. a value the handler closes over updates) is still picked up.
+  useEffect(() => {
+    handlersRef.current = handlers;
+  });
 
   useEffect(() => {
     if (!enabled) return;

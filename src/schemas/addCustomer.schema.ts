@@ -10,6 +10,9 @@ export const addCustomerSchema = z.object({
     .email({ message: "Invalid email address" })
     .optional()
     .or(z.literal("")),
+  // async_select's own value shape (see AsyncSearchSelect) - optional,
+  // since most customers aren't B2B contacts of any company.
+  company_id: z.union([z.string(), z.number()]).optional(),
 });
 
 export type AddCustomerFormData = z.infer<typeof addCustomerSchema>;

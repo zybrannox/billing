@@ -1,34 +1,24 @@
 import type { ReactNode } from "react";
 import { Box, Typography } from "@mui/material";
 
-// Shared chrome between the editable Create Invoice screen and the
-// read-only printable InvoiceView - same document, two modes, so both use
-// the exact same header/panel/total styling instead of two hand-tuned
-// copies quietly drifting apart. Colors are the app's own blue/slate
-// tokens (see index.css's --blue-*), not the black/gray of a generic
-// invoice template - this is a Zybrannox document, not a stock one.
+// Shared chrome between the editable Create Invoice/Quotation screens and
+// the read-only printable views - same document, two modes, both use this
+// exact styling instead of two hand-tuned copies quietly drifting apart.
+//
+// Deliberately no boxed panels, no table grid/cell borders, no colored
+// backgrounds - hierarchy comes from type weight/size and generous
+// whitespace instead, with a single warm ink color and one muted accent
+// used sparingly (the brand mark, the document label, section labels).
+// The only rules that survive are thin, full-bleed hairlines used as
+// section dividers (header/footer, above the grand total) - a typographic
+// device every minimal invoice template (Stripe's, Anthropic's own) still
+// relies on, not a "boxed table" in the sense this was asked to remove.
 export const invoiceTheme = {
-  headerBorder: "var(--blue-600, var(--blue-600))",
-  panelBg: "var(--blue-50, var(--blue-50))",
-  panelBorder: "var(--blue-100, var(--blue-100))",
-  tableHeaderBg: "var(--blue-50, var(--blue-50))",
-  tableHeaderBorder: "var(--blue-600, var(--blue-600))",
-  tableHeaderText: "var(--blue-900)", // blue-900
-  rowBorder: "var(--blue-100, var(--blue-100))",
-  totalBg: "var(--blue-50, var(--blue-50))",
-  totalBorder: "var(--blue-600, var(--blue-600))",
-  totalText: "var(--blue-900)",
-};
-
-// Was a gradient-text effect (background-clip: text + transparent fill) -
-// html2canvas doesn't support that CSS technique reliably (its own
-// rendering docs flag background-clip as partial/broken), so the
-// downloaded/shared PDF showed the gradient as a solid rectangle sitting
-// on top of the text instead of clipped to the letterforms. A flat brand
-// color renders identically on screen, in print, and in the PDF, and
-// reads as more appropriate for a formal document than a gradient anyway.
-const brandTextSx = {
-  color: "var(--blue-700)",
+  ink: "#1b1a17", // near-black, warm rather than blue-black
+  inkMuted: "#6f6a5f", // secondary text - dates, reference notes
+  label: "#8f8a7d", // uppercase micro-labels (Billed To, Item, etc.)
+  accent: "#c1512f", // muted terracotta - used only for the brand mark/document label/section labels
+  hairline: "rgba(27, 26, 23, 0.1)",
 };
 
 export function InvoiceHeader({
@@ -47,44 +37,32 @@ export function InvoiceHeader({
         display: "flex",
         justifyContent: "space-between",
         alignItems: "flex-start",
-        mb: 2,
-        pb: 1.5,
-        borderBottom: `2px solid ${invoiceTheme.headerBorder}`,
+        mb: 4,
+        pb: 3,
+        borderBottom: `1px solid ${invoiceTheme.hairline}`,
       }}
     >
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
         <Box
-          sx={{
-            width: 36,
-            height: 36,
-            borderRadius: "8px",
-            bgcolor: invoiceTheme.panelBg,
-            border: `1px solid ${invoiceTheme.panelBorder}`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-          }}
-        >
-          <Box
-            component="img"
-            src="/images/logo.webp"
-            alt=""
-            sx={{ width: 22, height: 17, objectFit: "contain" }}
-          />
-        </Box>
+          component="img"
+          src="/images/logo.webp"
+          alt=""
+          sx={{ width: 24, height: 19, objectFit: "contain" }}
+        />
         <Box>
-          <Typography sx={{ fontSize: "1.15rem", fontWeight: 800, letterSpacing: "-0.5px", lineHeight: 1.2, ...brandTextSx }}>
+          <Typography sx={{ fontSize: "1.05rem", fontWeight: 700, letterSpacing: "-0.01em", lineHeight: 1.2, color: invoiceTheme.ink }}>
             Zybrannox
           </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ display: "block", lineHeight: 1.2 }}>
-            Print &amp; Signage Solutions
+          <Typography sx={{ fontSize: "0.78rem", color: invoiceTheme.inkMuted, display: "block", lineHeight: 1.3 }}>
+            Printing &amp; Signage Services
           </Typography>
         </Box>
       </Box>
       <Box sx={{ textAlign: "right" }}>
-        <Typography sx={{ fontSize: "1.2rem", fontWeight: 800, lineHeight: 1.2, ...brandTextSx }}>{documentLabel}</Typography>
-        <Typography variant="caption" color="text.secondary">
+        <Typography sx={{ fontSize: "0.95rem", fontWeight: 700, letterSpacing: "0.06em", lineHeight: 1.2, color: invoiceTheme.accent }}>
+          {documentLabel}
+        </Typography>
+        <Typography sx={{ fontSize: "0.8rem", color: invoiceTheme.inkMuted, mt: 0.3 }}>
           {invoiceNumber ?? "Number assigned on generate"}
         </Typography>
       </Box>
@@ -95,11 +73,11 @@ export function InvoiceHeader({
 export function InvoicePanelLabel({ children }: { children: ReactNode }) {
   return (
     <Typography
-      variant="caption"
       sx={{
+        fontSize: "0.7rem",
         fontWeight: 700,
-        letterSpacing: "0.5px",
-        color: invoiceTheme.headerBorder,
+        letterSpacing: "0.08em",
+        color: invoiceTheme.label,
         textTransform: "uppercase",
       }}
     >
@@ -108,9 +86,10 @@ export function InvoicePanelLabel({ children }: { children: ReactNode }) {
   );
 }
 
-// Wraps the Bill To / invoice-meta two-column block - the mockup's boxed
-// "Invoice To / Ship To" panel, minus "Ship To" (this app has no shipping
-// address concept) in favor of the invoice's own metadata instead.
+// The "Bill To" / invoice-meta two-column block - plain text laid out in a
+// grid, no surrounding box/background/border. What used to visually
+// separate this from the rest of the page (a filled panel) is now just
+// its own margin-bottom before the line items start.
 export function InvoiceMetaPanel({ children }: { children: ReactNode }) {
   return (
     <Box
@@ -118,14 +97,74 @@ export function InvoiceMetaPanel({ children }: { children: ReactNode }) {
         display: "grid",
         gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
         gap: 3,
-        mb: 2,
-        p: 2,
-        borderRadius: 2,
-        bgcolor: invoiceTheme.panelBg,
-        border: `1px solid ${invoiceTheme.panelBorder}`,
+        mb: 4,
       }}
     >
       {children}
+    </Box>
+  );
+}
+
+// One line item - description on the left (with a muted secondary line for
+// size/pieces underneath, editorial-caption style rather than its own grid
+// column), amount right-aligned. No cell borders; rows are separated by a
+// hairline only between them (never around the whole block, never under a
+// header row), so this reads as a simple list, not a bordered table.
+export function InvoiceLineItem({
+  index,
+  description,
+  meta,
+  rate,
+  amount,
+  isFirst,
+}: {
+  index: number;
+  description: ReactNode;
+  meta?: ReactNode;
+  rate?: ReactNode;
+  amount: ReactNode;
+  isFirst?: boolean;
+}) {
+  return (
+    <Box
+      className="invoice-row"
+      sx={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "flex-start",
+        gap: 2,
+        py: 1.5,
+        borderTop: isFirst ? "none" : `1px solid ${invoiceTheme.hairline}`,
+      }}
+    >
+      <Box sx={{ display: "flex", gap: 1.5, minWidth: 0 }}>
+        <Typography sx={{ fontSize: "0.85rem", color: invoiceTheme.label, fontWeight: 600, flexShrink: 0, width: 18 }}>
+          {index}
+        </Typography>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography sx={{ fontSize: "0.9rem", fontWeight: 600, color: invoiceTheme.ink }}>
+            {description}
+          </Typography>
+          {meta && (
+            <Typography sx={{ fontSize: "0.78rem", color: invoiceTheme.inkMuted, mt: 0.25 }}>
+              {meta}
+              {rate ? ` · ${rate}` : ""}
+            </Typography>
+          )}
+        </Box>
+      </Box>
+      <Typography sx={{ fontSize: "0.9rem", fontWeight: 700, color: invoiceTheme.ink, whiteSpace: "nowrap", flexShrink: 0 }}>
+        {amount}
+      </Typography>
+    </Box>
+  );
+}
+
+export function InvoiceLineItemsSection({ children }: { children: ReactNode }) {
+  return (
+    <Box sx={{ mb: 3 }}>
+      <InvoicePanelLabel>Items</InvoicePanelLabel>
+      <Box sx={{ mt: 1 }}>{children}</Box>
     </Box>
   );
 }
@@ -134,8 +173,9 @@ export function InvoiceMetaPanel({ children }: { children: ReactNode }) {
 // Received) -> Balance Due. discountAmount/advanceAmount/paymentMethod
 // are all optional and independent of each other - with neither set
 // (the common case), this renders exactly as it always did: a single
-// Total row. This stays the one place in the document that shows money,
-// in both Create and the printable View.
+// Total row. No box/background - a plain right-aligned block with a
+// single hairline above the grand total, the one rule this document
+// keeps because every reader expects it.
 export function InvoiceTotalCard({
   subtotal,
   discountAmount = 0,
@@ -151,39 +191,22 @@ export function InvoiceTotalCard({
   const total = Math.max(0, Math.round((subtotal - discountAmount) * 100) / 100);
   const hasAdvance = advanceAmount > 0;
   const balanceDue = Math.max(0, Math.round((total - advanceAmount) * 100) / 100);
-  // Once anything else is shown, "Total" is a mid-waterfall line, not the
-  // single headline figure - drop it down visually so whichever row is
-  // actually the bottom line (Total, or Balance Due) reads as the answer.
   const isBreakdown = hasDiscount || hasAdvance;
 
   return (
-    <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 0.5 }}>
-      <Box
-        sx={{
-          minWidth: 240,
-          borderRadius: 2,
-          bgcolor: invoiceTheme.totalBg,
-          border: `1px solid ${invoiceTheme.totalBorder}`,
-          borderTop: `3px solid ${invoiceTheme.totalBorder}`,
-          px: 2.25,
-          py: 1.25,
-        }}
-      >
+    <Box sx={{ display: "flex", justifyContent: "flex-end", pt: 2 }}>
+      <Box sx={{ minWidth: 240 }}>
         {hasDiscount && (
           <>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2 }}>
-              <Typography variant="body2" sx={{ color: invoiceTheme.totalText }}>
-                Subtotal
-              </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 600, color: invoiceTheme.totalText }}>
+              <Typography sx={{ fontSize: "0.85rem", color: invoiceTheme.inkMuted }}>Subtotal</Typography>
+              <Typography sx={{ fontSize: "0.85rem", fontWeight: 600, color: invoiceTheme.ink }}>
                 ₹{subtotal.toLocaleString()}
               </Typography>
             </Box>
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2, mt: 0.25 }}>
-              <Typography variant="body2" sx={{ color: invoiceTheme.totalText }}>
-                Discount
-              </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 600, color: invoiceTheme.totalText }}>
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2, mt: 0.5 }}>
+              <Typography sx={{ fontSize: "0.85rem", color: invoiceTheme.inkMuted }}>Discount</Typography>
+              <Typography sx={{ fontSize: "0.85rem", fontWeight: 600, color: invoiceTheme.ink }}>
                 −₹{discountAmount.toLocaleString()}
               </Typography>
             </Box>
@@ -196,25 +219,25 @@ export function InvoiceTotalCard({
             justifyContent: "space-between",
             alignItems: "center",
             gap: 2,
-            mt: hasDiscount ? 0.5 : 0,
-            pt: hasDiscount ? 0.5 : 0,
-            borderTop: hasDiscount ? `1px dashed ${invoiceTheme.totalBorder}` : "none",
+            mt: hasDiscount ? 1 : 0,
+            pt: hasDiscount ? 1 : 0,
+            borderTop: hasDiscount ? `1px solid ${invoiceTheme.hairline}` : "none",
           }}
         >
           <Typography
             sx={{
-              fontWeight: isBreakdown ? 500 : 700,
-              fontSize: isBreakdown ? "0.85rem" : "1rem",
-              color: invoiceTheme.totalText,
+              fontWeight: isBreakdown ? 600 : 700,
+              fontSize: isBreakdown ? "0.85rem" : "1.05rem",
+              color: invoiceTheme.ink,
             }}
           >
             Total
           </Typography>
           <Typography
             sx={{
-              fontWeight: isBreakdown ? 600 : 800,
-              fontSize: isBreakdown ? "0.9rem" : "1.25rem",
-              color: invoiceTheme.totalText,
+              fontWeight: isBreakdown ? 700 : 800,
+              fontSize: isBreakdown ? "0.9rem" : "1.3rem",
+              color: invoiceTheme.ink,
             }}
           >
             ₹{total.toLocaleString()}
@@ -223,11 +246,11 @@ export function InvoiceTotalCard({
 
         {hasAdvance && (
           <>
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2, mt: 0.25 }}>
-              <Typography variant="body2" sx={{ color: invoiceTheme.totalText }}>
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2, mt: 0.5 }}>
+              <Typography sx={{ fontSize: "0.85rem", color: invoiceTheme.inkMuted }}>
                 Advance Received{paymentMethod ? ` (${paymentMethod})` : ""}
               </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 600, color: invoiceTheme.totalText }}>
+              <Typography sx={{ fontSize: "0.85rem", fontWeight: 600, color: invoiceTheme.ink }}>
                 −₹{advanceAmount.toLocaleString()}
               </Typography>
             </Box>
@@ -237,15 +260,15 @@ export function InvoiceTotalCard({
                 justifyContent: "space-between",
                 alignItems: "center",
                 gap: 2,
-                mt: 0.5,
-                pt: 0.5,
-                borderTop: `1px dashed ${invoiceTheme.totalBorder}`,
+                mt: 1,
+                pt: 1,
+                borderTop: `1px solid ${invoiceTheme.hairline}`,
               }}
             >
-              <Typography sx={{ fontWeight: 700, fontSize: "0.9rem", color: invoiceTheme.totalText }}>
+              <Typography sx={{ fontWeight: 700, fontSize: "0.9rem", color: invoiceTheme.ink }}>
                 Balance Due
               </Typography>
-              <Typography sx={{ fontWeight: 800, fontSize: "1.25rem", color: invoiceTheme.totalText }}>
+              <Typography sx={{ fontWeight: 800, fontSize: "1.3rem", color: invoiceTheme.ink }}>
                 ₹{balanceDue.toLocaleString()}
               </Typography>
             </Box>
@@ -264,13 +287,13 @@ export function InvoiceFooter({
   return (
     <Box
       sx={{
-        mt: 2,
-        pt: 1.5,
-        borderTop: `1px solid ${invoiceTheme.panelBorder}`,
+        mt: 4,
+        pt: 2.5,
+        borderTop: `1px solid ${invoiceTheme.hairline}`,
         textAlign: "center",
       }}
     >
-      <Typography variant="caption" color="text.secondary">
+      <Typography sx={{ fontSize: "0.78rem", color: invoiceTheme.inkMuted }}>
         {children}
       </Typography>
     </Box>

@@ -64,6 +64,14 @@ export type FieldDefinition = {
   // See AsyncSearchSelect's `initialOption` - lets a caller pre-resolve
   // `defaultValue` to a visible label without a server round-trip.
   initialOption?: any;
+  // For type: "file_upload" - see GmailFileUploader.tsx. Lets a caller
+  // outside the staff app (e.g. the client portal, which authenticates
+  // against a different cookie/axios instance) upload through its own
+  // client/endpoints instead of the staff-only defaults.
+  uploadApiClient?: React.ComponentProps<typeof GmailFileUploader>["apiClient"];
+  uploadEndpoint?: string;
+  deleteEndpointBase?: string;
+  maxFileSize?: number;
 };
 
 export type ExternalLink = {
@@ -344,6 +352,10 @@ const FormField = React.memo(
                 multiple={field.multiple}
                 error={error?.message}
                 helperText={field.helperText}
+                apiClient={field.uploadApiClient}
+                uploadEndpoint={field.uploadEndpoint}
+                deleteEndpointBase={field.deleteEndpointBase}
+                maxFileSize={field.maxFileSize}
               />
             )}
           />

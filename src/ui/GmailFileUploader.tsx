@@ -50,6 +50,21 @@ interface UploadResponse {
   }>;
 }
 
+// The subset of apiService this component actually calls - lets a caller
+// (e.g. the client portal's SubmitJobRequest.tsx, which has no staff
+// session and must authenticate against a *different* cookie/axios
+// instance - see api/portalService.ts) swap in its own client instead of
+// this always hitting the staff-only apiService/axiosClient underneath.
+interface UploadApiClient {
+  postWithProgress: <T>(
+    url: string,
+    data: FormData,
+    onProgress: (percent: number) => void,
+    signal?: AbortSignal,
+  ) => Promise<T>;
+  delete: <T>(url: string) => Promise<T>;
+}
+
 interface GmailFileUploaderProps {
   label?: React.ReactNode;
   accept?: string;
@@ -58,6 +73,20 @@ interface GmailFileUploaderProps {
   onChange?: (items: UploadItem[]) => void;
   error?: string;
   helperText?: string;
+  // Defaults below all match this component's original, staff-only
+  // behavior - every existing caller (AddProject.tsx, etc.) is unaffected.
+  apiClient?: UploadApiClient;
+  uploadEndpoint?: string;
+  deleteEndpointBase?: string;
+  // Caps a single file's size client-side, separately from MAX_FILE_SIZE
+  // (the hard 1GB ceiling). A caller with no chunked-upload endpoint of its
+  // own (see the portal's job-request uploads, which only ever hit the
+  // plain /job-requests/upload route) must pass CHUNK_UPLOAD_THRESHOLD
+  // here - otherwise a file just over that line would silently be routed
+  // into uploadFileChunked's staff-only /files/upload/init|chunk|complete
+  // endpoints, which a client-portal session can never authenticate to,
+  // and fail with a confusing 401 instead of a clear "too large" message.
+  maxFileSize?: number;
 }
 
 const formatFileSize = (bytes: number) => {
@@ -191,6 +220,10 @@ const GmailFileUploader = ({
   onChange,
   error,
   helperText,
+  apiClient = apiService,
+  uploadEndpoint = "/files/upload",
+  deleteEndpointBase = "/files",
+  maxFileSize = MAX_FILE_SIZE,
 }: GmailFileUploaderProps) => {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -304,8 +337,8 @@ const GmailFileUploader = ({
                 ]),
               );
 
-              const res = await apiService.postWithProgress<UploadResponse>(
-                "/files/upload",
+              const res = await apiClient.postWithProgress<UploadResponse>(
+                uploadEndpoint,
                 form,
                 onProgress,
                 controller.signal,
@@ -335,7 +368,7 @@ const GmailFileUploader = ({
     } finally {
       delete controllersRef.current[item.id];
     }
-  }, [patchItem]);
+  }, [patchItem, apiClient, uploadEndpoint]);
 
   const openPicker = () => inputRef.current?.click();
 
@@ -344,10 +377,11 @@ const GmailFileUploader = ({
 
     const selected = Array.from(e.target.files);
 
-    const oversized = selected.filter((file) => file.size > MAX_FILE_SIZE);
+    const oversized = selected.filter((file) => file.size > maxFileSize);
     if (oversized.length > 0) {
+      const limitLabel = formatFileSize(maxFileSize);
       alert(
-        `The following files exceed 1GB limit:\n${oversized.map((f) => f.name).join("\n")}`,
+        `The following files exceed the ${limitLabel} limit:\n${oversized.map((f) => f.name).join("\n")}`,
       );
       e.target.value = "";
       return;
@@ -382,14 +416,14 @@ const GmailFileUploader = ({
         controllersRef.current[id]?.abort();
         delete controllersRef.current[id];
       } else if (item?.status === "done" && item.path) {
-        apiService.delete(`/files/${encodeURIComponent(item.path)}`).catch(() => {});
+        apiClient.delete(`${deleteEndpointBase}/${encodeURIComponent(item.path)}`).catch(() => {});
       }
 
       const next = itemsRef.current.filter((it) => it.id !== id);
       itemsRef.current = next;
       onChange?.(next);
     },
-    [onChange],
+    [onChange, apiClient, deleteEndpointBase],
   );
 
   const retryItem = React.useCallback(

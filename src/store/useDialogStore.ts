@@ -17,6 +17,9 @@ export type EditingType =
   | "certificate"
   | "project"
   | "customer"
+  // Opened from the Companies list's "+ Add Company" action (see
+  // admin/pages/Companies.tsx) - a B2B business account, admin-only.
+  | "company"
   // Opened either from a project's own "Design completed" row action (id
   // already known - see GenerateInvoice.tsx) or from the admin topbar's
   // "Create Invoice" shortcut (see admin/Layout.tsx) with no id at all, in

@@ -31,6 +31,8 @@ import {
   ReceiptLongRounded,
   PersonRounded,
   WhatsApp,
+  ApartmentRounded,
+  PersonAddRounded,
 } from "@mui/icons-material";
 import { formatDateTime } from "../utils/dateFormatter";
 
@@ -61,6 +63,16 @@ interface CrudActionsProps {
   // Jumps from a project row (Ongoing Activities) straight to the
   // customer profile it belongs to (see admin/pages/CustomerProfile.tsx).
   viewCustomer?: boolean;
+  // Jumps from a customer row straight to the B2B company it's a contact
+  // of (see admin/pages/CompanyProfile.tsx).
+  viewCompany?: boolean;
+  // Grants portal access to a customer row (see Customers.tsx) - staff-
+  // invited only, no public self-service signup (see app/client_auth).
+  sendPortalInvite?: boolean;
+  // Notifies a client their order is done via WhatsApp (see
+  // utils/notifyClientWhatsApp.ts) - lives in the orderMilestones "More
+  // actions" menu alongside shareInvoice.
+  notifyClient?: boolean;
   data?: any;
 
   onEdit?: () => void;
@@ -78,6 +90,9 @@ interface CrudActionsProps {
   onCancelInvoice?: () => void;
   onViewCustomer?: () => void;
   onShareInvoice?: () => void;
+  onViewCompany?: () => void;
+  onSendPortalInvite?: () => void;
+  onNotifyClient?: () => void;
 
   isActive?: boolean;
   isPinned?: boolean;
@@ -199,6 +214,9 @@ const CrudActions = ({
   cancelInvoice = false,
   viewCustomer = false,
   shareInvoice = false,
+  viewCompany = false,
+  sendPortalInvite = false,
+  notifyClient = false,
   data,
 
   onEdit,
@@ -216,6 +234,9 @@ const CrudActions = ({
   onCancelInvoice,
   onViewCustomer,
   onShareInvoice,
+  onViewCompany,
+  onSendPortalInvite,
+  onNotifyClient,
 
   isActive = false,
   isPinned = false,
@@ -452,7 +473,7 @@ const CrudActions = ({
   );
 
   if (orderMilestones) {
-    const hasMoreActions = download || preview || edit || del || info || toggle || viewInvoice || viewCustomer || shareInvoice;
+    const hasMoreActions = download || preview || edit || del || info || toggle || viewInvoice || viewCustomer || shareInvoice || viewCompany || notifyClient;
 
     return (
       <Box sx={{ display: "inline-flex", gap: 0.75, alignItems: "center" }}>
@@ -525,6 +546,34 @@ const CrudActions = ({
                     View Customer
                   </ListItemText>
                 </MenuItem>
+              )}
+              {viewCompany && (
+                <MenuItem onClick={runAndClose(onViewCompany)} sx={{ py: 0.875 }}>
+                  <ListItemIcon>
+                    <ApartmentRounded fontSize="small" sx={{ color: "var(--cyan-600)" }} />
+                  </ListItemIcon>
+                  <ListItemText primaryTypographyProps={{ fontSize: "0.8125rem", fontWeight: 500 }}>
+                    View Company
+                  </ListItemText>
+                </MenuItem>
+              )}
+              {notifyClient && (
+                <Tooltip title={!isPrintCompleted ? "Available once printing is completed" : ""} placement="left">
+                  <span>
+                    <MenuItem
+                      onClick={runAndClose(onNotifyClient)}
+                      disabled={!isPrintCompleted}
+                      sx={{ py: 0.875 }}
+                    >
+                      <ListItemIcon>
+                        <WhatsApp fontSize="small" sx={{ color: "#25D366" }} />
+                      </ListItemIcon>
+                      <ListItemText primaryTypographyProps={{ fontSize: "0.8125rem", fontWeight: 500 }}>
+                        Notify Client
+                      </ListItemText>
+                    </MenuItem>
+                  </span>
+                </Tooltip>
               )}
               {download && (
                 <MenuItem onClick={runAndClose(onDownload)} sx={{ py: 0.875 }}>
@@ -692,6 +741,23 @@ const CrudActions = ({
         </Tooltip>
       )}
 
+      {viewCompany && (
+        <Tooltip title="View Company">
+          <IconButton
+            size={size}
+            onClick={onViewCompany}
+            sx={{
+              ...actionIconSx,
+              color: "var(--cyan-600)",
+              backgroundColor: "rgba(8, 145, 178, 0.06)",
+              "&:hover": { backgroundColor: "rgba(8, 145, 178, 0.12)" },
+            }}
+          >
+            <ApartmentRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
+          </IconButton>
+        </Tooltip>
+      )}
+
       {markPaid && (
         <Tooltip
           title={
@@ -759,6 +825,23 @@ const CrudActions = ({
             }}
           >
             <EditRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
+          </IconButton>
+        </Tooltip>
+      )}
+
+      {sendPortalInvite && (
+        <Tooltip title="Send Portal Invite">
+          <IconButton
+            size={size}
+            onClick={onSendPortalInvite}
+            sx={{
+              ...actionIconSx,
+              color: "var(--indigo-600)",
+              backgroundColor: "rgba(79, 70, 229, 0.06)",
+              "&:hover": { backgroundColor: "rgba(79, 70, 229, 0.12)" },
+            }}
+          >
+            <PersonAddRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
           </IconButton>
         </Tooltip>
       )}

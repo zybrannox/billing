@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Box, Typography, CircularProgress, IconButton, Tooltip } from "@mui/material";
 import FolderOpenRoundedIcon from "@mui/icons-material/FolderOpenRounded";
+import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
@@ -21,11 +22,12 @@ import CrudActions from "../../ui/Actions";
 interface InvoiceRow {
   id: number;
   invoice_number: string;
+  // A single customer's own peek panel (see CustomerInvoicesList.tsx)
+  // never needs this - it's always the same person. A company's invoices
+  // span every contact under it, so this is what actually distinguishes
+  // one row from another here.
+  customer_name: string | null;
   project_type: string | null;
-  // A customer's invoices often share the same project_type ("Flex" for
-  // every banner job) - the description is what actually distinguishes
-  // one job from another at a glance (see entities/invoice.py's
-  // project_description property).
   project_description: string | null;
   amount: number;
   balance_due: number;
@@ -43,31 +45,30 @@ interface InvoiceListResponse {
 
 const money = (v: number) => `₹${v.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 
-// A page at a time, not the customer's whole invoice history - this panel
-// is a quick peek from the Customers list (see Customers.tsx's
-// renderDetailPanel), not the full record. Fetches lazily: Table only
-// mounts this component for whichever single row is actually expanded
-// (see Table.tsx's accordion - true for one row at a time, nothing pre-
-// fetched for the rest of the page), so opening this costs one small,
-// paginated request regardless of how many invoices the customer has on
-// file or how many other customers are in the list. The backend orders
-// pending invoices first (see app/invoices/repository.py's
-// _INVOICE_STATUS_RANK) - the ones that still need attention surface on
-// page 1 rather than being buried under settled ones by recency alone.
-const PAGE_SIZE = 10;
-
-export default function CustomerInvoicesList({ customerId }: { customerId: number }) {
+// Two contexts share this component (via `mode`) rather than duplicating
+// it: a quick "peek" from the Companies list's row accordion (see
+// Companies.tsx's renderDetailPanel), and the "full" consolidated
+// Billing tab on a company's own profile page (see CompanyProfile.tsx) -
+// both just filter the same GET /invoices/?company_id=X (see
+// app/invoices/repository.py's get_all_invoices) at a different page
+// size. The backend orders pending invoices first (see
+// app/invoices/repository.py's _INVOICE_STATUS_RANK), same as the
+// customer-scoped list.
+export default function CompanyInvoicesList({
+  companyId,
+  mode,
+}: {
+  companyId: number;
+  mode: "peek" | "full";
+}) {
   const navigate = useNavigate();
   const { openDialog } = useDialogStore();
   const { showDialog } = useConfirmDialogStore();
   const { updateInvoice } = useInvoiceStore();
-  // `invoices === null` doubles as the loading flag instead of a separate
-  // boolean set synchronously at the top of the effect (a cascading-render
-  // footgun the lint rule below specifically exists to catch) - the
-  // cleanup function resets it to null right before the *next* effect run
-  // starts (when customerId/page changes), which is the recommended place
-  // to unwind an in-flight effect's state rather than the new run's own
-  // body.
+  const pageSize = mode === "peek" ? 10 : 20;
+  // `invoices === null` doubles as the loading flag - see
+  // CustomerInvoicesList.tsx's identical pattern/comment for why (a
+  // react-hooks/set-state-in-effect footgun this avoids).
   const [invoices, setInvoices] = useState<InvoiceRow[] | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -75,13 +76,12 @@ export default function CustomerInvoicesList({ customerId }: { customerId: numbe
 
   // Extracted (not inlined in the effect below) so handleMarkPaid/
   // handleCancel can also call it directly to refresh this panel in place
-  // after an action, the same "named load function" pattern CustomerProfile.tsx
-  // uses for its own reasons (avoids the set-state-in-effect lint rule).
+  // after an action - same pattern CustomerInvoicesList.tsx uses.
   const load = () => {
     let active = true;
     apiService
       .get<InvoiceListResponse>("/invoices/", {
-        params: { customer_id: customerId, page, page_size: PAGE_SIZE },
+        params: { company_id: companyId, page, page_size: pageSize },
       })
       .then((res) => {
         if (!active) return;
@@ -104,16 +104,13 @@ export default function CustomerInvoicesList({ customerId }: { customerId: numbe
       setError(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [customerId, page]);
+  }, [companyId, page, pageSize]);
 
-  // Goes through the dedicated PATCH /invoices/{id}/mark-paid endpoint
-  // (see app/invoices/service.py's service_mark_paid), same as
-  // CustomerProfile.tsx's Billing tab and DeliveryCheck.tsx's "Complete
-  // Payment" panel - never the generic updateInvoice({status: "paid"}),
-  // which never touches advance_amount and would leave a stale nonzero
-  // balance_due on an invoice every aggregate (Dashboard, this same
-  // Customers list's payment_status chip) has already stopped counting as
-  // outstanding the moment status flips to "paid".
+  // Same dedicated PATCH /invoices/{id}/mark-paid flow as
+  // CustomerInvoicesList.tsx/CustomerProfile.tsx - see those files' own
+  // comments for why this can't be the generic updateInvoice({status:
+  // "paid"}) call. Company-linked invoices had no way to be marked paid or
+  // cancelled from any UI surface until this fix.
   const handleMarkPaid = (invoiceId: number) => {
     showDialog({
       title: "Mark Invoice as Paid",
@@ -155,7 +152,7 @@ export default function CustomerInvoicesList({ customerId }: { customerId: numbe
   if (error) {
     return (
       <Typography variant="body2" sx={{ color: "var(--red-600)", py: 1.5, textAlign: "center" }}>
-        Couldn't load invoices for this customer.
+        Couldn't load invoices for this company.
       </Typography>
     );
   }
@@ -186,9 +183,18 @@ export default function CustomerInvoicesList({ customerId }: { customerId: numbe
         >
           <ReceiptLongRoundedIcon fontSize="small" sx={{ color: "var(--slate-400)", flexShrink: 0 }} />
 
-          <Typography variant="body2" sx={{ fontWeight: 700, color: "var(--slate-800)", width: 140, flexShrink: 0 }}>
+          <Typography variant="body2" sx={{ fontWeight: 700, color: "var(--slate-800)", width: 130, flexShrink: 0 }}>
             {inv.invoice_number}
           </Typography>
+
+          <Tooltip title={inv.customer_name || ""}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, width: 130, flexShrink: 0 }}>
+              <PersonRoundedIcon sx={{ fontSize: "0.95rem", color: "var(--slate-400)", flexShrink: 0 }} />
+              <Typography variant="body2" color="text.secondary" noWrap>
+                {inv.customer_name || "—"}
+              </Typography>
+            </Box>
+          </Tooltip>
 
           <Tooltip
             title={inv.project_type && inv.project_description ? `${inv.project_type} — ${inv.project_description}` : ""}
@@ -242,7 +248,7 @@ export default function CustomerInvoicesList({ customerId }: { customerId: numbe
         </Box>
       ))}
 
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", pt: 0.5 }}>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: mode === "peek" ? "space-between" : "flex-end", pt: 0.5 }}>
         {totalPages > 1 ? (
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
             <Tooltip title="Previous page">
@@ -264,31 +270,33 @@ export default function CustomerInvoicesList({ customerId }: { customerId: numbe
             </Tooltip>
           </Box>
         ) : (
-          <Box />
+          mode === "peek" && <Box />
         )}
 
-        <Box
-          component="button"
-          type="button"
-          onClick={() => navigate(`/admin/customers/${customerId}?tab=billing`)}
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 0.5,
-            border: "none",
-            background: "none",
-            padding: 0,
-            cursor: "pointer",
-            color: "var(--blue-600)",
-            fontSize: "0.8125rem",
-            fontWeight: 700,
-            fontFamily: "inherit",
-            "&:hover": { textDecoration: "underline" },
-          }}
-        >
-          View Full Billing History
-          <ArrowForwardRoundedIcon sx={{ fontSize: "0.9rem" }} />
-        </Box>
+        {mode === "peek" && (
+          <Box
+            component="button"
+            type="button"
+            onClick={() => navigate(`/admin/companies/${companyId}?tab=billing`)}
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 0.5,
+              border: "none",
+              background: "none",
+              padding: 0,
+              cursor: "pointer",
+              color: "var(--blue-600)",
+              fontSize: "0.8125rem",
+              fontWeight: 700,
+              fontFamily: "inherit",
+              "&:hover": { textDecoration: "underline" },
+            }}
+          >
+            View Full Billing History
+            <ArrowForwardRoundedIcon sx={{ fontSize: "0.9rem" }} />
+          </Box>
+        )}
       </Box>
     </Box>
   );

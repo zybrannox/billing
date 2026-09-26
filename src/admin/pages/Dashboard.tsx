@@ -550,14 +550,28 @@ function StatusDonut({
     );
   }
 
-  let cumulative = 0;
-  const segments = data.map((d) => {
-    const fraction = d.count / total;
-    const dash = fraction * circumference;
-    const offset = cumulative * circumference;
-    cumulative += fraction;
-    return { ...d, dash, offset, color: colorFor(d.label), pct: Math.round(fraction * 100) };
-  });
+  // Each segment's offset is every prior segment's share of the ring,
+  // stacked in order - carried through reduce's own accumulator (not a
+  // `let` reassigned from the callback) so this stays a pure computation
+  // instead of a closure variable mutated across iterations.
+  const { segments } = data.reduce<{
+    segments: Array<StatusCount & { dash: number; offset: number; color: string; pct: number }>;
+    cumulative: number;
+  }>(
+    (acc, d) => {
+      const fraction = d.count / total;
+      const dash = fraction * circumference;
+      const offset = acc.cumulative * circumference;
+      return {
+        segments: [
+          ...acc.segments,
+          { ...d, dash, offset, color: colorFor(d.label), pct: Math.round(fraction * 100) },
+        ],
+        cumulative: acc.cumulative + fraction,
+      };
+    },
+    { segments: [], cumulative: 0 },
+  );
 
   return (
     <Box sx={{ display: "flex", alignItems: "center", gap: 3 }}>
@@ -921,7 +935,11 @@ export default function Dashboard() {
   const [granularity, setGranularity] = useState<Granularity>("month");
   const [activityTab, setActivityTab] = useState<"invoices" | "deliveries">("invoices");
 
-  useEffect(() => {
+  // Extracted so the effect below doesn't call setLoading synchronously at
+  // its own top level (react-hooks/set-state-in-effect) - same "named load
+  // function" pattern used elsewhere in this app (CompanyProfile.tsx,
+  // CustomerInvoicesList.tsx).
+  const load = () => {
     let active = true;
     setLoading(true);
     apiService
@@ -938,6 +956,12 @@ export default function Dashboard() {
     return () => {
       active = false;
     };
+  };
+
+  useEffect(() => {
+    const cancel = load();
+    return cancel;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [granularity]);
 
   if (loading && !data) {

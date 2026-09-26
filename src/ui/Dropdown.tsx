@@ -93,7 +93,15 @@ export default function Dropdown({
       )}
       <Autocomplete
         multiple={multiple}
-        disablePortal
+        // Not disablePortal - the options popper needs to escape whatever
+        // container it's rendered in (GenericDialog's Paper has overflow:
+        // hidden, see ui/Dialog.tsx) or it gets visually clipped to
+        // whatever fits inside that container's own box, with no way to
+        // scroll to the rest (see ConfirmDialog.tsx's payment-method
+        // picker, where this cut "Bank Transfer"/"Card"/"Cheque"/"Other"
+        // off entirely). Portalling to document.body, MUI's own default,
+        // is what every other Popper-based control in this app already
+        // relies on for exactly this reason.
         disabled={disabled}
         freeSolo={freeSolo}
         disableCloseOnSelect={multiple}

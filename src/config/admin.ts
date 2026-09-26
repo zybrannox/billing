@@ -1,4 +1,4 @@
-import { Assignment, Badge, People, Settings, Dashboard } from "@mui/icons-material";
+import { Assignment, Badge, People, Settings, Dashboard, Business, Inbox } from "@mui/icons-material";
 import type { FieldDefinition } from "../common/components/CustomForm";
 import type { NavItem } from "../types/adminTypes";
 
@@ -187,6 +187,8 @@ export const adminNavigations: NavItem[] = [
   { name: "Dashboard", href: "/admin/dashboard", icon: Dashboard },
   { name: "Projects", href: "/admin/projects", icon: Assignment },
   { name: "Customers", href: "/admin/customers", icon: People },
+  { name: "Companies", href: "/admin/companies", icon: Business },
+  { name: "Job Requests", href: "/admin/job-requests", icon: Inbox },
   { name: "Employees", href: "/admin/employees", icon: Badge },
   { name: "System Setup", href: "/admin/system-setup", icon: Settings },
 ];

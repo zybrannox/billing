@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useApiRequest } from "../../../hooks/useApiRequest";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAppStore, type User } from "../../../store/useAppStore";
 import { API } from "../../../api/endpoints";
 import Button from "../../../ui/Button";
@@ -115,12 +115,12 @@ function Login() {
 
             {/* Forget Password */}
             <div className="text-right">
-              <a
-                href="#"
+              <Link
+                to="/forgot-password"
                 className="text-sm text-slate-500 hover:text-slate-700 transition-colors"
               >
                 Forgot password?
-              </a>
+              </Link>
             </div>
 
             {/* Sign In Button - the same gradient Button used for every
