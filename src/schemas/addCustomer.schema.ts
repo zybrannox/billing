@@ -11,8 +11,18 @@ export const addCustomerSchema = z.object({
     .optional()
     .or(z.literal("")),
   // async_select's own value shape (see AsyncSearchSelect) - optional,
-  // since most customers aren't B2B contacts of any company.
-  company_id: z.union([z.string(), z.number()]).optional(),
+  // since most customers aren't B2B contacts of any company. The field
+  // defaults to "" (not null/undefined) when left untouched - CustomForm's
+  // Controller gives it defaultValue={field.defaultValue ?? ""} - and the
+  // backend's Optional[int] rejects an empty string outright ("Input
+  // should be a valid integer") rather than treating it as absent. This
+  // preprocess is what actually strips "" down to undefined before it
+  // reaches the request body, where JSON.stringify then drops the key
+  // entirely instead of sending company_id: "".
+  company_id: z.preprocess(
+    (val) => (val === "" || val == null ? undefined : val),
+    z.union([z.string(), z.number()]).optional(),
+  ),
 });
 
 export type AddCustomerFormData = z.infer<typeof addCustomerSchema>;

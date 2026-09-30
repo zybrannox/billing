@@ -18,6 +18,7 @@ interface ConfirmDialogProps {
   cancelText?: string;
   isDestructive?: boolean;
   loading?: boolean;
+  error?: string;
   paymentMethodRequired?: boolean;
   paymentMethod?: string;
   onPaymentMethodChange?: (paymentMethod: string) => void;
@@ -33,6 +34,7 @@ export default function ConfirmDialog({
   cancelText = "Cancel",
   isDestructive = false,
   loading = false,
+  error = "",
   paymentMethodRequired = false,
   paymentMethod = "",
   onPaymentMethodChange,
@@ -60,6 +62,22 @@ export default function ConfirmDialog({
       >
         {description}
       </Typography>
+
+      {error && (
+        <Typography
+          sx={{
+            fontSize: "0.8125rem",
+            fontWeight: 600,
+            color: "var(--rose-600)",
+            bgcolor: "rgba(225, 29, 72, 0.06)",
+            borderRadius: "8px",
+            p: 1.25,
+            mt: 1,
+          }}
+        >
+          {error}
+        </Typography>
+      )}
 
       {paymentMethodRequired && (
         <Box sx={{ mt: 0.5 }}>

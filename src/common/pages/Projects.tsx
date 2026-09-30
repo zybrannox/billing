@@ -70,7 +70,25 @@ const filterFields: FilterFieldDefinition[] = [
   },
 ];
 
-const Projects = () => {
+interface ProjectsProps {
+  // Only the admin "Ongoing Activities" route sets this - everything else
+  // (the employee view at "/", the new Project History page) is left
+  // completely unaffected and keeps seeing every project, unfiltered,
+  // exactly as before this feature existed.
+  filterOngoing?: boolean;
+  title?: string;
+  // Project History is a browse/archive view - creating new ongoing work
+  // from there would be a confusing place to do it, so it drops the two
+  // "+Add" buttons but keeps everything else (search, filters, edit,
+  // delete, invoices, milestones) identical to Ongoing Activities.
+  hideCreateActions?: boolean;
+}
+
+const Projects = ({
+  filterOngoing = false,
+  title = "Ongoing Activities",
+  hideCreateActions = false,
+}: ProjectsProps = {}) => {
   const user = useAppStore((s) => s.user);
   // Bulk delete and invoice generation stay admin-only - project deletion at
   // scale and billing are admin-level operations, unlike search/filter/add
@@ -330,6 +348,7 @@ const Projects = () => {
       priority: priorityFilter,
       customerId: customerFilter,
       projectId: focusedProjectId || undefined,
+      view: filterOngoing ? "ongoing" : undefined,
     });
   }, [
     fetchProjects,
@@ -339,6 +358,7 @@ const Projects = () => {
     priorityFilter,
     customerFilter,
     focusedProjectId,
+    filterOngoing,
   ]);
 
   useEffect(() => {
@@ -453,7 +473,7 @@ const Projects = () => {
         {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <h1 className="text-4xl sm:text-5xl lg:text-4xl leading-tight sm:leading-snug lg:leading-snug bg-linear-to-br from-blue-900 via-blue-800 to-slate-900 bg-clip-text text-transparent">
-            Ongoing Activities
+            {title}
           </h1>
 
           {/* Actions Toolbar - on mobile this is two grouped rows (icon
@@ -508,26 +528,30 @@ const Projects = () => {
               )}
             </div>
 
-            <div className="h-6 w-px bg-slate-200 hidden md:block mx-0.5" />
+            {!hideCreateActions && (
+              <>
+                <div className="h-6 w-px bg-slate-200 hidden md:block mx-0.5" />
 
-            <div className="flex items-center gap-2.5">
-              <Button
-                variantColor="outline"
-                onClick={() => openDialog("customer")}
-                sx={{ float: "none" }}
-                className="flex-1 md:flex-none"
-              >
-                + Add Customer
-              </Button>
+                <div className="flex items-center gap-2.5">
+                  <Button
+                    variantColor="outline"
+                    onClick={() => openDialog("customer")}
+                    sx={{ float: "none" }}
+                    className="flex-1 md:flex-none"
+                  >
+                    + Add Customer
+                  </Button>
 
-              <Button
-                onClick={() => openDialog("project")}
-                sx={{ float: "none" }}
-                className="flex-1 md:flex-none"
-              >
-                + Add Project
-              </Button>
-            </div>
+                  <Button
+                    onClick={() => openDialog("project")}
+                    sx={{ float: "none" }}
+                    className="flex-1 md:flex-none"
+                  >
+                    + Add Project
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         </div>
 

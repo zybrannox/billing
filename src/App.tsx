@@ -58,6 +58,7 @@ function App() {
     isDestructive,
     paymentMethodRequired,
     paymentMethod,
+    error: confirmDialogError,
     setPaymentMethod,
     onConfirm,
     onCancel,
@@ -153,7 +154,11 @@ function App() {
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<Dashboard />} />
                 <Route path="dashboard" element={<Dashboard />} />
-                <Route path="projects" element={<Projects />} />
+                <Route path="projects" element={<Projects filterOngoing />} />
+                <Route
+                  path="project-history"
+                  element={<Projects title="Project History" hideCreateActions />}
+                />
                 <Route path="customers" element={<Customers />} />
                 <Route path="customers/:id" element={<CustomerProfile />} />
                 <Route path="companies" element={<Companies />} />
@@ -224,6 +229,7 @@ function App() {
             isDestructive={isDestructive}
             paymentMethodRequired={paymentMethodRequired}
             paymentMethod={paymentMethod}
+            error={confirmDialogError}
             onPaymentMethodChange={setPaymentMethod}
             onConfirm={onConfirm}
             onCancel={onCancel}

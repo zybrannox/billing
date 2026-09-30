@@ -70,6 +70,12 @@ export interface ProjectListParams {
   // Jump straight to one known project (e.g. from a dashboard/notification
   // row) - an exact id match server-side, bypassing search/filters.
   projectId?: string | number;
+  // "ongoing" hides projects that are both fully delivered and older than
+  // the server's retention window (see GET /projects' `view` param) - only
+  // the admin "Ongoing Activities" page sets this; left unset everywhere
+  // else (including the employee view and the new Project History page),
+  // which keeps seeing every project, unfiltered.
+  view?: "ongoing";
 }
 
 interface ProjectListResponse {
@@ -136,6 +142,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
           priority: params.priority || undefined,
           customer_id: params.customerId || undefined,
           project_id: params.projectId || undefined,
+          view: params.view || undefined,
         },
       });
       set({

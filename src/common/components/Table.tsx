@@ -557,11 +557,29 @@ const gridSx = React.useMemo(
   );
 
   const mergedColumns: GridColDef[] = React.useMemo(() => {
-    const totalColumnSpan = columns.length + 1; 
-    const editableColumns = columns.map((col) => ({
-      ...col,
-      editable: col.editable ?? Boolean(processRowUpdate),
-    }));
+    const totalColumnSpan = columns.length + 1;
+    const editableColumns = columns.map((col) => {
+      // Plain string/number columns with no custom renderCell/valueFormatter
+      // of their own (e.g. a blank contact_number or email) render as an
+      // empty cell by default - easy to misread as "still loading" rather
+      // than "no data". Columns that already carry their own formatting
+      // (singleSelect's valueOptions label mapping, payment_status's Chip
+      // renderCell, etc.) are left untouched so this doesn't clobber them.
+      const needsEmptyDash =
+        !col.renderCell &&
+        !col.valueFormatter &&
+        (col.type === undefined || col.type === "string" || col.type === "number");
+      return {
+        ...col,
+        editable: col.editable ?? Boolean(processRowUpdate),
+        ...(needsEmptyDash
+          ? {
+              valueFormatter: (value: unknown) =>
+                value === null || value === undefined || value === "" ? "-" : value,
+            }
+          : {}),
+      };
+    });
     const dataColumns = renderDetailPanel
       ? editableColumns.map((col, idx) => {
         if (idx !== 0) return col;
