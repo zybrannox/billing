@@ -18,6 +18,7 @@ import { shareInvoiceToWhatsApp } from "../../utils/shareInvoiceToWhatsApp";
 import Chip from "../../ui/Chip";
 import { semanticChipSx } from "../../ui/chipStyles";
 import CrudActions from "../../ui/Actions";
+import RecordPaymentDialog, { type RecordPaymentTarget } from "./RecordPaymentDialog";
 
 interface InvoiceRow {
   id: number;
@@ -70,6 +71,7 @@ export default function CompanyInvoicesList({
   // CustomerInvoicesList.tsx's identical pattern/comment for why (a
   // react-hooks/set-state-in-effect footgun this avoids).
   const [invoices, setInvoices] = useState<InvoiceRow[] | null>(null);
+  const [paymentTarget, setPaymentTarget] = useState<RecordPaymentTarget | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [error, setError] = useState(false);
@@ -166,6 +168,12 @@ export default function CompanyInvoicesList({
   }
 
   return (
+    <>
+    <RecordPaymentDialog
+      invoice={paymentTarget}
+      onClose={() => setPaymentTarget(null)}
+      onRecorded={load}
+    />
     <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
       {invoices.map((inv) => (
         <Box
@@ -238,6 +246,15 @@ export default function CompanyInvoicesList({
                 handleShareFailed();
               })
             }
+            recordPayment
+            onRecordPayment={() =>
+              setPaymentTarget({
+                id: inv.id,
+                invoice_number: inv.invoice_number,
+                amount: inv.amount,
+                balance_due: inv.balance_due,
+              })
+            }
             markPaid
             cancelInvoice
             invoiceStatus={inv.status}
@@ -299,5 +316,6 @@ export default function CompanyInvoicesList({
         )}
       </Box>
     </Box>
+    </>
   );
 }

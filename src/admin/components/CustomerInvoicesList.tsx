@@ -17,6 +17,8 @@ import { shareInvoiceToWhatsApp } from "../../utils/shareInvoiceToWhatsApp";
 import Chip from "../../ui/Chip";
 import { semanticChipSx } from "../../ui/chipStyles";
 import CrudActions from "../../ui/Actions";
+import PaymentHistory from "./PaymentHistory";
+import RecordPaymentDialog, { type RecordPaymentTarget } from "./RecordPaymentDialog";
 
 interface InvoiceRow {
   id: number;
@@ -72,6 +74,7 @@ export default function CustomerInvoicesList({ customerId }: { customerId: numbe
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [error, setError] = useState(false);
+  const [paymentTarget, setPaymentTarget] = useState<RecordPaymentTarget | null>(null);
 
   // Extracted (not inlined in the effect below) so handleMarkPaid/
   // handleCancel can also call it directly to refresh this panel in place
@@ -169,44 +172,48 @@ export default function CustomerInvoicesList({ customerId }: { customerId: numbe
   }
 
   return (
+    <>
+    <RecordPaymentDialog
+      invoice={paymentTarget}
+      onClose={() => setPaymentTarget(null)}
+      onRecorded={load}
+    />
     <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
       {invoices.map((inv) => (
         <Box
           key={inv.id}
+          role="button"
+          tabIndex={0}
+          onClick={() => openDialog("viewInvoice", inv.id, "view")}
+          onKeyDown={(e) => {
+            if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+              e.preventDefault();
+              openDialog("viewInvoice", inv.id, "view");
+            }
+          }}
           sx={{
             display: "flex",
-            alignItems: "center",
-            gap: 1.5,
+            flexDirection: "column",
+            gap: 0.75,
             px: 1.5,
-            py: 1,
+            py: 1.25,
             borderRadius: 2,
             bgcolor: "var(--white)",
             border: "1px solid var(--slate-200)",
+            cursor: "pointer",
+            transition: "border-color 0.15s ease, box-shadow 0.15s ease",
+            "&:hover": { borderColor: "var(--blue-300)", boxShadow: "0 1px 6px rgba(37, 99, 235, 0.10)" },
+            "&:focus-visible": { outline: "2px solid var(--blue-500)", outlineOffset: 1 },
           }}
         >
-          <ReceiptLongRoundedIcon fontSize="small" sx={{ color: "var(--slate-400)", flexShrink: 0 }} />
-
-          <Typography variant="body2" sx={{ fontWeight: 700, color: "var(--slate-800)", width: 140, flexShrink: 0 }}>
-            {inv.invoice_number}
-          </Typography>
-
-          <Tooltip
-            title={inv.project_type && inv.project_description ? `${inv.project_type} — ${inv.project_description}` : ""}
-          >
-            <Box sx={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 0.5 }}>
-              <FolderOpenRoundedIcon sx={{ fontSize: "0.95rem", color: "var(--slate-400)", flexShrink: 0 }} />
-              <Typography variant="body2" color="text.secondary" noWrap>
-                {inv.project_type || "—"}
-                {inv.project_description ? ` — ${inv.project_description}` : ""}
-              </Typography>
-            </Box>
-          </Tooltip>
-
-          <Typography variant="body2" sx={{ fontWeight: 600, color: "var(--slate-700)", width: 90, textAlign: "right", flexShrink: 0 }}>
-            {money(inv.amount)}
-          </Typography>
-
-          <Box sx={{ width: 110, flexShrink: 0 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <ReceiptLongRoundedIcon fontSize="small" sx={{ color: "var(--slate-400)", flexShrink: 0 }} />
+            <Typography variant="body2" sx={{ fontWeight: 700, color: "var(--slate-800)", flex: 1, minWidth: 0 }} noWrap>
+              {inv.invoice_number}
+            </Typography>
+            <Typography variant="body2" sx={{ fontWeight: 700, color: "var(--slate-800)", flexShrink: 0 }}>
+              {money(inv.amount)}
+            </Typography>
             <Chip
               label={inv.status}
               sx={semanticChipSx(
@@ -218,27 +225,59 @@ export default function CustomerInvoicesList({ customerId }: { customerId: numbe
             />
           </Box>
 
-          <Typography variant="caption" color="text.secondary" sx={{ width: 100, flexShrink: 0 }}>
-            {formatDateTime(inv.created_at)}
-          </Typography>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Tooltip
+              title={inv.project_type && inv.project_description ? `${inv.project_type} — ${inv.project_description}` : ""}
+            >
+              <Box sx={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 0.5 }}>
+                <FolderOpenRoundedIcon sx={{ fontSize: "0.95rem", color: "var(--slate-400)", flexShrink: 0 }} />
+                <Typography variant="body2" color="text.secondary" noWrap>
+                  {inv.project_type || "—"}
+                  {inv.project_description ? ` — ${inv.project_description}` : ""}
+                </Typography>
+              </Box>
+            </Tooltip>
+            <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>
+              {formatDateTime(inv.created_at)}
+            </Typography>
+          </Box>
 
-          <CrudActions
-            viewInvoice
-            onViewInvoice={() => openDialog("viewInvoice", inv.id, "view")}
-            shareInvoice
-            onShareInvoice={() =>
-              shareInvoiceToWhatsApp(inv.id).catch((err) => {
-                console.error("Failed to share invoice to WhatsApp", err);
-                handleShareFailed();
-              })
-            }
-            markPaid
-            cancelInvoice
-            invoiceStatus={inv.status}
-            onMarkPaid={() => handleMarkPaid(inv.id)}
-            onCancelInvoice={() => handleCancel(inv.id)}
-            size="small"
-          />
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
+              <PaymentHistory invoiceId={inv.id} />
+              <Typography variant="caption" sx={{ color: "var(--amber-700)", fontWeight: 600 }} noWrap>
+                {inv.status === "pending" && inv.balance_due < inv.amount
+                  ? `Paid ${money(inv.amount - inv.balance_due)} · ${money(inv.balance_due)} due`
+                  : ""}
+              </Typography>
+            </Box>
+            <Box onClick={(e) => e.stopPropagation()}>
+            <CrudActions
+              shareInvoice
+              onShareInvoice={() =>
+                shareInvoiceToWhatsApp(inv.id).catch((err) => {
+                  console.error("Failed to share invoice to WhatsApp", err);
+                  handleShareFailed();
+                })
+              }
+              recordPayment
+              onRecordPayment={() =>
+                setPaymentTarget({
+                  id: inv.id,
+                  invoice_number: inv.invoice_number,
+                  amount: inv.amount,
+                  balance_due: inv.balance_due,
+                })
+              }
+              markPaid
+              cancelInvoice
+              invoiceStatus={inv.status}
+              onMarkPaid={() => handleMarkPaid(inv.id)}
+              onCancelInvoice={() => handleCancel(inv.id)}
+              size="small"
+            />
+            </Box>
+          </Box>
         </Box>
       ))}
 
@@ -291,5 +330,6 @@ export default function CustomerInvoicesList({ customerId }: { customerId: numbe
         </Box>
       </Box>
     </Box>
+    </>
   );
 }

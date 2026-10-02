@@ -1,7 +1,8 @@
-import type { GridColDef, GridRowId } from "@mui/x-data-grid";
+import type { GridColDef } from "@mui/x-data-grid";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Box } from "@mui/material";
+import { Box, Drawer, IconButton, Typography } from "@mui/material";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import CrudActions from "../../ui/Actions";
 import Button from "../../ui/Button";
 import Table from "../../common/components/Table";
@@ -105,10 +106,10 @@ const Customers = () => {
   // so a single generous page covers the Company column's valueOptions
   // without needing a searchable async picker for inline grid editing.
   const [companies, setCompanies] = useState<CompanyOption[]>([]);
-  // Which customer's invoice peek panel (see CustomerInvoicesList) is open
-  // - true accordion, one at a time, matching the Ongoing Activities/
-  // project-files pattern this mirrors (see Table.tsx's renderDetailPanel).
-  const [expandedCustomerId, setExpandedCustomerId] = useState<GridRowId | null>(null);
+  // Customer whose invoices are open in the right-side drawer - opened by
+  // clicking a row (see Table's onRowSelect below), closed via the drawer's
+  // own close button/backdrop.
+  const [drawerCustomer, setDrawerCustomer] = useState<Customer | null>(null);
 
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -279,15 +280,60 @@ const Customers = () => {
             onSendPortalInvite={() => handleSendPortalInvite(params.row)}
           />,
         ]}
-        renderDetailPanel={(row) => <CustomerInvoicesList customerId={row.id} />}
-        expandedRowId={expandedCustomerId}
-        onExpandedRowIdChange={setExpandedCustomerId}
+        onRowSelect={setDrawerCustomer}
         paginationMode="server"
         rowCount={total}
         paginationModel={paginationModel}
         onPaginationModelChange={setPaginationModel}
         loading={loading}
       />
+      <Drawer
+        anchor="right"
+        open={drawerCustomer !== null}
+        onClose={() => setDrawerCustomer(null)}
+        // The app header sits at drawer + 1 when the sidebar is collapsed
+        // (see admin/Layout.tsx) - one more keeps this above it while still
+        // under modals, so the invoice/confirm dialogs open on top of it.
+        sx={{ zIndex: (theme) => theme.zIndex.drawer + 2 }}
+        slotProps={{ paper: { sx: { width: { xs: "100vw", sm: 480 }, bgcolor: "var(--slate-50)" } } }}
+      >
+        {drawerCustomer && (
+          <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "flex-start",
+                justifyContent: "space-between",
+                gap: 1,
+                p: 2.5,
+                bgcolor: "var(--white)",
+                borderBottom: "1px solid var(--slate-200)",
+              }}
+            >
+              <Box sx={{ minWidth: 0 }}>
+                <Typography sx={{ fontWeight: 700, fontSize: "1.1rem", color: "var(--slate-900)" }} noWrap>
+                  {drawerCustomer.first_name} {drawerCustomer.last_name}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" noWrap>
+                  {drawerCustomer.contact_number || "-"}
+                  {drawerCustomer.email ? ` · ${drawerCustomer.email}` : ""}
+                </Typography>
+              </Box>
+              <IconButton size="small" onClick={() => setDrawerCustomer(null)} aria-label="Close">
+                <CloseRoundedIcon fontSize="small" />
+              </IconButton>
+            </Box>
+            <Box sx={{ p: 2.5, overflowY: "auto", flex: 1 }}>
+              <Typography
+                sx={{ fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.05em", color: "var(--slate-500)", mb: 1.5 }}
+              >
+                INVOICES
+              </Typography>
+              <CustomerInvoicesList customerId={drawerCustomer.id} />
+            </Box>
+          </Box>
+        )}
+      </Drawer>
       <Dialog
         type="customer"
         title="Customer"

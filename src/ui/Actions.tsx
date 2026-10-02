@@ -21,6 +21,7 @@ import {
   LocalPrintshopRounded,
   CheckCircleRounded,
   CancelRounded,
+  PaymentsRounded,
   MoreVertRounded,
   DownloadForOfflineRounded,
   InfoRounded,
@@ -54,6 +55,7 @@ interface CrudActionsProps {
   // Billing row actions - View/Mark Paid/Cancel for one invoice.
   viewInvoice?: boolean;
   markPaid?: boolean;
+  recordPayment?: boolean;
   cancelInvoice?: boolean;
   // Shares this row's invoice straight to WhatsApp (see
   // admin/pages/InvoiceView.tsx's handleShareWhatsApp) without opening it
@@ -87,6 +89,7 @@ interface CrudActionsProps {
   onTogglePin?: () => void;
   onViewInvoice?: () => void;
   onMarkPaid?: () => void;
+  onRecordPayment?: () => void;
   onCancelInvoice?: () => void;
   onViewCustomer?: () => void;
   onShareInvoice?: () => void;
@@ -211,6 +214,7 @@ const CrudActions = ({
   pin = false,
   viewInvoice = false,
   markPaid = false,
+  recordPayment = false,
   cancelInvoice = false,
   viewCustomer = false,
   shareInvoice = false,
@@ -231,6 +235,7 @@ const CrudActions = ({
   onTogglePin,
   onViewInvoice,
   onMarkPaid,
+  onRecordPayment,
   onCancelInvoice,
   onViewCustomer,
   onShareInvoice,
@@ -755,6 +760,27 @@ const CrudActions = ({
           >
             <ApartmentRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
           </IconButton>
+        </Tooltip>
+      )}
+
+      {recordPayment && (
+        <Tooltip title={invoiceStatus !== "pending" ? "Only pending invoices can take payments" : "Record Payment"}>
+          <span>
+            <IconButton
+              size={size}
+              onClick={onRecordPayment}
+              disabled={invoiceStatus !== "pending"}
+              sx={{
+                ...actionIconSx,
+                color: "var(--blue-600)",
+                backgroundColor: "rgba(37, 99, 235, 0.06)",
+                "&:hover": { backgroundColor: "rgba(37, 99, 235, 0.12)" },
+                "&.Mui-disabled": { opacity: 0.4 },
+              }}
+            >
+              <PaymentsRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
+            </IconButton>
+          </span>
         </Tooltip>
       )}
 
