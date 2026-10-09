@@ -21,6 +21,7 @@ import { formatDate } from "../../utils/dateFormatter";
 import TextField from "../../ui/TextField";
 import DateTimePicker from "../../ui/DateTimePicker";
 import Dropdown from "../../ui/Dropdown";
+import SearchSelect from "../../ui/SearchSelect";
 import Button from "../../ui/Button";
 import AsyncSearchSelect from "../../ui/AsyncSearchSelect";
 import ItemLineEditor from "../components/ItemLineEditor";
@@ -28,7 +29,9 @@ import {
   newRow,
   totalOf,
   toNumber,
-  piecesOf,
+  checkRow,
+  invalidRowMessage,
+  rowToItemPayload,
   type ItemRow,
   type ItemTypeOption,
 } from "../components/itemLineUtils";
@@ -260,21 +263,10 @@ export default function GenerateInvoice() {
 
     const usable: ItemRow[] = [];
     for (const row of items) {
-      const filled = [row.width, row.height, row.rate].filter(
-        (v) => v.trim() !== ""
-      );
-      if (filled.length === 0) continue;
-      if (
-        filled.length < 3 ||
-        toNumber(row.width) <= 0 ||
-        toNumber(row.height) <= 0 ||
-        toNumber(row.rate) < 0 ||
-        !Number.isInteger(toNumber(row.pieces)) ||
-        toNumber(row.pieces) < 1
-      ) {
-        setRowError(
-          "Each item needs a valid width, height, and rate (rate can be 0, dimensions must be > 0), and a whole number of pieces (1 or more)."
-        );
+      const check = checkRow(row);
+      if (check === "empty") continue;
+      if (check === "invalid") {
+        setRowError(invalidRowMessage(row));
         return;
       }
       usable.push(row);
@@ -322,15 +314,7 @@ export default function GenerateInvoice() {
         advance_amount: advance > 0 ? advance : undefined,
         payment_method: advance > 0 ? paymentMethod : undefined,
         payment_reference: paymentReference.trim() || undefined,
-        items: usable.map((r) => ({
-          description: r.description.trim() || undefined,
-          width: toNumber(r.width),
-          height: toNumber(r.height),
-          unit: r.unit,
-          rate: toNumber(r.rate),
-          pieces: piecesOf(r),
-          is_manual_total: r.total !== "",
-        })),
+        items: usable.map(rowToItemPayload),
       });
 
       // Only an *existing* project needs its own "design completed"
@@ -610,8 +594,8 @@ export default function GenerateInvoice() {
             <Box sx={{ maxWidth: 320 }}>
               <InvoicePanelLabel>Job Type</InvoicePanelLabel>
               <Box sx={{ mt: 0.5 }}>
-                <Dropdown
-                  placeholder="e.g. Flex, Name Board..."
+                <SearchSelect
+                  placeholder="Search job type, e.g. Flex, Name Board..."
                   options={(projectTypeOptions ?? []).map((o) => o.value)}
                   value={newProjectType || undefined}
                   onChange={(v) => setNewProjectType((v as string) || "")}

@@ -14,13 +14,16 @@ import ImageRoundedIcon from "@mui/icons-material/ImageRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 
 import TextField from "../../ui/TextField";
-import Dropdown from "../../ui/Dropdown";
+import SearchSelect from "../../ui/SearchSelect";
 import {
   newRow,
   toNumber,
   sqFtOf,
   piecesOf,
   totalDisplayOf,
+  isMeasured,
+  isOthersType,
+  OTHERS_ITEM_TYPE,
   type ItemRow,
   type ItemTypeOption,
   type MeasurementUnit,
@@ -146,20 +149,33 @@ export default function ItemLineEditor({ items, onChange, itemTypeOptions }: Ite
       itemType: value,
       rate: match?.rate != null ? String(match.rate) : "",
       total: "",
+      // An "Others" line has no dimensions - drop whatever was typed so a
+      // stale width/height can't come back (and silently start counting
+      // again) if the type is later switched back to a measured one.
+      ...(isOthersType(value) ? { width: "", height: "" } : {}),
     });
   };
+
+  // "Others" (billed by quantity, no area) is always offered, even when the
+  // shop's own catalog doesn't list it - added last, and skipped if the
+  // catalog already has an entry that means the same thing.
+  const typeChoices = [
+    ...itemTypeOptions.map((o) => o.value),
+    ...(itemTypeOptions.some((o) => isOthersType(o.value)) ? [] : [OTHERS_ITEM_TYPE]),
+  ];
 
   // Total Amount is editable, but the backend only ever persists Rate
   // (Width × Height × Rate × Pieces) - there's no separate "total" column
   // to save an override into. So typing a total here works by solving that
   // same equation backwards: Rate = Total ÷ (Area × Pieces). Only
   // meaningful once an area exists (the field is disabled with 0 area -
-  // see the JSX), so this is never called with sqft <= 0.
+  // see the JSX), so this is never called with sqft <= 0. An "Others" line
+  // has no area, so its equation is just Rate = Total ÷ Pieces.
   const handleTotalChange = (key: string, value: string) => {
     onChange(
       items.map((r) => {
         if (r.key !== key) return r;
-        const area = sqFtOf(r);
+        const area = isMeasured(r) ? sqFtOf(r) : 1;
         if (area <= 0) return r;
         const typed = toNumber(value);
         const derivedRate = Math.round((typed / (area * piecesOf(r))) * 1_000_000) / 1_000_000;
@@ -225,9 +241,9 @@ export default function ItemLineEditor({ items, onChange, itemTypeOptions }: Ite
                     {idx + 1}
                   </Typography>
 
-                  <Dropdown
-                    placeholder="Select type"
-                    options={itemTypeOptions.map((o) => o.value)}
+                  <SearchSelect
+                    placeholder="Search type"
+                    options={typeChoices}
                     value={row.itemType || undefined}
                     onChange={(v) => handleItemTypeChange(row.key, (v as string) || "")}
                   />
@@ -256,43 +272,53 @@ export default function ItemLineEditor({ items, onChange, itemTypeOptions }: Ite
                   />
                   <TextField
                     type="number"
-                    placeholder="0"
+                    placeholder={isMeasured(row) ? "0" : "—"}
                     value={row.width}
                     onChange={(e) => updateRow(row.key, { width: e.target.value, total: "" })}
+                    disabled={!isMeasured(row)}
                     sx={numberFieldSx}
                     slotProps={{
                       input: {
-                        endAdornment: (
+                        endAdornment: isMeasured(row) ? (
                           <InputAdornment position="end">
                             <UnitSelect value={row.unit} onChange={(unit) => updateRow(row.key, { unit, total: "" })} />
                           </InputAdornment>
-                        ),
+                        ) : undefined,
                       },
                     }}
                   />
 
                   <TextField
                     type="number"
-                    placeholder="0"
+                    placeholder={isMeasured(row) ? "0" : "—"}
                     value={row.height}
                     onChange={(e) => updateRow(row.key, { height: e.target.value, total: "" })}
+                    disabled={!isMeasured(row)}
                     sx={numberFieldSx}
                     slotProps={{
                       input: {
-                        endAdornment: (
+                        endAdornment: isMeasured(row) ? (
                           <InputAdornment position="end">
                             <UnitSelect value={row.unit} onChange={(unit) => updateRow(row.key, { unit, total: "" })} />
                           </InputAdornment>
-                        ),
+                        ) : undefined,
                       },
                     }}
                   />
 
                   <Typography variant="body2" sx={{ fontWeight: 600, color: "var(--slate-700)", textAlign: "right", pr: 0.5, fontSize: "0.85rem" }}>
-                    {sqFtOf(row)}{" "}
-                    <Typography component="span" sx={{ fontSize: "0.75rem", color: "var(--slate-500)", fontWeight: 500 }}>
-                      sq ft
-                    </Typography>
+                    {isMeasured(row) ? (
+                      <>
+                        {sqFtOf(row)}{" "}
+                        <Typography component="span" sx={{ fontSize: "0.75rem", color: "var(--slate-500)", fontWeight: 500 }}>
+                          sq ft
+                        </Typography>
+                      </>
+                    ) : (
+                      <Typography component="span" sx={{ color: "var(--slate-400)" }}>
+                        —
+                      </Typography>
+                    )}
                   </Typography>
 
                   <TextField
@@ -344,14 +370,14 @@ export default function ItemLineEditor({ items, onChange, itemTypeOptions }: Ite
                     />
                   )}
 
-                  <Tooltip title={sqFtOf(row) <= 0 ? "Enter Width and Height first" : ""}>
+                  <Tooltip title={isMeasured(row) && sqFtOf(row) <= 0 ? "Enter Width and Height first" : ""}>
                     <span>
                       <TextField
                         type="number"
                         placeholder="0.00"
                         value={totalDisplayOf(row)}
                         onChange={(e) => handleTotalChange(row.key, e.target.value)}
-                        disabled={sqFtOf(row) <= 0}
+                        disabled={isMeasured(row) && sqFtOf(row) <= 0}
                         sx={{
                           ...numberFieldSx,
                           "& .MuiInputBase-input.Mui-disabled": {

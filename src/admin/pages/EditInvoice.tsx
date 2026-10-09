@@ -23,7 +23,10 @@ import ItemLineEditor from "../../common/components/ItemLineEditor";
 import {
   totalOf,
   toNumber,
-  piecesOf,
+  checkRow,
+  invalidRowMessage,
+  rowToItemPayload,
+  OTHERS_ITEM_TYPE,
   type ItemRow,
   type ItemTypeOption,
 } from "../../common/components/itemLineUtils";
@@ -54,10 +57,13 @@ const numberFieldSx = {
 let editRowCounter = 0;
 const rowFromItem = (item: InvoiceItem): ItemRow => ({
   key: `edit-row-${item.id}-${++editRowCounter}`,
-  itemType: "",
+  // The type itself isn't persisted - only whether the line was an
+  // area-less "Others" one, which is what has to survive the round trip so
+  // the editor shows it the way it was created.
+  itemType: item.has_dimensions === false ? OTHERS_ITEM_TYPE : "",
   description: item.description ?? "",
-  width: String(item.width),
-  height: String(item.height),
+  width: item.has_dimensions === false ? "" : String(item.width),
+  height: item.has_dimensions === false ? "" : String(item.height),
   unit: item.unit,
   rate: String(item.rate),
   pieces: String(item.pieces),
@@ -147,19 +153,10 @@ export default function EditInvoice() {
 
     const usable: ItemRow[] = [];
     for (const row of items) {
-      const filled = [row.width, row.height, row.rate].filter((v) => v.trim() !== "");
-      if (filled.length === 0) continue;
-      if (
-        filled.length < 3 ||
-        toNumber(row.width) <= 0 ||
-        toNumber(row.height) <= 0 ||
-        toNumber(row.rate) < 0 ||
-        !Number.isInteger(toNumber(row.pieces)) ||
-        toNumber(row.pieces) < 1
-      ) {
-        setRowError(
-          "Each item needs a valid width, height, and rate (rate can be 0, dimensions must be > 0), and a whole number of pieces (1 or more)."
-        );
+      const check = checkRow(row);
+      if (check === "empty") continue;
+      if (check === "invalid") {
+        setRowError(invalidRowMessage(row));
         return;
       }
       usable.push(row);
@@ -180,15 +177,7 @@ export default function EditInvoice() {
     setSubmitting(true);
     try {
       const updated = await apiService.patch<{ id: number }>(`/invoices/${invoice.id}`, {
-        items: usable.map((r) => ({
-          description: r.description.trim() || undefined,
-          width: toNumber(r.width),
-          height: toNumber(r.height),
-          unit: r.unit,
-          rate: toNumber(r.rate),
-          pieces: piecesOf(r),
-          is_manual_total: r.total !== "",
-        })),
+        items: usable.map(rowToItemPayload),
         // Always sent (never gated on being non-empty/non-zero, unlike
         // Create's own version of these fields) - this is an edit of
         // values that already exist, so clearing a due date or dropping a

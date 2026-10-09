@@ -29,6 +29,9 @@ interface InvoiceItem {
   width: number;
   height: number;
   sq_ft: number;
+  pieces: number;
+  // False for an area-less "Others" line - absent on older payloads.
+  has_dimensions?: boolean;
   rate: number;
   total: number;
   // See InvoiceView.tsx - true when Total was typed directly at creation,
@@ -299,7 +302,11 @@ export default function DeliveryCheck() {
             index={idx + 1}
             isFirst={idx === 0}
             description={item.description || "—"}
-            meta={`${item.width} × ${item.height} (${item.sq_ft} sq ft)`}
+            meta={
+              item.has_dimensions === false
+                ? `Qty ${item.pieces}`
+                : `${item.width} × ${item.height} (${item.sq_ft} sq ft)`
+            }
             rate={item.is_manual_total ? undefined : `₹${item.rate.toLocaleString()}`}
             amount={`₹${item.total.toLocaleString()}`}
           />

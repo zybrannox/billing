@@ -36,6 +36,7 @@ import { saveAs } from "file-saver";
 import { apiService } from "../../api/service";
 import { useDialogStore } from "../../store/useDialogStore";
 import { formatDate } from "../../utils/dateFormatter";
+import { lineItemMeta, lineItemRate } from "../components/invoiceSheetUtils";
 import { generateInvoicePdf } from "../../utils/generateInvoicePdf";
 import { shareToWhatsAppAfter } from "../../utils/shareToWhatsApp";
 import AsyncSearchSelect from "../../ui/AsyncSearchSelect";
@@ -64,6 +65,7 @@ interface QuotationItem {
   pieces: number;
   total: number;
   is_manual_total: boolean;
+  has_dimensions?: boolean;
 }
 
 interface QuotationDetail {
@@ -127,10 +129,6 @@ const STATUS_CONFIG: Record<
 
 const formatCurrency = (val: number) =>
   `₹${val.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-// Feet uses the ' mark, inches uses " - whichever the line was actually
-// measured in (see GenerateQuotation.tsx's per-row unit toggle).
-const formatDimension = (value: number, unit: "ft" | "in") => `${value}${unit === "in" ? '"' : "'"}`;
 
 export default function QuotationView() {
   const { id } = useParams<{ id: string }>();
@@ -588,8 +586,8 @@ export default function QuotationView() {
               index={idx + 1}
               isFirst={idx === 0}
               description={item.description || "Standard Item"}
-              meta={`${formatDimension(item.width, item.unit)} × ${formatDimension(item.height, item.unit)} (${item.sq_ft} sq ft) · Qty ${item.pieces}`}
-              rate={item.is_manual_total ? undefined : `₹${item.rate.toLocaleString("en-IN")}/sq ft`}
+              meta={lineItemMeta(item)}
+              rate={lineItemRate(item)}
               amount={formatCurrency(item.total)}
             />
           ))}

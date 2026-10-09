@@ -12,7 +12,7 @@ import {
   InvoiceFooter,
   invoiceTheme,
 } from "./InvoiceDocument";
-import { formatCurrency, formatDimension, type InvoiceDetail } from "./invoiceSheetUtils";
+import { formatCurrency, lineItemMeta, lineItemRate, type InvoiceDetail } from "./invoiceSheetUtils";
 
 // The printable invoice document itself - split out from
 // admin/pages/InvoiceView.tsx so it can be rendered two ways: visibly,
@@ -97,8 +97,8 @@ const InvoiceSheet = forwardRef<HTMLDivElement, { invoice: InvoiceDetail }>(
               index={idx + 1}
               isFirst={idx === 0}
               description={item.description || "Standard Item"}
-              meta={`${formatDimension(item.width, item.unit)} × ${formatDimension(item.height, item.unit)} (${item.sq_ft} sq ft) · Qty ${item.pieces}`}
-              rate={item.is_manual_total ? undefined : `₹${item.rate.toLocaleString("en-IN")}/sq ft`}
+              meta={lineItemMeta(item)}
+              rate={lineItemRate(item)}
               amount={formatCurrency(item.total)}
             />
           ))}

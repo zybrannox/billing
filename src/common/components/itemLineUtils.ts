@@ -40,6 +40,23 @@ export interface ItemRow {
   pixelHeight: number | null;
 }
 
+// The one built-in item type that isn't priced by area - a service charge,
+// an accessory, anything billed as "N of these at ₹X". Always offered in the
+// type picker (see ItemLineEditor) whether or not the shop's own catalog
+// lists it, and matched case-insensitively ("Other"/"Others") so a catalog
+// entry someone already created keeps working the same way.
+export const OTHERS_ITEM_TYPE = "Others";
+
+export const isOthersType = (itemType: string) => {
+  const t = itemType.trim().toLowerCase();
+  return t === "others" || t === "other";
+};
+
+// Measured rows (the default, and everything that existed before "Others")
+// are billed width x height x rate x pieces; an "Others" row has no
+// width/height/area at all and bills rate x pieces.
+export const isMeasured = (row: ItemRow) => !isOthersType(row.itemType);
+
 export interface ItemTypeOption {
   id: number;
   value: string;
@@ -82,6 +99,7 @@ export const piecesOf = (row: ItemRow) => Math.max(1, Math.trunc(toNumber(row.pi
 const SQ_IN_PER_SQ_FT = 144;
 
 export const sqFtOf = (row: ItemRow) => {
+  if (!isMeasured(row)) return 0;
   if (!row.width || !row.height) return 0;
   const rawArea = toNumber(row.width) * toNumber(row.height);
   const sqFt = row.unit === "in" ? rawArea / SQ_IN_PER_SQ_FT : rawArea;
@@ -95,7 +113,12 @@ export const sqFtOf = (row: ItemRow) => {
 // back-derives rate (see ItemLineEditor's handleTotalChange), and this
 // recomputes from that updated rate.
 export const totalOf = (row: ItemRow) =>
-  Math.round(sqFtOf(row) * toNumber(row.rate) * piecesOf(row) * 100) / 100;
+  Math.round((isMeasured(row) ? sqFtOf(row) : 1) * toNumber(row.rate) * piecesOf(row) * 100) / 100;
+
+// Whether a row has enough filled in to compute a total from - an area for a
+// measured row, a rate for an "Others" row (which has no area to wait for).
+export const canComputeTotal = (row: ItemRow) =>
+  isMeasured(row) ? sqFtOf(row) > 0 : row.rate.trim() !== "" || row.total !== "";
 
 // What the Total Amount field itself should show: the user's raw typed
 // override while they're actively editing it, or the live computed value
@@ -112,4 +135,49 @@ export const totalOf = (row: ItemRow) =>
 // only blanks it when there's genuinely no width/height yet to compute
 // from.
 export const totalDisplayOf = (row: ItemRow) =>
-  row.total !== "" ? row.total : sqFtOf(row) > 0 ? totalOf(row).toFixed(2) : "";
+  row.total !== "" ? row.total : canComputeTotal(row) ? totalOf(row).toFixed(2) : "";
+
+export type RowCheck = "empty" | "ok" | "invalid";
+
+// Shared by the Create Invoice, Create Quotation and Edit Invoice forms'
+// submit validation, which each used to carry their own identical copy.
+// "empty" rows are silently skipped (an untouched placeholder line); an
+// "invalid" one blocks submit with invalidRowMessage below.
+export const checkRow = (row: ItemRow): RowCheck => {
+  const piecesOk = Number.isInteger(toNumber(row.pieces)) && toNumber(row.pieces) >= 1;
+
+  if (!isMeasured(row)) {
+    const hasRate = row.rate.trim() !== "";
+    if (!hasRate && row.description.trim() === "") return "empty";
+    return hasRate && toNumber(row.rate) >= 0 && piecesOk ? "ok" : "invalid";
+  }
+
+  const filled = [row.width, row.height, row.rate].filter((v) => v.trim() !== "");
+  if (filled.length === 0) return "empty";
+  return filled.length === 3 &&
+    toNumber(row.width) > 0 &&
+    toNumber(row.height) > 0 &&
+    toNumber(row.rate) >= 0 &&
+    piecesOk
+    ? "ok"
+    : "invalid";
+};
+
+export const invalidRowMessage = (row: ItemRow) =>
+  isMeasured(row)
+    ? "Each item needs a valid width, height, and rate (rate can be 0, dimensions must be > 0), and a whole number of pieces (1 or more)."
+    : "Each “Others” item needs a rate (can be 0) and a whole number of pieces (1 or more).";
+
+// The request body for one line, shared by the same three forms. An
+// "Others" row sends has_dimensions: false and no width/height (the backend
+// stores 0 for both and bills rate x pieces - see compute_line).
+export const rowToItemPayload = (r: ItemRow) => ({
+  description: r.description.trim() || undefined,
+  ...(isMeasured(r)
+    ? { width: toNumber(r.width), height: toNumber(r.height) }
+    : { has_dimensions: false }),
+  unit: r.unit,
+  rate: toNumber(r.rate),
+  pieces: piecesOf(r),
+  is_manual_total: r.total !== "",
+});
