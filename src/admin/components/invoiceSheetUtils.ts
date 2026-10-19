@@ -48,9 +48,25 @@ export interface InvoiceDetail {
     first_name: string;
     last_name: string;
     contact_number: string;
-    email: string;
+    email: string | null;
+    // Only for a contact of a B2B company - shown in the Billed To block.
+    company_name?: string | null;
+    company_address?: string | null;
   } | null;
   items: InvoiceItem[];
+  // The payment ledger (GET /invoices/{id}/details) - absent on older
+  // payloads.
+  payments?: InvoicePayment[];
+}
+
+export interface InvoicePayment {
+  id: number;
+  // Signed: a negative entry is an admin correcting the advance downward.
+  amount: number;
+  payment_method: string | null;
+  payment_reference: string | null;
+  paid_at: string;
+  recorded_by: string | null;
 }
 
 export const formatCurrency = (val: number) =>

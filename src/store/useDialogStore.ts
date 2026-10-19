@@ -51,6 +51,11 @@ export type EditingType =
   // "only while pending" rule the backend enforces (service_update) -
   // once paid/cancelled, this isn't offered at all.
   | "editInvoice"
+  // Opened from a quotation card in a customer's quotations drawer (see
+  // admin/components/CustomerQuotationsList.tsx) - the quotation view in a
+  // dialog, the counterpart of "viewInvoice", instead of navigating to the
+  // /admin/quotations/:id page.
+  | "viewQuotation"
   | null;
 
 type DialogMode = "add" | "edit" | "view";

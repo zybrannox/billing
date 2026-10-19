@@ -2,6 +2,7 @@ import { useState } from "react";
 import Button from "../../../ui/Button";
 import TextField from "../../../ui/TextField";
 import { getApiErrorMessage } from "../../../utils/apiError";
+import { MIN_PASSWORD_LENGTH, passwordTooShortMessage } from "../../../config/passwordPolicy";
 
 interface PostClient {
   post: <T>(url: string, data?: unknown) => Promise<T>;
@@ -55,6 +56,10 @@ export default function ForgotPasswordForm({
     e.preventDefault();
     setErrorMessage(null);
 
+    if (newPassword.length < MIN_PASSWORD_LENGTH) {
+      setErrorMessage(passwordTooShortMessage);
+      return;
+    }
     if (newPassword !== confirmPassword) {
       setErrorMessage("Passwords don't match.");
       return;

@@ -228,6 +228,9 @@ const FormField = React.memo(
     const error = errors?.[name];
 
     const setRef = (el: HTMLElement | null) => {
+      // A ref object is mutable by design (it's how React hands back DOM
+      // nodes); the lint rule can't tell it from an ordinary prop.
+      // eslint-disable-next-line react-hooks/immutability
       inputRefs.current[name] = el;
     };
 

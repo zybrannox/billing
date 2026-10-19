@@ -1,15 +1,14 @@
 import type { GridColDef } from "@mui/x-data-grid";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Box, Drawer, IconButton, Typography } from "@mui/material";
-import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import { Box } from "@mui/material";
 import CrudActions from "../../ui/Actions";
 import Button from "../../ui/Button";
 import Table from "../../common/components/Table";
 import TableSearchBar from "../../common/components/TableSearchBar";
 import Dialog from "../../ui/Dialog";
 import AddCustomer from "../../common/pages/AddCustomer";
-import CustomerInvoicesList from "../components/CustomerInvoicesList";
+import CustomerInvoicesDrawer from "../components/CustomerInvoicesDrawer";
 import { useDialogStore } from "../../store/useDialogStore";
 import { useConfirmDialogStore } from "../../hooks/useconfirmDialogStore";
 import { apiService } from "../../api/service";
@@ -227,11 +226,8 @@ const Customers = () => {
   // actual recipient themselves.
   //
   // shareToWhatsAppAfter, not shareToWhatsApp directly - this has to POST
-  // for the invite token before the wa.me text is known, and opening the
-  // wa.me window only after that async request finishes gets silently
-  // popup-blocked (same reasoning as InvoiceView.tsx's handleShareWhatsApp).
-  // shareToWhatsAppAfter opens the tab synchronously, inside this click,
-  // and redirects it once the token comes back.
+  // for the invite token before the wa.me text is known; the helper waits
+  // for that, then opens WhatsApp (see utils/shareToWhatsApp.ts).
   const handleSendPortalInvite = (customer: Customer) => {
     shareToWhatsAppAfter(async () => {
       const { invite_token } = await apiService.post<{ invite_token: string }>(
@@ -287,53 +283,7 @@ const Customers = () => {
         onPaginationModelChange={setPaginationModel}
         loading={loading}
       />
-      <Drawer
-        anchor="right"
-        open={drawerCustomer !== null}
-        onClose={() => setDrawerCustomer(null)}
-        // The app header sits at drawer + 1 when the sidebar is collapsed
-        // (see admin/Layout.tsx) - one more keeps this above it while still
-        // under modals, so the invoice/confirm dialogs open on top of it.
-        sx={{ zIndex: (theme) => theme.zIndex.drawer + 2 }}
-        slotProps={{ paper: { sx: { width: { xs: "100vw", sm: 480 }, bgcolor: "var(--slate-50)" } } }}
-      >
-        {drawerCustomer && (
-          <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "flex-start",
-                justifyContent: "space-between",
-                gap: 1,
-                p: 2.5,
-                bgcolor: "var(--white)",
-                borderBottom: "1px solid var(--slate-200)",
-              }}
-            >
-              <Box sx={{ minWidth: 0 }}>
-                <Typography sx={{ fontWeight: 700, fontSize: "1.1rem", color: "var(--slate-900)" }} noWrap>
-                  {drawerCustomer.first_name} {drawerCustomer.last_name}
-                </Typography>
-                <Typography variant="body2" color="text.secondary" noWrap>
-                  {drawerCustomer.contact_number || "-"}
-                  {drawerCustomer.email ? ` · ${drawerCustomer.email}` : ""}
-                </Typography>
-              </Box>
-              <IconButton size="small" onClick={() => setDrawerCustomer(null)} aria-label="Close">
-                <CloseRoundedIcon fontSize="small" />
-              </IconButton>
-            </Box>
-            <Box sx={{ p: 2.5, overflowY: "auto", flex: 1 }}>
-              <Typography
-                sx={{ fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.05em", color: "var(--slate-500)", mb: 1.5 }}
-              >
-                INVOICES
-              </Typography>
-              <CustomerInvoicesList customerId={drawerCustomer.id} />
-            </Box>
-          </Box>
-        )}
-      </Drawer>
+      <CustomerInvoicesDrawer customer={drawerCustomer} onClose={() => setDrawerCustomer(null)} />
       <Dialog
         type="customer"
         title="Customer"

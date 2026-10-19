@@ -6,7 +6,6 @@ import {
   Button,
   CircularProgress,
   Paper,
-  Chip,
   Stack,
   IconButton,
   Tooltip,
@@ -21,11 +20,9 @@ import {
   ListItemText,
 } from "@mui/material";
 import PrintRoundedIcon from "@mui/icons-material/PrintRounded";
+import FitScreenRoundedIcon from "@mui/icons-material/FitScreenRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import RequestQuoteRoundedIcon from "@mui/icons-material/RequestQuoteRounded";
-import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlineRounded";
-import PendingOutlinedIcon from "@mui/icons-material/PendingOutlined";
-import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 import FileDownloadRoundedIcon from "@mui/icons-material/FileDownloadRounded";
 import ShareRoundedIcon from "@mui/icons-material/ShareRounded";
@@ -35,109 +32,48 @@ import { saveAs } from "file-saver";
 
 import { apiService } from "../../api/service";
 import { useDialogStore } from "../../store/useDialogStore";
-import { formatDate } from "../../utils/dateFormatter";
-import { lineItemMeta, lineItemRate } from "../components/invoiceSheetUtils";
+import QuotationSheet from "../components/QuotationSheet";
+import FitToView, { type FitToViewHandle } from "../../documents/FitToView";
+import type { QuotationDetail } from "../components/quotationSheetUtils";
 import { generateInvoicePdf } from "../../utils/generateInvoicePdf";
 import { shareToWhatsAppAfter } from "../../utils/shareToWhatsApp";
 import AsyncSearchSelect from "../../ui/AsyncSearchSelect";
 import DateTimePicker from "../../ui/DateTimePicker";
 import PillRadioGroup from "../../common/components/PillRadioGroup";
 import { PRIORITY_OPTIONS, CLIENT_STATUS_OPTIONS } from "../../common/components/pillRadioOptions";
-import {
-  InvoiceHeader,
-  InvoiceMetaPanel,
-  InvoicePanelLabel,
-  InvoiceLineItemsSection,
-  InvoiceLineItem,
-  InvoiceTotalCard,
-  InvoiceFooter,
-  invoiceTheme,
-} from "../components/InvoiceDocument";
-
-interface QuotationItem {
-  id: number;
-  description: string | null;
-  width: number;
-  height: number;
-  unit: "ft" | "in";
-  sq_ft: number;
-  rate: number;
-  pieces: number;
-  total: number;
-  is_manual_total: boolean;
-  has_dimensions?: boolean;
-}
-
-interface QuotationDetail {
-  id: number;
-  quotation_number: string;
-  project_type: string;
-  subtotal: number;
-  discount_amount: number;
-  amount: number;
-  status: "pending" | "accepted" | "rejected" | "converted";
-  valid_until: string | null;
-  created_at: string;
-  converted_project_id: number | null;
-  converted_invoice_id: number | null;
-  customer: {
-    first_name: string;
-    last_name: string;
-    contact_number: string;
-    email: string | null;
-  } | null;
-  items: QuotationItem[];
-}
 
 interface EmployeeOption {
   username: string;
 }
 
-const STATUS_CONFIG: Record<
-  string,
-  { bg: string; color: string; border: string; label: string; icon: React.ReactElement }
-> = {
-  pending: {
-    bg: "var(--amber-100)",
-    color: "var(--amber-800)",
-    border: "var(--amber-300)",
-    label: "Awaiting Response",
-    icon: <PendingOutlinedIcon sx={{ fontSize: "0.9rem !important" }} />,
-  },
-  accepted: {
-    bg: "var(--blue-100)",
-    color: "var(--blue-800)",
-    border: "var(--blue-300)",
-    label: "Accepted",
-    icon: <CheckCircleOutlineRoundedIcon sx={{ fontSize: "0.9rem !important" }} />,
-  },
-  rejected: {
-    bg: "var(--red-100)",
-    color: "var(--red-800)",
-    border: "var(--red-300)",
-    label: "Rejected",
-    icon: <CancelOutlinedIcon sx={{ fontSize: "0.9rem !important" }} />,
-  },
-  converted: {
-    bg: "var(--green-100)",
-    color: "var(--green-800)",
-    border: "var(--green-300)",
-    label: "Converted to Invoice",
-    icon: <CheckCircleOutlineRoundedIcon sx={{ fontSize: "0.9rem !important" }} />,
-  },
-};
-
 const formatCurrency = (val: number) =>
   `₹${val.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-export default function QuotationView() {
-  const { id } = useParams<{ id: string }>();
+// Two hosts share this component: the routed /admin/quotations/:id page
+// (the id comes from the URL) and the global "viewQuotation" dialog (see
+// QuotationDialogView below), opened from a quotation card in a customer's
+// quotations drawer so viewing one never navigates away. `embedded` is the
+// dialog flavour: no Back button (the dialog has its own close), and no
+// full-viewport sizing.
+export default function QuotationView({
+  quotationId,
+  embedded = false,
+}: {
+  quotationId?: number | string;
+  embedded?: boolean;
+} = {}) {
+  const params = useParams<{ id: string }>();
+  const id = quotationId !== undefined ? String(quotationId) : params.id;
   const navigate = useNavigate();
   const { openDialog } = useDialogStore();
   const [quotation, setQuotation] = useState<QuotationDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);
+  // In the dialog, the document scales to fit without scrolling (see
+  // documents/FitToView.tsx); the toolbar toggle switches to actual size.
+  const fitRef = useRef<FitToViewHandle>(null);
+  const [fit, setFit] = useState(true);
   const [exporting, setExporting] = useState<"download" | "share" | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
   const [shareMenuAnchor, setShareMenuAnchor] = useState<HTMLElement | null>(null);
@@ -189,7 +125,9 @@ export default function QuotationView() {
     const node = sheetRef.current;
     node.classList.add("pdf-exporting");
     try {
-      return await generateInvoicePdf(node, `Quotation-${quotation.quotation_number}.pdf`);
+      // The capture must see the sheet at actual size, not scaled to fit.
+      const capture = () => generateInvoicePdf(node, `Quotation-${quotation.quotation_number}.pdf`);
+      return await (fitRef.current ? fitRef.current.runAtActualSize(capture) : capture());
     } finally {
       node.classList.remove("pdf-exporting");
     }
@@ -242,8 +180,8 @@ export default function QuotationView() {
   // only pre-fill text, never attach a file, so this uploads the same PDF
   // buildPdfFile() renders to app/shared_documents and shares the public
   // link it hands back, via shareToWhatsAppAfter (see
-  // utils/shareToWhatsApp.ts - needed because opening the wa.me window
-  // only after that upload finishes would get it silently popup-blocked).
+  // utils/shareToWhatsApp.ts - it does the render/upload first, with this
+  // tab still in front, and opens WhatsApp once the link is ready).
   const handleShareWhatsApp = async () => {
     if (!quotation) return;
     setExportError(null);
@@ -319,7 +257,7 @@ export default function QuotationView() {
 
   if (loading) {
     return (
-      <Box sx={{ height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2 }}>
+      <Box sx={{ height: embedded ? 240 : "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2 }}>
         <CircularProgress size={36} thickness={4} />
         <Typography variant="body2" color="text.secondary">
           Preparing document...
@@ -330,7 +268,7 @@ export default function QuotationView() {
 
   if (error || !quotation) {
     return (
-      <Box sx={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <Box sx={{ height: embedded ? 320 : "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <Paper elevation={0} sx={{ p: 5, textAlign: "center", maxWidth: 420, border: "1px dashed var(--slate-300)", borderRadius: 3 }}>
           <RequestQuoteRoundedIcon sx={{ fontSize: 48, color: "var(--slate-400)", mb: 1.5 }} />
           <Typography variant="h6" sx={{ fontWeight: 700, color: "var(--slate-700)" }}>
@@ -339,31 +277,29 @@ export default function QuotationView() {
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, mb: 3 }}>
             The requested quotation could not be located or may have been deleted.
           </Typography>
-          <Button
-            variant="contained"
-            disableElevation
-            startIcon={<ArrowBackRoundedIcon />}
-            onClick={() => navigate("/admin/dashboard")}
-            sx={{ textTransform: "none", fontWeight: 600, borderRadius: 2 }}
-          >
-            Return to Dashboard
-          </Button>
+          {!embedded && (
+            <Button
+              variant="contained"
+              disableElevation
+              startIcon={<ArrowBackRoundedIcon />}
+              onClick={() => navigate("/admin/dashboard")}
+              sx={{ textTransform: "none", fontWeight: 600, borderRadius: 2 }}
+            >
+              Return to Dashboard
+            </Button>
+          )}
         </Paper>
       </Box>
     );
   }
 
-  const status = STATUS_CONFIG[quotation.status] ?? STATUS_CONFIG.pending;
-  const customerName = quotation.customer
-    ? `${quotation.customer.first_name} ${quotation.customer.last_name}`
-    : "—";
   const isExpired =
     quotation.status === "pending" &&
     !!quotation.valid_until &&
     new Date(quotation.valid_until) < new Date();
 
   return (
-    <Box sx={{ bgcolor: "var(--slate-50)", minHeight: "100vh", pb: 2 }}>
+    <Box sx={{ bgcolor: embedded ? "transparent" : "var(--slate-50)", minHeight: embedded ? undefined : "100vh", pb: 2 }}>
       {/* Non-Printable Sticky Toolbar */}
       <Box
         className="invoice-toolbar"
@@ -379,15 +315,36 @@ export default function QuotationView() {
         }}
       >
         <Box sx={{ maxWidth: 840, mx: "auto", px: { xs: 2, sm: 3 }, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <Button
-            startIcon={<ArrowBackRoundedIcon />}
-            onClick={handleBack}
-            sx={{ color: "var(--slate-600)", textTransform: "none", fontWeight: 600, "&:hover": { bgcolor: "var(--slate-200)" } }}
-          >
-            Back
-          </Button>
+          {embedded ? (
+            <Box />
+          ) : (
+            <Button
+              startIcon={<ArrowBackRoundedIcon />}
+              onClick={handleBack}
+              sx={{ color: "var(--slate-600)", textTransform: "none", fontWeight: 600, "&:hover": { bgcolor: "var(--slate-200)" } }}
+            >
+              Back
+            </Button>
+          )}
 
           <Stack direction="row" spacing={1}>
+            {embedded && (
+              <Tooltip title={fit ? "Showing the whole quotation - click for actual size" : "Fit to screen"}>
+                <IconButton
+                  onClick={() => setFit((f) => !f)}
+                  aria-pressed={fit}
+                  sx={{
+                    border: "1px solid var(--slate-200)",
+                    borderRadius: 2,
+                    color: fit ? "var(--blue-700)" : "var(--slate-700)",
+                    bgcolor: fit ? "var(--blue-50)" : "transparent",
+                    "&:hover": { bgcolor: fit ? "var(--blue-100)" : "var(--slate-100)" },
+                  }}
+                >
+                  <FitScreenRoundedIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
             <Tooltip title="Download as PDF">
               <span>
                 <IconButton
@@ -525,80 +482,17 @@ export default function QuotationView() {
         )}
       </Box>
 
-      {/* Printable Quotation Sheet */}
-      <Paper
-        ref={sheetRef}
-        className="invoice-sheet"
-        elevation={0}
-        sx={{ maxWidth: 840, mx: "auto", bgcolor: "var(--white)", borderRadius: 3, border: "1px solid var(--slate-200)", boxShadow: "0 10px 25px -5px rgba(15, 23, 42, 0.05)", p: { xs: 2.5, sm: 3.5 } }}
-      >
-        <InvoiceHeader invoiceNumber={quotation.quotation_number} documentLabel="QUOTATION" />
-
-        <InvoiceMetaPanel>
-          <Box>
-            <InvoicePanelLabel>Quoted To</InvoicePanelLabel>
-            <Typography sx={{ fontWeight: 700, color: invoiceTheme.ink, fontSize: "1rem", mt: 0.5 }}>
-              {customerName}
-            </Typography>
-            {quotation.customer && (
-              <Box sx={{ mt: 0.5 }}>
-                <Typography sx={{ fontSize: "0.85rem", color: invoiceTheme.inkMuted }}>{quotation.customer.email}</Typography>
-                <Typography sx={{ fontSize: "0.85rem", color: invoiceTheme.inkMuted }}>{quotation.customer.contact_number}</Typography>
-              </Box>
-            )}
-          </Box>
-
-          <Box sx={{ textAlign: { xs: "left", sm: "right" }, mt: { xs: 2, sm: 0 } }}>
-            <Box sx={{ display: "flex", justifyContent: { xs: "flex-start", sm: "flex-end" }, gap: 1 }}>
-              <Typography sx={{ fontSize: "0.85rem", color: invoiceTheme.inkMuted }}>Quotation Date</Typography>
-              <Typography sx={{ fontSize: "0.85rem", fontWeight: 600, color: invoiceTheme.ink }}>
-                {formatDate(quotation.created_at)}
-              </Typography>
-            </Box>
-            {quotation.valid_until && (
-              <Box sx={{ display: "flex", justifyContent: { xs: "flex-start", sm: "flex-end" }, gap: 1, mt: 0.4 }}>
-                <Typography sx={{ fontSize: "0.85rem", color: invoiceTheme.inkMuted }}>Valid Until</Typography>
-                <Typography sx={{ fontSize: "0.85rem", fontWeight: 600, color: invoiceTheme.ink }}>
-                  {formatDate(quotation.valid_until)}
-                </Typography>
-              </Box>
-            )}
-            {quotation.project_type && (
-              <Typography sx={{ fontSize: "0.8rem", color: invoiceTheme.inkMuted, mt: 0.8 }}>
-                {quotation.project_type}
-              </Typography>
-            )}
-            <Box sx={{ display: "flex", justifyContent: { xs: "flex-start", sm: "flex-end" }, mt: 1 }}>
-              <Chip
-                icon={status.icon}
-                label={status.label}
-                size="small"
-                sx={{ bgcolor: status.bg, color: status.color, border: `1px solid ${status.border}`, fontWeight: 700, fontSize: "0.75rem", letterSpacing: "0.02em", "& .MuiChip-icon": { color: status.color } }}
-              />
-            </Box>
-          </Box>
-        </InvoiceMetaPanel>
-
-        <InvoiceLineItemsSection>
-          {quotation.items.map((item, idx) => (
-            <InvoiceLineItem
-              key={item.id}
-              index={idx + 1}
-              isFirst={idx === 0}
-              description={item.description || "Standard Item"}
-              meta={lineItemMeta(item)}
-              rate={lineItemRate(item)}
-              amount={formatCurrency(item.total)}
-            />
-          ))}
-        </InvoiceLineItemsSection>
-
-        <InvoiceTotalCard subtotal={quotation.subtotal} discountAmount={quotation.discount_amount} />
-
-        <InvoiceFooter>
-          This is an estimate, not a bill - amounts are subject to change until converted to an invoice. For questions, please contact Zybrannox support.
-        </InvoiceFooter>
-      </Paper>
+      {/* Printable Quotation Sheet - the shared document layout, driven by
+          the admin's Document Design settings (see src/documents). */}
+      {embedded ? (
+        // Extra room is reserved for the dialog's title, toolbar and the
+        // accept/reject/convert bar above the document.
+        <FitToView ref={fitRef} fit={fit} reserved={250}>
+          <QuotationSheet ref={sheetRef} quotation={quotation} />
+        </FitToView>
+      ) : (
+        <QuotationSheet ref={sheetRef} quotation={quotation} />
+      )}
 
       {/* Convert-to-Invoice Dialog */}
       <Dialog open={convertOpen} onClose={() => !converting && setConvertOpen(false)} maxWidth="xs" fullWidth>
@@ -690,4 +584,13 @@ export default function QuotationView() {
       `}</style>
     </Box>
   );
+}
+
+// The "viewQuotation" global dialog's content (see App.tsx) - the same view
+// as the routed page, hosted in a dialog. Keyed by id so opening a different
+// quotation starts from a clean state.
+export function QuotationDialogView() {
+  const editingId = useDialogStore((s) => s.editingId);
+  if (editingId === null) return null;
+  return <QuotationView key={editingId} embedded quotationId={editingId} />;
 }

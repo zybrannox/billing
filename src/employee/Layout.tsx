@@ -9,6 +9,8 @@ import { employeeNavigations } from "../config/employee";
 import Menu from "../ui/Menu";
 import Avatar from "../ui/Avatar";
 import Drawer from "../common/components/Drawer";
+import { Suspense } from "react";
+import PageSpinner from "../common/components/PageSpinner";
 
 // Heading variants get their own fontFamily (see index.css's --font-
 // heading/h1-h6 rule) - same reasoning as admin/Layout.tsx's identical
@@ -82,7 +84,9 @@ export default function EmployeeLayout() {
               }),
             }}
           >
+            <Suspense fallback={<PageSpinner />}>
             <Outlet />
+          </Suspense>
           </Box>
         </Box>
       </Box>

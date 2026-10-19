@@ -128,9 +128,21 @@ export default function CompanyInvoicesList({
     });
   };
 
-  const handleCancel = async (invoiceId: number) => {
-    await updateInvoice(invoiceId, { status: "cancelled" });
-    load();
+  // Cancelling is final (an invoice can't leave "cancelled"), so it's
+  // confirmed first. A failure shows inside the dialog (see
+  // useConfirmDialogStore) and leaves it open to retry.
+  const handleCancel = (invoiceId: number, invoiceNumber: string) => {
+    showDialog({
+      title: "Cancel this invoice?",
+      description: `${invoiceNumber} will be marked as cancelled. This can't be undone.`,
+      confirmText: "Cancel Invoice",
+      cancelText: "Keep Invoice",
+      isDestructive: true,
+      onConfirm: async () => {
+        await updateInvoice(invoiceId, { status: "cancelled" });
+        load();
+      },
+    });
   };
 
   const handleShareFailed = () => {
@@ -259,7 +271,7 @@ export default function CompanyInvoicesList({
             cancelInvoice
             invoiceStatus={inv.status}
             onMarkPaid={() => handleMarkPaid(inv.id)}
-            onCancelInvoice={() => handleCancel(inv.id)}
+            onCancelInvoice={() => handleCancel(inv.id, inv.invoice_number)}
             size="small"
           />
         </Box>

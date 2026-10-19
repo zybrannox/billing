@@ -95,8 +95,11 @@ const Employee = () => {
     });
   };
 
+  // Once on mount - sendRequest (useApiRequest) isn't memoized, so listing
+  // fetchEmployees as a dependency would refetch on every render.
   useEffect(() => {
     fetchEmployees();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Admins are managed separately and shouldn't clutter the employee list.

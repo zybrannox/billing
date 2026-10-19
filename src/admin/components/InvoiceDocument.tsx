@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Box, Typography } from "@mui/material";
+import { invoiceTheme } from "./invoiceTheme";
 
 // Shared chrome between the editable Create Invoice/Quotation screens and
 // the read-only printable views - same document, two modes, both use this
@@ -13,62 +14,6 @@ import { Box, Typography } from "@mui/material";
 // section dividers (header/footer, above the grand total) - a typographic
 // device every minimal invoice template (Stripe's, Anthropic's own) still
 // relies on, not a "boxed table" in the sense this was asked to remove.
-export const invoiceTheme = {
-  ink: "#1b1a17", // near-black, warm rather than blue-black
-  inkMuted: "#6f6a5f", // secondary text - dates, reference notes
-  label: "#8f8a7d", // uppercase micro-labels (Billed To, Item, etc.)
-  accent: "#c1512f", // muted terracotta - used only for the brand mark/document label/section labels
-  hairline: "rgba(27, 26, 23, 0.1)",
-};
-
-export function InvoiceHeader({
-  invoiceNumber,
-  documentLabel = "INVOICE",
-}: {
-  invoiceNumber?: ReactNode;
-  // Lets QuotationView.tsx reuse this exact same header chrome for
-  // "QUOTATION" instead of forking a near-identical copy - same document,
-  // different label, same reasoning as the rest of this shared file.
-  documentLabel?: string;
-}) {
-  return (
-    <Box
-      sx={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "flex-start",
-        mb: 4,
-        pb: 3,
-        borderBottom: `1px solid ${invoiceTheme.hairline}`,
-      }}
-    >
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-        <Box
-          component="img"
-          src="/images/logo.webp"
-          alt=""
-          sx={{ width: 24, height: 19, objectFit: "contain" }}
-        />
-        <Box>
-          <Typography sx={{ fontSize: "1.05rem", fontWeight: 700, letterSpacing: "-0.01em", lineHeight: 1.2, color: invoiceTheme.ink }}>
-            Zybrannox
-          </Typography>
-          <Typography sx={{ fontSize: "0.78rem", color: invoiceTheme.inkMuted, display: "block", lineHeight: 1.3 }}>
-            Printing &amp; Signage Services
-          </Typography>
-        </Box>
-      </Box>
-      <Box sx={{ textAlign: "right" }}>
-        <Typography sx={{ fontSize: "0.95rem", fontWeight: 700, letterSpacing: "0.06em", lineHeight: 1.2, color: invoiceTheme.accent }}>
-          {documentLabel}
-        </Typography>
-        <Typography sx={{ fontSize: "0.8rem", color: invoiceTheme.inkMuted, mt: 0.3 }}>
-          {invoiceNumber ?? "Number assigned on generate"}
-        </Typography>
-      </Box>
-    </Box>
-  );
-}
 
 export function InvoicePanelLabel({ children }: { children: ReactNode }) {
   return (
@@ -275,27 +220,6 @@ export function InvoiceTotalCard({
           </>
         )}
       </Box>
-    </Box>
-  );
-}
-
-export function InvoiceFooter({
-  children = "Thank you for your business. For questions about this invoice, please contact Zybrannox support.",
-}: {
-  children?: ReactNode;
-}) {
-  return (
-    <Box
-      sx={{
-        mt: 4,
-        pt: 2.5,
-        borderTop: `1px solid ${invoiceTheme.hairline}`,
-        textAlign: "center",
-      }}
-    >
-      <Typography sx={{ fontSize: "0.78rem", color: invoiceTheme.inkMuted }}>
-        {children}
-      </Typography>
     </Box>
   );
 }

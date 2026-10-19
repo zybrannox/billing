@@ -25,8 +25,6 @@ export function useApiRequest() {
   }): Promise<T | undefined> => {
     setLoading(true);
     try {
-      let res: T | undefined;
-
       // form-data support
       const isFormData =
         data instanceof FormData ||
@@ -55,7 +53,7 @@ export function useApiRequest() {
 
       if (!api) throw new Error(`Unsupported method: ${method}`);
 
-      res = await api();
+      const res = await api();
       onSuccess?.(res);
 
       if (redirectTo) navigate(redirectTo);

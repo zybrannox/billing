@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import type { GridColDef } from "@mui/x-data-grid";
-import { Chip } from "@mui/material";
+import { Chip, Tab, Tabs } from "@mui/material";
 import CrudActions from "../../ui/Actions";
 import Button from "../../ui/Button";
 import Table from "../../common/components/Table";
 import { GenericDialog } from "../../ui/Dialog";
 import AddListOption from "../../common/pages/AddListOption";
+import DocumentDesignSettings from "../components/DocumentDesignSettings";
 import { useListOptionsStore, type ListOption } from "../../store/useListOptionsStore";
 
 // Project Type and Item Type are the categories wired up so far. Both the
@@ -123,14 +124,27 @@ function CategorySection({
 }
 
 export default function SystemSetup() {
+  const [tab, setTab] = useState<"options" | "design">("options");
+
   return (
     <main className="h-full p-4 m-4 md:p-10 min-w-0 rounded-3xl bg-blue-50 shadow">
-      <h1 className="text-4xl sm:text-5xl lg:text-4xl leading-tight sm:leading-snug lg:leading-snug bg-linear-to-br from-blue-900 via-blue-800 to-slate-900 bg-clip-text text-transparent mb-6">
+      <h1 className="text-4xl sm:text-5xl lg:text-4xl leading-tight sm:leading-snug lg:leading-snug bg-linear-to-br from-blue-900 via-blue-800 to-slate-900 bg-clip-text text-transparent mb-4">
         System Setup
       </h1>
-      {CATEGORIES.map((c) => (
-        <CategorySection key={c.category} {...c} />
-      ))}
+      <Tabs
+        value={tab}
+        onChange={(_, v) => setTab(v)}
+        sx={{ mb: 3, borderBottom: "1px solid var(--slate-200)" }}
+      >
+        <Tab value="options" label="Dropdown Options" sx={{ textTransform: "none", fontWeight: 600 }} />
+        <Tab value="design" label="Invoice & Quotation Design" sx={{ textTransform: "none", fontWeight: 600 }} />
+      </Tabs>
+
+      {tab === "options" ? (
+        CATEGORIES.map((c) => <CategorySection key={c.category} {...c} />)
+      ) : (
+        <DocumentDesignSettings />
+      )}
     </main>
   );
 }

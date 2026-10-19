@@ -227,7 +227,7 @@ const GmailFileUploader = ({
 }: GmailFileUploaderProps) => {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const items = Array.isArray(value) ? value : [];
+  const items = React.useMemo(() => (Array.isArray(value) ? value : []), [value]);
 
   const itemsRef = React.useRef(items);
   React.useEffect(() => {

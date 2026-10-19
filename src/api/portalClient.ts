@@ -9,6 +9,10 @@ const portalAxiosClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
   withCredentials: true,
   timeout: 120000,
+  // Required by the API on every cookie-authenticated write (CSRF defence -
+  // see the backend's app/web_security.py): a header a cross-site form can't
+  // set and a cross-site script can't send without passing CORS.
+  headers: { "X-Requested-With": "XMLHttpRequest" },
 });
 
 portalAxiosClient.interceptors.response.use(

@@ -81,7 +81,9 @@ export default function AsyncSearchSelect({
     placeholderData: keepPreviousData,
   });
 
-  const options = listQuery.data ?? [];
+  // Memoized: a fresh [] on every render while loading would change the
+  // dependency list of the effect below each time.
+  const options = React.useMemo(() => listQuery.data ?? [], [listQuery.data]);
   const loading = listQuery.isFetching;
 
   // Resolves `value` to a full option object when it isn't already
@@ -124,7 +126,6 @@ export default function AsyncSearchSelect({
     if (hydrationQuery.data) {
       setSelected(hydrationQuery.data);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, options, selected, initialOption, hydrationQuery.data, getOptionValue]);
 
   return (

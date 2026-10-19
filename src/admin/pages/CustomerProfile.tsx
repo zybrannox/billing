@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useEffect, useState, type ReactNode } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { Box, Typography, Paper, CircularProgress } from "@mui/material";
 import type { GridColDef } from "@mui/x-data-grid";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
@@ -10,18 +10,17 @@ import LocalShippingRoundedIcon from "@mui/icons-material/LocalShippingRounded";
 import CurrencyRupeeRoundedIcon from "@mui/icons-material/CurrencyRupeeRounded";
 import HourglassBottomRoundedIcon from "@mui/icons-material/HourglassBottomRounded";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
-import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 import RequestQuoteRoundedIcon from "@mui/icons-material/RequestQuoteRounded";
+import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
+import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import { apiService } from "../../api/service";
 import { formatDateTime } from "../../utils/dateFormatter";
 import { getSemanticColor } from "../../utils/colors";
 import { getInitials } from "../../utils/appSupport";
-import { useInvoiceStore } from "../../store/useInvoiceStore";
-import { useDialogStore } from "../../store/useDialogStore";
-import { useConfirmDialogStore } from "../../hooks/useconfirmDialogStore";
 import Chip from "../../ui/Chip";
 import { semanticChipSx } from "../../ui/chipStyles";
-import CrudActions from "../../ui/Actions";
+import CustomerInvoicesDrawer from "../components/CustomerInvoicesDrawer";
+import CustomerQuotationsDrawer from "../components/CustomerQuotationsDrawer";
 import Table from "../../common/components/Table";
 import { SectionCard, StatCard } from "./Dashboard";
 
@@ -51,32 +50,12 @@ interface OrderItem {
   delivered_on_credit: boolean;
 }
 
-interface BillingItem {
-  id: number;
-  invoice_number: string;
-  project_type: string | null;
-  amount: number;
-  balance_due: number;
-  status: "pending" | "paid" | "cancelled";
-  created_at: string;
-}
-
-interface QuotationItem {
-  id: number;
-  quotation_number: string;
-  project_type: string;
-  amount: number;
-  status: "pending" | "accepted" | "rejected" | "converted";
-  valid_until: string | null;
-  created_at: string;
-}
-
 interface CustomerProfileData {
   customer: CustomerData;
   stats: CustomerStats;
   projects: OrderItem[];
-  invoices: BillingItem[];
-  quotations: QuotationItem[];
+  invoice_count: number;
+  quotation_count: number;
 }
 
 const money = (v: number) =>
@@ -125,149 +104,54 @@ const orderColumns: GridColDef<OrderItem>[] = [
   },
 ];
 
-// Same column set (and semantic status-color mapping) as the removed
-// standalone Billing page (see admin/pages/Billing.tsx, before it was
-// folded into this profile) - Customer is dropped since every row here is
-// already this one customer's own invoice.
-const billingColumns: GridColDef<BillingItem>[] = [
-  { field: "invoice_number", headerName: "Invoice #", flex: 1 },
-  {
-    field: "project_type",
-    headerName: "Project",
-    flex: 1,
-    valueFormatter: (value: string | null) => value || "—",
-  },
-  {
-    field: "amount",
-    headerName: "Amount",
-    flex: 1,
-    valueFormatter: (value: number) => `₹${value?.toLocaleString()}`,
-  },
-  {
-    field: "balance_due",
-    headerName: "Balance Due",
-    flex: 1,
-    renderCell: ({ value, row }) => (
-      <span style={{ fontWeight: value > 0 ? 700 : 500, color: value > 0 ? "var(--amber-700)" : "var(--slate-500)" }}>
-        {row.status === "cancelled" ? "—" : `₹${(value ?? 0).toLocaleString()}`}
-      </span>
-    ),
-  },
-  {
-    field: "status",
-    headerName: "Status",
-    flex: 1,
-    renderCell: ({ value }) => (
-      <Chip
-        label={value}
-        sx={semanticChipSx(
-          getSemanticColor(
-            "printStatus",
-            value === "paid" ? "Completed" : value === "pending" ? "In Progress" : "Delayed",
-          ),
-        )}
-      />
-    ),
-  },
-  {
-    field: "created_at",
-    headerName: "Date",
-    flex: 1.5,
-    valueFormatter: (value) => formatDateTime(value),
-  },
-];
-
-// Same status set/coloring as QuotationView.tsx's own STATUS_CONFIG.
-const quotationColumns: GridColDef<QuotationItem>[] = [
-  { field: "quotation_number", headerName: "Quotation #", flex: 1 },
-  { field: "project_type", headerName: "Job Type", flex: 1 },
-  {
-    field: "amount",
-    headerName: "Amount",
-    flex: 1,
-    valueFormatter: (value: number) => `₹${value?.toLocaleString()}`,
-  },
-  {
-    field: "status",
-    headerName: "Status",
-    flex: 1,
-    renderCell: ({ value }) => (
-      <Chip
-        label={value === "converted" ? "Converted" : value}
-        sx={semanticChipSx(
-          getSemanticColor(
-            "printStatus",
-            value === "accepted" || value === "converted"
-              ? "Completed"
-              : value === "rejected"
-                ? "Delayed"
-                : "In Progress",
-          ),
-        )}
-      />
-    ),
-  },
-  {
-    field: "valid_until",
-    headerName: "Valid Until",
-    flex: 1,
-    valueFormatter: (value: string | null) => (value ? formatDateTime(value) : "—"),
-  },
-  {
-    field: "created_at",
-    headerName: "Date",
-    flex: 1.2,
-    valueFormatter: (value) => formatDateTime(value),
-  },
-];
-
-// Same pill-switcher visual language as the Dashboard's own Recent
-// Activity toggle (see admin/pages/Dashboard.tsx's ActivityTabToggle) -
-// kept as its own local copy rather than a shared import since the two
-// pages' tabs are different value sets, matching this codebase's existing
-// pattern of page-local presentational components.
-function ProfileTabToggle({
-  value,
-  onChange,
-  counts,
+// Billing and Quotations aren't views of the page's own table - each opens
+// a side drawer listing that customer's records - so they're buttons, not
+// tabs: the icon says what it holds, the chevron says it opens a panel, and
+// the button stays lit while its panel is open.
+function DrawerButton({
+  icon,
+  label,
+  count,
+  color,
+  open,
+  onClick,
 }: {
-  value: "orders" | "billing" | "quotations";
-  onChange: (v: "orders" | "billing" | "quotations") => void;
-  counts: Record<"orders" | "billing" | "quotations", number>;
+  icon: ReactNode;
+  label: string;
+  count: number;
+  color: { text: string; border: string; bg: string };
+  open: boolean;
+  onClick: () => void;
 }) {
-  const tabs: { value: "orders" | "billing" | "quotations"; label: string }[] = [
-    { value: "orders", label: "Orders" },
-    { value: "billing", label: "Billing" },
-    { value: "quotations", label: "Quotations" },
-  ];
   return (
-    <Box sx={{ display: "flex", bgcolor: "var(--slate-100)", borderRadius: 999, p: 0.5, gap: 0.5, flexShrink: 0 }}>
-      {tabs.map((t) => {
-        const active = t.value === value;
-        return (
-          <Box
-            key={t.value}
-            component="button"
-            onClick={() => onChange(t.value)}
-            sx={{
-              border: "none",
-              px: 2,
-              py: 0.75,
-              borderRadius: 999,
-              cursor: "pointer",
-              fontSize: "0.8rem",
-              fontWeight: 700,
-              fontFamily: "inherit",
-              color: active ? "var(--white)" : "var(--slate-500)",
-              bgcolor: active ? "var(--slate-900)" : "transparent",
-              transition: "all 0.15s ease",
-              "&:hover": { color: active ? "var(--white)" : "var(--slate-900)" },
-            }}
-          >
-            {t.label} ({counts[t.value]})
-          </Box>
-        );
-      })}
+    <Box
+      component="button"
+      type="button"
+      onClick={onClick}
+      aria-haspopup="dialog"
+      aria-expanded={open}
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        gap: 0.75,
+        px: 1.75,
+        py: 0.85,
+        borderRadius: 999,
+        cursor: "pointer",
+        fontSize: "0.8rem",
+        fontWeight: 700,
+        fontFamily: "inherit",
+        flexShrink: 0,
+        color: color.text,
+        bgcolor: open ? color.bg : "var(--white)",
+        border: `1px solid ${color.border}`,
+        transition: "all 0.15s ease",
+        "&:hover": { bgcolor: color.bg },
+      }}
+    >
+      {icon}
+      {label} ({count})
+      <ChevronRightRoundedIcon sx={{ fontSize: 18, ml: -0.25 }} />
     </Box>
   );
 }
@@ -275,20 +159,16 @@ function ProfileTabToggle({
 export default function CustomerProfile() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { updateInvoice } = useInvoiceStore();
-  const { showDialog } = useConfirmDialogStore();
-  const { openDialog } = useDialogStore();
-  const [searchParams] = useSearchParams();
   const [data, setData] = useState<CustomerProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  // Lets a caller land directly on a specific tab (e.g. the Customers
-  // list's inline invoice peek linking "View Full Billing History" to
-  // ?tab=billing) instead of always opening on Orders.
-  const initialTab = searchParams.get("tab");
-  const [tab, setTab] = useState<"orders" | "billing" | "quotations">(
-    initialTab === "billing" || initialTab === "quotations" ? initialTab : "orders",
-  );
+  // Billing and Quotations each open a right-side drawer (the same ones the
+  // rest of the admin uses for a customer's records - see
+  // CustomerInvoicesDrawer / CustomerQuotationsDrawer) rather than switching
+  // this page's table, so those records look and behave the same wherever
+  // they're opened from, and are fetched a page at a time on demand.
+  const [billingOpen, setBillingOpen] = useState(false);
+  const [quotationsOpen, setQuotationsOpen] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -306,41 +186,6 @@ export default function CustomerProfile() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
-
-  // Goes through the dedicated PATCH /invoices/{id}/mark-paid endpoint
-  // (see app/invoices/service.py's service_mark_paid), not the generic
-  // updateInvoice({status: "paid"}) this used to call directly - that
-  // generic path never touched advance_amount, so an invoice marked paid
-  // that way kept whatever balance_due it already had (often nonzero),
-  // and since every outstanding/pending aggregate (Dashboard, the
-  // Customers list's payment_status) filters on status === "pending",
-  // that leftover balance would silently vanish from all of them the
-  // moment status flipped to "paid" - real, uncollected money the app
-  // would stop tracking anywhere. The dedicated endpoint fixes
-  // advance_amount to the full amount and requires a payment method,
-  // same as the one other place in the app that marks an invoice paid
-  // (DeliveryCheck.tsx's "Complete Payment" panel) - collected here via
-  // the shared confirm dialog's payment-method picker instead of firing
-  // blind.
-  const handleMarkPaid = (invoiceId: number) => {
-    showDialog({
-      title: "Mark Invoice as Paid",
-      description: "This records the invoice as paid in full. How was it paid?",
-      confirmText: "Mark as Paid",
-      paymentMethodRequired: true,
-      onConfirm: async (paymentMethod) => {
-        await apiService.patch(`/invoices/${invoiceId}/mark-paid`, {
-          payment_method: paymentMethod,
-        });
-        load();
-      },
-    });
-  };
-
-  const handleCancel = async (invoiceId: number) => {
-    await updateInvoice(invoiceId, { status: "cancelled" });
-    load();
-  };
 
   if (loading && !data) {
     return (
@@ -382,7 +227,7 @@ export default function CustomerProfile() {
     );
   }
 
-  const { customer, stats, projects, invoices, quotations } = data;
+  const { customer, stats, projects } = data;
   const fullName = `${customer.first_name} ${customer.last_name}`;
 
   return (
@@ -495,77 +340,63 @@ export default function CustomerProfile() {
         />
       </Box>
 
-      {/* Orders / Billing / Quotations */}
+      {/* Orders (inline table) with Billing / Quotations drawers */}
       <SectionCard
-        icon={
-          tab === "orders" ? (
-            <AssignmentRoundedIcon fontSize="small" />
-          ) : tab === "billing" ? (
-            <ReceiptLongRoundedIcon fontSize="small" />
-          ) : (
-            <RequestQuoteRoundedIcon fontSize="small" />
-          )
-        }
-        iconColor={tab === "orders" ? "var(--indigo-600)" : tab === "billing" ? "var(--emerald-600)" : "var(--violet-600)"}
-        iconBg={tab === "orders" ? "var(--indigo-50)" : tab === "billing" ? "var(--emerald-50)" : "var(--violet-50)"}
-        title={fullName}
+        icon={<AssignmentRoundedIcon fontSize="small" />}
+        iconColor="var(--indigo-600)"
+        iconBg="var(--indigo-50)"
+        title={`Orders (${projects.length})`}
         action={
-          <ProfileTabToggle
-            value={tab}
-            onChange={setTab}
-            counts={{ orders: projects.length, billing: invoices.length, quotations: quotations.length }}
-          />
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            <DrawerButton
+              icon={<ReceiptLongRoundedIcon sx={{ fontSize: 17 }} />}
+              label="Billing"
+              count={data.invoice_count}
+              color={{ text: "var(--emerald-700)", border: "var(--emerald-200)", bg: "var(--emerald-50)" }}
+              open={billingOpen}
+              onClick={() => setBillingOpen(true)}
+            />
+            <DrawerButton
+              icon={<RequestQuoteRoundedIcon sx={{ fontSize: 17 }} />}
+              label="Quotations"
+              count={data.quotation_count}
+              color={{ text: "var(--violet-600)", border: "var(--violet-200)", bg: "var(--violet-50)" }}
+              open={quotationsOpen}
+              onClick={() => setQuotationsOpen(true)}
+            />
+          </Box>
         }
       >
-        {tab === "orders" ? (
-          projects.length === 0 ? (
-            <Typography variant="body2" color="text.secondary" sx={{ py: 3, textAlign: "center" }}>
-              No orders placed yet.
-            </Typography>
-          ) : (
-            <Table<OrderItem>
-              rows={projects}
-              columns={orderColumns}
-              hideActionsColumn
-              onRowSelect={(row) => navigate(`/admin/projects?projectId=${row.id}`)}
-            />
-          )
-        ) : tab === "billing" ? (
-          invoices.length === 0 ? (
-            <Typography variant="body2" color="text.secondary" sx={{ py: 3, textAlign: "center" }}>
-              No invoices raised yet.
-            </Typography>
-          ) : (
-            <Table<BillingItem>
-              rows={invoices}
-              columns={billingColumns}
-              renderActions={(params) => [
-                <CrudActions
-                  key="crud"
-                  viewInvoice
-                  markPaid
-                  cancelInvoice
-                  invoiceStatus={params.row.status}
-                  onViewInvoice={() => openDialog("viewInvoice", params.row.id, "view")}
-                  onMarkPaid={() => handleMarkPaid(params.row.id)}
-                  onCancelInvoice={() => handleCancel(params.row.id)}
-                />,
-              ]}
-            />
-          )
-        ) : quotations.length === 0 ? (
+        {projects.length === 0 ? (
           <Typography variant="body2" color="text.secondary" sx={{ py: 3, textAlign: "center" }}>
-            No quotations raised yet.
+            No orders placed yet.
           </Typography>
         ) : (
-          <Table<QuotationItem>
-            rows={quotations}
-            columns={quotationColumns}
+          <Table<OrderItem>
+            rows={projects}
+            columns={orderColumns}
             hideActionsColumn
-            onRowSelect={(row) => navigate(`/admin/quotations/${row.id}`)}
+            onRowSelect={(row) => navigate(`/admin/projects?projectId=${row.id}`)}
           />
         )}
       </SectionCard>
+
+      <CustomerInvoicesDrawer
+        customer={billingOpen ? customer : null}
+        showCustomerLink={false}
+        onClose={() => {
+          setBillingOpen(false);
+          // A payment, mark-paid or cancel inside the drawer changes this
+          // page's balance cards and counts - refresh them (the page stays
+          // rendered while this reloads).
+          load();
+        }}
+      />
+
+      <CustomerQuotationsDrawer
+        customer={quotationsOpen ? customer : null}
+        onClose={() => setQuotationsOpen(false)}
+      />
     </main>
   );
 }

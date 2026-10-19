@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Box, Typography, CircularProgress, IconButton, Tooltip } from "@mui/material";
+import { Box, Typography, CircularProgress, Tooltip } from "@mui/material";
 import FolderOpenRoundedIcon from "@mui/icons-material/FolderOpenRounded";
-import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
-import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 
@@ -14,9 +12,12 @@ import { useDialogStore } from "../../store/useDialogStore";
 import { useConfirmDialogStore } from "../../hooks/useconfirmDialogStore";
 import { useInvoiceStore } from "../../store/useInvoiceStore";
 import { shareInvoiceToWhatsApp } from "../../utils/shareInvoiceToWhatsApp";
+import { downloadInvoicePdf } from "../../utils/downloadDocument";
+import { useOnDialogClose } from "../../hooks/useOnDialogClose";
 import Chip from "../../ui/Chip";
 import { semanticChipSx } from "../../ui/chipStyles";
 import CrudActions from "../../ui/Actions";
+import ListPager from "../../ui/ListPager";
 import PaymentHistory from "./PaymentHistory";
 import RecordPaymentDialog, { type RecordPaymentTarget } from "./RecordPaymentDialog";
 
@@ -58,7 +59,14 @@ const money = (v: number) => `₹${v.toLocaleString("en-IN", { maximumFractionDi
 // page 1 rather than being buried under settled ones by recency alone.
 const PAGE_SIZE = 10;
 
-export default function CustomerInvoicesList({ customerId }: { customerId: number }) {
+export default function CustomerInvoicesList({
+  customerId,
+  showCustomerLink = true,
+}: {
+  customerId: number;
+  // Off when already on the customer's own page (see CustomerInvoicesDrawer).
+  showCustomerLink?: boolean;
+}) {
   const navigate = useNavigate();
   const { openDialog } = useDialogStore();
   const { showDialog } = useConfirmDialogStore();
@@ -72,9 +80,10 @@ export default function CustomerInvoicesList({ customerId }: { customerId: numbe
   // body.
   const [invoices, setInvoices] = useState<InvoiceRow[] | null>(null);
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
   const [error, setError] = useState(false);
   const [paymentTarget, setPaymentTarget] = useState<RecordPaymentTarget | null>(null);
+  const [downloadingId, setDownloadingId] = useState<number | null>(null);
 
   // Extracted (not inlined in the effect below) so handleMarkPaid/
   // handleCancel can also call it directly to refresh this panel in place
@@ -89,7 +98,7 @@ export default function CustomerInvoicesList({ customerId }: { customerId: numbe
       .then((res) => {
         if (!active) return;
         setInvoices(res.items);
-        setTotalPages(res.total_pages || 1);
+        setTotal(res.total);
       })
       .catch(() => {
         if (active) setError(true);
@@ -108,6 +117,25 @@ export default function CustomerInvoicesList({ customerId }: { customerId: numbe
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerId, page]);
+
+  // The invoice dialog (edit, payments) may have changed a card.
+  useOnDialogClose(load);
+
+  const handleDownload = async (invoiceId: number) => {
+    setDownloadingId(invoiceId);
+    try {
+      await downloadInvoicePdf(invoiceId);
+    } catch (err) {
+      console.error("Failed to download invoice", err);
+      showDialog({
+        title: "Couldn't download invoice",
+        description: "Something went wrong preparing the PDF. Please try again.",
+        confirmText: "OK",
+      });
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   // Goes through the dedicated PATCH /invoices/{id}/mark-paid endpoint
   // (see app/invoices/service.py's service_mark_paid), same as
@@ -132,9 +160,21 @@ export default function CustomerInvoicesList({ customerId }: { customerId: numbe
     });
   };
 
-  const handleCancel = async (invoiceId: number) => {
-    await updateInvoice(invoiceId, { status: "cancelled" });
-    load();
+  // Cancelling is final (an invoice can't leave "cancelled"), so it's
+  // confirmed first. A failure shows inside the dialog (see
+  // useConfirmDialogStore) and leaves it open to retry.
+  const handleCancel = (invoiceId: number, invoiceNumber: string) => {
+    showDialog({
+      title: "Cancel this invoice?",
+      description: `${invoiceNumber} will be marked as cancelled. This can't be undone.`,
+      confirmText: "Cancel Invoice",
+      cancelText: "Keep Invoice",
+      isDestructive: true,
+      onConfirm: async () => {
+        await updateInvoice(invoiceId, { status: "cancelled" });
+        load();
+      },
+    });
   };
 
   const handleShareFailed = () => {
@@ -253,6 +293,9 @@ export default function CustomerInvoicesList({ customerId }: { customerId: numbe
             </Box>
             <Box onClick={(e) => e.stopPropagation()}>
             <CrudActions
+              downloadDocument
+              onDownloadDocument={() => handleDownload(inv.id)}
+              documentBusy={downloadingId === inv.id}
               shareInvoice
               onShareInvoice={() =>
                 shareInvoiceToWhatsApp(inv.id).catch((err) => {
@@ -273,7 +316,7 @@ export default function CustomerInvoicesList({ customerId }: { customerId: numbe
               cancelInvoice
               invoiceStatus={inv.status}
               onMarkPaid={() => handleMarkPaid(inv.id)}
-              onCancelInvoice={() => handleCancel(inv.id)}
+              onCancelInvoice={() => handleCancel(inv.id, inv.invoice_number)}
               size="small"
             />
             </Box>
@@ -282,52 +325,33 @@ export default function CustomerInvoicesList({ customerId }: { customerId: numbe
       ))}
 
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", pt: 0.5 }}>
-        {totalPages > 1 ? (
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-            <Tooltip title="Previous page">
-              <span>
-                <IconButton size="small" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-                  <ChevronLeftRoundedIcon fontSize="small" />
-                </IconButton>
-              </span>
-            </Tooltip>
-            <Typography variant="caption" color="text.secondary">
-              Page {page} of {totalPages}
-            </Typography>
-            <Tooltip title="Next page">
-              <span>
-                <IconButton size="small" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
-                  <ChevronRightRoundedIcon fontSize="small" />
-                </IconButton>
-              </span>
-            </Tooltip>
-          </Box>
-        ) : (
-          <Box />
-        )}
+        <ListPager page={page} pageSize={PAGE_SIZE} total={total} onPageChange={setPage} />
 
-        <Box
-          component="button"
-          type="button"
-          onClick={() => navigate(`/admin/customers/${customerId}?tab=billing`)}
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 0.5,
-            border: "none",
-            background: "none",
-            padding: 0,
-            cursor: "pointer",
-            color: "var(--blue-600)",
-            fontSize: "0.8125rem",
-            fontWeight: 700,
-            fontFamily: "inherit",
-            "&:hover": { textDecoration: "underline" },
-          }}
-        >
-          View Full Billing History
-          <ArrowForwardRoundedIcon sx={{ fontSize: "0.9rem" }} />
-        </Box>
+        {showCustomerLink && (
+          <Box
+            component="button"
+            type="button"
+            onClick={() => navigate(`/admin/customers/${customerId}`)}
+            sx={{
+              ml: "auto",
+              display: "flex",
+              alignItems: "center",
+              gap: 0.5,
+              border: "none",
+              background: "none",
+              padding: 0,
+              cursor: "pointer",
+              color: "var(--blue-600)",
+              fontSize: "0.8125rem",
+              fontWeight: 700,
+              fontFamily: "inherit",
+              "&:hover": { textDecoration: "underline" },
+            }}
+          >
+            View Customer
+            <ArrowForwardRoundedIcon sx={{ fontSize: "0.9rem" }} />
+          </Box>
+        )}
       </Box>
     </Box>
     </>

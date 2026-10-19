@@ -13,6 +13,8 @@ import Menu from "../ui/Menu";
 import Drawer from "../common/components/Drawer";
 import NotificationBell from "./components/NotificationBell";
 import { useDialogStore } from "../store/useDialogStore";
+import { Suspense } from "react";
+import PageSpinner from "../common/components/PageSpinner";
 
 // Heading variants get their own fontFamily (see index.css's --font-
 // heading/h1-h6 rule) - a plain global `h1{...}` selector in index.css
@@ -121,7 +123,9 @@ export default function AdminLayout() {
             </MuiToolbar>
           </MuiAppBar>
           {/* Page content */}
-          <Outlet />
+          <Suspense fallback={<PageSpinner />}>
+            <Outlet />
+          </Suspense>
         </Box>
       </Box>
 

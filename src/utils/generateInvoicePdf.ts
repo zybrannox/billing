@@ -1,5 +1,3 @@
-import { jsPDF } from "jspdf";
-import html2canvas from "html2canvas";
 
 // Renders a DOM node (the printable invoice sheet) to a single-page-per-
 // screen-height PDF, image-based rather than real PDF text - the simplest
@@ -8,7 +6,37 @@ import html2canvas from "html2canvas";
 // "PDF template" of the invoice that could drift from the real one. A
 // scale of 2 keeps the rendered text crisp instead of blurry at normal
 // screen resolution.
+//
+// Pages are embedded as JPEG, not PNG: a one-page invoice is ~10 MB as PNG
+// (lossless, full-colour at 2x) versus ~250 KB as JPEG at this quality, and
+// that file is uploaded for every WhatsApp share and then downloaded by the
+// recipient - the size was the slow part, not the rendering.
+const JPEG_QUALITY = 0.93;
+const IMAGE_LOAD_TIMEOUT_MS = 3000;
+
 export async function generateInvoicePdf(node: HTMLElement, filename: string): Promise<File> {
+  // Logos load asynchronously - capturing before they've loaded would leave
+  // a blank gap where the brand mark should be. Waits on the load event
+  // rather than img.decode(), which never settles in a backgrounded tab, and
+  // is bounded so one stalled image can't hang a download or share.
+  await Promise.all(
+    Array.from(node.querySelectorAll("img")).map(
+      (img) =>
+        new Promise<void>((resolve) => {
+          if (img.complete) return resolve();
+          const done = () => resolve();
+          img.addEventListener("load", done, { once: true });
+          img.addEventListener("error", done, { once: true });
+          setTimeout(done, IMAGE_LOAD_TIMEOUT_MS);
+        }),
+    ),
+  );
+
+  // Loaded here, not at the top of the file: these two libraries are ~600 KB
+  // together and only needed the moment someone downloads or shares a PDF -
+  // no reason for every page view to pay for them.
+  const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import("html2canvas"), import("jspdf")]);
+
   const canvas = await html2canvas(node, {
     scale: 2,
     useCORS: true,
@@ -59,7 +87,7 @@ export async function generateInvoicePdf(node: HTMLElement, filename: string): P
     firstPage = false;
 
     const sliceHeightPt = sliceHeightPx / pxPerPt;
-    pdf.addImage(sliceCanvas.toDataURL("image/png"), "PNG", margin, margin, contentWidth, sliceHeightPt);
+    pdf.addImage(sliceCanvas.toDataURL("image/jpeg", JPEG_QUALITY), "JPEG", margin, margin, contentWidth, sliceHeightPt);
 
     renderedPx += sliceHeightPx;
   }

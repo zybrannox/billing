@@ -19,5 +19,13 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      // 77 existing uses, mostly in the generic form/table components. A
+      // warning (not an error) so the backlog doesn't block work, but the
+      // `lint` script caps the warning count at today's number
+      // (--max-warnings 77): it can only go down. Lower both together as
+      // types are tightened.
+      '@typescript-eslint/no-explicit-any': 'warn',
+    },
   },
 ])

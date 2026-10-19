@@ -120,6 +120,26 @@ Both `billing/` and `billing_server/` are separate git repos. Pulling updates th
 
 7. **Verify:** `curl -s -o /dev/null -w "%{http_code}\n" https://workspace.zybrannox.com/` and the same for `https://workspace-api.zybrannox.com/docs` should both return `200`. Also check `billing_server/logs/backend.err.log` for anything past the last `Uvicorn running on` line.
 
+## Secrets (Gmail app password, etc.)
+
+Secrets live in locked-down files, not in `.env`. The app reads `<NAME>_FILE=<path>` (see `_secret()` in `app/config.py`); `.env` holds only the *path*.
+
+**Set or rotate one** (run on the production Mac, from `~/billing_app/billing_server`):
+
+```bash
+scripts/set_secret.sh GMAIL_APP_PASSWORD --restart
+```
+
+It asks for the value with hidden input (nothing in shell history or `ps`), writes `~/.config/zybrannox/secrets/gmail_app_password` (mode 600, folder 700), **tests the new value with a real Gmail login before switching** (a wrong value is rolled back and nothing changes), points `.env` at the file, removes the old plain `GMAIL_APP_PASSWORD=` line, then restarts the backend (`sudo` prompt). Afterwards revoke the old password at Google (Account > Security > App passwords).
+
+Check it any time: `venv/bin/python -m scripts.check_email_credentials` (logs in, sends nothing).
+
+Notes:
+- Keep secret files under `~` but **not** `~/Desktop`/`~/Documents`/`~/Downloads` (the TCC caveat below applies to them too).
+- If the backend ever logs `... is readable by other users`, run `chmod 600` on that file.
+- Gmail has no API for creating app passwords, so rotation itself stays a manual step (every few months, or immediately after any exposure). Only a provider with an API key you can mint programmatically (SES, Resend, Postmark) can be rotated fully automatically.
+- The same `<NAME>_FILE` convention works with other hosts: Docker/Compose `secrets:` (mounted at `/run/secrets/...`), systemd `LoadCredential=`, Kubernetes secret volumes - set `GMAIL_APP_PASSWORD_FILE` to the mounted path.
+
 ## Logs
 
 - `billing_server/logs/backend.{out,err}.log`

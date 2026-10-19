@@ -1,13 +1,6 @@
   import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import "./App.css";
-
-import AdminLayout from "./admin/Layout";
-import Employee from "./admin/pages/Employee";
-import EmployeeProfile from "./admin/pages/EmployeeProfile";
-import AddEmployee from "./admin/pages/AddEmployee";
-
-import EmployeeLayout from "./employee/Layout";
 
 import ConfirmDialog from "./ui/ConfirmDialog";
 import Dialog from "./ui/Dialog";
@@ -18,34 +11,49 @@ import { useClientAppStore, type ClientUser } from "./store/useClientAppStore";
 import { apiService } from "./api/service";
 import { portalApiService } from "./api/portalService";
 import { API } from "./api/endpoints";
-import Projects from "./common/pages/Projects";
-import Customers from "./admin/pages/Customers";
-import CustomerProfile from "./admin/pages/CustomerProfile";
-import Companies from "./admin/pages/Companies";
-import CompanyProfile from "./admin/pages/CompanyProfile";
-import JobRequests from "./admin/pages/JobRequests";
-import InvoiceView from "./admin/pages/InvoiceView";
-import EditInvoice from "./admin/pages/EditInvoice";
-import QuotationView from "./admin/pages/QuotationView";
-import GenerateInvoice from "./common/pages/GenerateInvoice";
-import GenerateQuotation from "./common/pages/GenerateQuotation";
-import SystemSetup from "./admin/pages/SystemSetup";
-import Dashboard from "./admin/pages/Dashboard";
 import ProtectedRoute from "./common/components/auth/ProtectedRoute";
 import ClientProtectedRoute from "./common/components/auth/ClientProtectedRoute";
-import Login from "./common/components/auth/Login";
-import ForgotPassword from "./common/components/auth/ForgotPassword";
 import ErrorBoundary from "./common/components/ErrorBoundary";
-import PortalLayout from "./portal/Layout";
-import ClientLogin from "./portal/pages/ClientLogin";
-import PortalForgotPassword from "./portal/pages/ForgotPassword";
-import ActivateAccount from "./portal/pages/ActivateAccount";
-import PortalOrders from "./portal/pages/PortalOrders";
-import PortalOrderDetail from "./portal/pages/PortalOrderDetail";
-import PortalBilling from "./portal/pages/PortalBilling";
-import PortalInvoiceDetail from "./portal/pages/PortalInvoiceDetail";
-import SubmitJobRequest from "./portal/pages/SubmitJobRequest";
-import PortalJobRequests from "./portal/pages/PortalJobRequests";
+import PageSpinner from "./common/components/PageSpinner";
+
+// Every page and layout loads on demand, so a visitor only downloads the code
+// for the part of the app they actually use - a portal client never fetches
+// the admin app, the data grid or the PDF libraries. The shell that has to
+// exist from the first paint (auth guards, the error boundary, the global
+// confirm dialog) stays eager.
+const AdminLayout = lazy(() => import("./admin/Layout"));
+const Employee = lazy(() => import("./admin/pages/Employee"));
+const EmployeeProfile = lazy(() => import("./admin/pages/EmployeeProfile"));
+const AddEmployee = lazy(() => import("./admin/pages/AddEmployee"));
+const EmployeeLayout = lazy(() => import("./employee/Layout"));
+const Projects = lazy(() => import("./common/pages/Projects"));
+const Customers = lazy(() => import("./admin/pages/Customers"));
+const CustomerProfile = lazy(() => import("./admin/pages/CustomerProfile"));
+const Companies = lazy(() => import("./admin/pages/Companies"));
+const CompanyProfile = lazy(() => import("./admin/pages/CompanyProfile"));
+const JobRequests = lazy(() => import("./admin/pages/JobRequests"));
+const InvoiceView = lazy(() => import("./admin/pages/InvoiceView"));
+const EditInvoice = lazy(() => import("./admin/pages/EditInvoice"));
+const GenerateInvoice = lazy(() => import("./common/pages/GenerateInvoice"));
+const GenerateQuotation = lazy(() => import("./common/pages/GenerateQuotation"));
+const SystemSetup = lazy(() => import("./admin/pages/SystemSetup"));
+const Dashboard = lazy(() => import("./admin/pages/Dashboard"));
+const Login = lazy(() => import("./common/components/auth/Login"));
+const ForgotPassword = lazy(() => import("./common/components/auth/ForgotPassword"));
+const PortalLayout = lazy(() => import("./portal/Layout"));
+const ClientLogin = lazy(() => import("./portal/pages/ClientLogin"));
+const PortalForgotPassword = lazy(() => import("./portal/pages/ForgotPassword"));
+const ActivateAccount = lazy(() => import("./portal/pages/ActivateAccount"));
+const PortalOrders = lazy(() => import("./portal/pages/PortalOrders"));
+const PortalOrderDetail = lazy(() => import("./portal/pages/PortalOrderDetail"));
+const PortalBilling = lazy(() => import("./portal/pages/PortalBilling"));
+const PortalInvoiceDetail = lazy(() => import("./portal/pages/PortalInvoiceDetail"));
+const SubmitJobRequest = lazy(() => import("./portal/pages/SubmitJobRequest"));
+const PortalJobRequests = lazy(() => import("./portal/pages/PortalJobRequests"));
+const QuotationView = lazy(() => import("./admin/pages/QuotationView"));
+const QuotationDialogView = lazy(() =>
+  import("./admin/pages/QuotationView").then((m) => ({ default: m.QuotationDialogView })),
+);
 
 function App() {
   const {
@@ -144,6 +152,7 @@ function App() {
     <>
       <Router>
         <ErrorBoundary>
+          <Suspense fallback={<PageSpinner fill />}>
           <Routes>
             {/* Public */}
             <Route path="/login" element={<Login />} />
@@ -210,6 +219,7 @@ function App() {
                 rendering a blank page. */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          </Suspense>
 
           {/* Global dialogs - mounted inside Router/ErrorBoundary (not as
               siblings after </Router>, which is what this used to be): any
@@ -241,13 +251,18 @@ function App() {
               layout/route triggered it, the same way ConfirmDialog above is
               available everywhere. See admin/pages/InvoiceView.tsx's own
               top comment for why this replaced a standalone routed page. */}
-          <Dialog type="viewInvoice" title="Invoice" children={<InvoiceView />} maxWidth="md" />
+          <Dialog type="viewInvoice" title="Invoice" children={<Suspense fallback={<PageSpinner />}><InvoiceView /></Suspense>} maxWidth="md" />
+
+          {/* Same idea as viewInvoice, for quotations: opened from a
+              quotation card (see admin/components/CustomerQuotationsList.tsx)
+              so viewing one never navigates away from the customer. */}
+          <Dialog type="viewQuotation" title="Quotation" children={<Suspense fallback={<PageSpinner />}><QuotationDialogView /></Suspense>} maxWidth="md" />
 
           {/* Admin-only (see InvoiceView.tsx's "Edit" action, the only place
               this is opened from) - reuses the same xl width as
               invoiceDesignComplete below since it hosts the same line-item
               table. */}
-          <Dialog type="editInvoice" title="Edit Invoice" children={<EditInvoice />} maxWidth="xl" />
+          <Dialog type="editInvoice" title="Edit Invoice" children={<Suspense fallback={<PageSpinner />}><EditInvoice /></Suspense>} maxWidth="xl" />
 
           {/* Same reasoning as viewInvoice above, moved here from
               admin/Layout.tsx - a project's own "Mark design as completed"
@@ -261,8 +276,8 @@ function App() {
               full line-item table (see common/components/ItemLineEditor.tsx)
               that wants up to ~1280px to avoid its own internal horizontal
               scrollbar. */}
-          <Dialog type="invoiceDesignComplete" title="Invoice" children={<GenerateInvoice />} maxWidth="xl" />
-          <Dialog type="quotation" title="Quotation" children={<GenerateQuotation />} maxWidth="xl" />
+          <Dialog type="invoiceDesignComplete" title="Invoice" children={<Suspense fallback={<PageSpinner />}><GenerateInvoice /></Suspense>} maxWidth="xl" />
+          <Dialog type="quotation" title="Quotation" children={<Suspense fallback={<PageSpinner />}><GenerateQuotation /></Suspense>} maxWidth="xl" />
 
           <DownloadProgressIndicator />
         </ErrorBoundary>

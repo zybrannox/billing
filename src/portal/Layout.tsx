@@ -1,6 +1,8 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useClientAppStore } from "../store/useClientAppStore";
 import { portalApiService } from "../api/portalService";
+import { Suspense } from "react";
+import PageSpinner from "../common/components/PageSpinner";
 
 // Deliberately its own, simpler chrome rather than reusing admin/Layout.tsx
 // or employee/Layout.tsx - those pull in staff-only pieces (useAppStore,
@@ -74,7 +76,9 @@ export default function PortalLayout() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 sm:px-8 py-6">
-        <Outlet />
+        <Suspense fallback={<PageSpinner />}>
+            <Outlet />
+          </Suspense>
       </main>
     </div>
   );

@@ -5,6 +5,7 @@ import { portalApiService } from "../../api/portalService";
 import { getApiErrorMessage } from "../../utils/apiError";
 import Button from "../../ui/Button";
 import TextField from "../../ui/TextField";
+import { MIN_PASSWORD_LENGTH, passwordTooShortMessage } from "../../config/passwordPolicy";
 
 interface InviteLookup {
   valid: boolean;
@@ -60,6 +61,10 @@ function ActivateAccount() {
     e.preventDefault();
     setErrorMessage(null);
 
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      setErrorMessage(passwordTooShortMessage);
+      return;
+    }
     if (password !== confirmPassword) {
       setErrorMessage("Passwords don't match.");
       return;

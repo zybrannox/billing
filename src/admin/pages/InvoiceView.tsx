@@ -19,6 +19,7 @@ import ShareRoundedIcon from "@mui/icons-material/ShareRounded";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import IosShareRoundedIcon from "@mui/icons-material/IosShareRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
+import FitScreenRoundedIcon from "@mui/icons-material/FitScreenRounded";
 import { saveAs } from "file-saver";
 
 import { apiService } from "../../api/service";
@@ -27,6 +28,7 @@ import { useAppStore } from "../../store/useAppStore";
 import { generateInvoicePdf } from "../../utils/generateInvoicePdf";
 import { shareToWhatsAppAfter } from "../../utils/shareToWhatsApp";
 import InvoiceSheet from "../components/InvoiceSheet";
+import FitToView, { type FitToViewHandle } from "../../documents/FitToView";
 import { formatCurrency, type InvoiceDetail } from "../components/invoiceSheetUtils";
 
 // Rendered as dialog content (see App.tsx's <Dialog type="viewInvoice">),
@@ -55,6 +57,11 @@ export default function InvoiceView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);
+  // "Single view": the document scales down to fit the dialog without
+  // scrolling (see documents/FitToView.tsx); the toolbar toggle switches to
+  // actual size.
+  const fitRef = useRef<FitToViewHandle>(null);
+  const [fit, setFit] = useState(true);
   const [exporting, setExporting] = useState<"download" | "share" | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
   const [shareMenuAnchor, setShareMenuAnchor] = useState<HTMLElement | null>(null);
@@ -78,7 +85,9 @@ export default function InvoiceView() {
     const node = sheetRef.current;
     node.classList.add("pdf-exporting");
     try {
-      return await generateInvoicePdf(node, `Invoice-${invoice.invoice_number}.pdf`);
+      // The capture must see the sheet at actual size, not scaled to fit.
+      const capture = () => generateInvoicePdf(node, `Invoice-${invoice.invoice_number}.pdf`);
+      return await (fitRef.current ? fitRef.current.runAtActualSize(capture) : capture());
     } finally {
       node.classList.remove("pdf-exporting");
     }
@@ -149,9 +158,9 @@ export default function InvoiceView() {
   // Zybrannox account - and shares that link as the WhatsApp text.
   //
   // Uses shareToWhatsAppAfter (see utils/shareToWhatsApp.ts), not
-  // shareToWhatsApp directly - this needs to upload the PDF first to know
-  // the real link, and opening the wa.me window only after that async
-  // work finishes would get it silently popup-blocked.
+  // shareToWhatsApp directly - this needs to render and upload the PDF
+  // first to know the real link; that helper does the work while this tab
+  // is still in front and opens WhatsApp once the link is ready.
   const handleShareWhatsApp = async () => {
     if (!invoice) return;
     setExportError(null);
@@ -246,6 +255,21 @@ export default function InvoiceView() {
         }}
       >
         <Stack direction="row" spacing={1}>
+          <Tooltip title={fit ? "Showing the whole invoice - click for actual size" : "Fit to screen"}>
+            <IconButton
+              onClick={() => setFit((f) => !f)}
+              aria-pressed={fit}
+              sx={{
+                border: "1px solid var(--slate-200)",
+                borderRadius: 2,
+                color: fit ? "var(--blue-700)" : "var(--slate-700)",
+                bgcolor: fit ? "var(--blue-50)" : "transparent",
+                "&:hover": { bgcolor: fit ? "var(--blue-100)" : "var(--slate-100)" },
+              }}
+            >
+              <FitScreenRoundedIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
           {isAdmin && invoice.status === "pending" && (
             <Tooltip title="Edit Invoice">
               <IconButton
@@ -363,7 +387,9 @@ export default function InvoiceView() {
         </Box>
       )}
 
-      <InvoiceSheet ref={sheetRef} invoice={invoice} />
+      <FitToView ref={fitRef} fit={fit}>
+        <InvoiceSheet ref={sheetRef} invoice={invoice} />
+      </FitToView>
 
       {/* Global CSS for Print Optimization */}
       <style>{`

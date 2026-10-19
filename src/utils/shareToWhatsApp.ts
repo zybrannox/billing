@@ -1,3 +1,5 @@
+import { useConfirmDialogStore } from "../hooks/useconfirmDialogStore";
+
 // wa.me is WhatsApp's own official share link - opens WhatsApp Web/Desktop
 // (or the mobile app, if this runs there) with `text` pre-filled in the
 // chat composer, no contact required first. This is what actually works
@@ -11,62 +13,48 @@ export function shareToWhatsApp(text: string) {
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
-// For flows that need to do async work first (uploading the generated PDF
-// to get back a shareable link - see InvoiceView.tsx/QuotationView.tsx's
+// For flows that need to do async work first (generating and uploading a
+// PDF to get back a shareable link - see InvoiceView.tsx/QuotationView.tsx's
 // handleShareWhatsApp) before the final wa.me text is known.
 //
-// Calling shareToWhatsApp only once that work finishes gets silently
-// popup-blocked: window.open() is only exempt from the blocker while
-// still inside the original click's "user activation" window, which a
-// browser considers spent once an async gap (an upload, a PDF render) has
-// passed. This opens a blank tab immediately instead - still inside that
-// window - and redirects *that* tab to the real wa.me URL once
-// `buildText` resolves, which browsers do allow regardless of timing.
+// The work runs FIRST, with this app's tab still in front, and WhatsApp is
+// opened only once the text is ready. The earlier design opened a blank tab
+// up front (to stay inside the click's popup-permission window) and
+// redirected it later - but that put the new tab in front and this one in
+// the background while the PDF was being rendered, and browsers pause
+// animation frames and clamp timers in background tabs, which is exactly
+// what rendering a PDF leans on: a share could take many seconds, or wait
+// until the user switched back.
+//
+// Opening after the work normally still counts as the user's click (Chrome
+// and Firefox allow ~5 s of "transient activation"). If a stricter browser
+// blocks it anyway, a dialog offers an "Open WhatsApp" button instead - a
+// fresh click, so it can't be blocked - rather than the share just failing.
 export async function shareToWhatsAppAfter(buildText: () => Promise<string>) {
-  const tab = window.open("about:blank", "_blank");
+  const text = await buildText();
+  const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+
+  const tab = window.open(url, "_blank");
   if (tab) {
+    // Same protection a plain <a target="_blank" rel="noopener"> gets,
+    // applied after the fact since the tab reference is needed to detect a
+    // blocked popup (the "noopener" feature would make open() return null
+    // even on success).
     try {
-      tab.document.title = "Preparing WhatsApp share...";
-      Object.assign(tab.document.body.style, {
-        font: "14px system-ui, sans-serif",
-        color: "#667085",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        height: "100vh",
-        margin: "0",
-      });
-      tab.document.body.textContent = "Preparing your WhatsApp message...";
+      tab.opener = null;
     } catch {
-      // Harmless if this fails for any reason - the blank tab just stays
-      // blank for a moment until the redirect below.
+      // Some browsers don't allow this assignment - non-fatal.
     }
+    return;
   }
 
-  try {
-    const text = await buildText();
-    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
-    if (tab && !tab.closed) {
-      // Severs the child tab's back-reference to this page before handing
-      // it off to an external site (wa.me) - the same protection a plain
-      // <a target="_blank" rel="noopener"> gets, which window.open's own
-      // "noopener" feature can't give us here since that would also drop
-      // our own reference to the tab, and we need that reference to
-      // redirect it once the link is ready.
-      try {
-        tab.opener = null;
-      } catch {
-        // Some browsers don't allow this assignment - non-fatal, just
-        // means the mitigation doesn't apply this time.
-      }
-      tab.location.href = url;
-    } else {
-      // Popup was blocked (or closed) despite opening synchronously -
-      // fall back to a plain, immediate open attempt.
+  useConfirmDialogStore.getState().showDialog({
+    title: "Open WhatsApp",
+    description: "Your browser blocked the new tab. Click below to open the message in WhatsApp.",
+    confirmText: "Open WhatsApp",
+    cancelText: "Close",
+    onConfirm: () => {
       window.open(url, "_blank", "noopener,noreferrer");
-    }
-  } catch (err) {
-    tab?.close();
-    throw err;
-  }
+    },
+  });
 }

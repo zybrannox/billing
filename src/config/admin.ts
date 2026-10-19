@@ -1,6 +1,7 @@
 import { Assignment, Badge, People, Settings, Dashboard, Business, Inbox, History } from "@mui/icons-material";
 import type { FieldDefinition } from "../common/components/CustomForm";
 import type { NavItem } from "../types/adminTypes";
+import { MIN_PASSWORD_LENGTH } from "./passwordPolicy";
 
 export const loginFormFields = [
   {
@@ -178,7 +179,7 @@ export const changePasswordFields: FieldDefinition[] = [
     label: "New Password",
     type: "password",
     required: true,
-    min: 6,
+    min: MIN_PASSWORD_LENGTH,
     placeholder: "Enter new password",
   },
 ];

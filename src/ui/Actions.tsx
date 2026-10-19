@@ -22,6 +22,9 @@ import {
   CheckCircleRounded,
   CancelRounded,
   PaymentsRounded,
+  FileDownloadRounded,
+  ThumbUpAltRounded,
+  ThumbDownAltRounded,
   MoreVertRounded,
   DownloadForOfflineRounded,
   InfoRounded,
@@ -56,6 +59,13 @@ interface CrudActionsProps {
   viewInvoice?: boolean;
   markPaid?: boolean;
   recordPayment?: boolean;
+  // Download the document (invoice/quotation) as a PDF - distinct from
+  // `download`, which downloads a project's uploaded files.
+  downloadDocument?: boolean;
+  // Quotation decision buttons - enabled only while quotationStatus is
+  // "pending", same terminal-state idea as markPaid/cancelInvoice.
+  acceptQuotation?: boolean;
+  rejectQuotation?: boolean;
   cancelInvoice?: boolean;
   // Shares this row's invoice straight to WhatsApp (see
   // admin/pages/InvoiceView.tsx's handleShareWhatsApp) without opening it
@@ -90,6 +100,12 @@ interface CrudActionsProps {
   onViewInvoice?: () => void;
   onMarkPaid?: () => void;
   onRecordPayment?: () => void;
+  onDownloadDocument?: () => void;
+  // Disables the download button while its PDF is being generated.
+  documentBusy?: boolean;
+  onAcceptQuotation?: () => void;
+  onRejectQuotation?: () => void;
+  quotationStatus?: string;
   onCancelInvoice?: () => void;
   onViewCustomer?: () => void;
   onShareInvoice?: () => void;
@@ -215,6 +231,9 @@ const CrudActions = ({
   viewInvoice = false,
   markPaid = false,
   recordPayment = false,
+  downloadDocument = false,
+  acceptQuotation = false,
+  rejectQuotation = false,
   cancelInvoice = false,
   viewCustomer = false,
   shareInvoice = false,
@@ -236,6 +255,11 @@ const CrudActions = ({
   onViewInvoice,
   onMarkPaid,
   onRecordPayment,
+  onDownloadDocument,
+  documentBusy = false,
+  onAcceptQuotation,
+  onRejectQuotation,
+  quotationStatus,
   onCancelInvoice,
   onViewCustomer,
   onShareInvoice,
@@ -760,6 +784,69 @@ const CrudActions = ({
           >
             <ApartmentRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
           </IconButton>
+        </Tooltip>
+      )}
+
+      {downloadDocument && (
+        <Tooltip title={documentBusy ? "Preparing PDF…" : "Download PDF"}>
+          <span>
+            <IconButton
+              size={size}
+              onClick={onDownloadDocument}
+              disabled={documentBusy}
+              sx={{
+                ...actionIconSx,
+                color: "var(--slate-600)",
+                backgroundColor: "rgba(100, 116, 139, 0.08)",
+                "&:hover": { backgroundColor: "rgba(100, 116, 139, 0.16)" },
+                "&.Mui-disabled": { opacity: 0.5 },
+              }}
+            >
+              <FileDownloadRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
+            </IconButton>
+          </span>
+        </Tooltip>
+      )}
+
+      {acceptQuotation && (
+        <Tooltip title={quotationStatus !== "pending" ? "Only pending quotations can be accepted" : "Mark Accepted"}>
+          <span>
+            <IconButton
+              size={size}
+              onClick={onAcceptQuotation}
+              disabled={quotationStatus !== "pending"}
+              sx={{
+                ...actionIconSx,
+                color: "var(--emerald-600)",
+                backgroundColor: "rgba(5, 150, 105, 0.06)",
+                "&:hover": { backgroundColor: "rgba(5, 150, 105, 0.12)" },
+                "&.Mui-disabled": { opacity: 0.4 },
+              }}
+            >
+              <ThumbUpAltRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
+            </IconButton>
+          </span>
+        </Tooltip>
+      )}
+
+      {rejectQuotation && (
+        <Tooltip title={quotationStatus !== "pending" ? "Only pending quotations can be rejected" : "Mark Rejected"}>
+          <span>
+            <IconButton
+              size={size}
+              onClick={onRejectQuotation}
+              disabled={quotationStatus !== "pending"}
+              sx={{
+                ...actionIconSx,
+                color: "var(--rose-600)",
+                backgroundColor: "rgba(225, 29, 72, 0.06)",
+                "&:hover": { backgroundColor: "rgba(225, 29, 72, 0.12)" },
+                "&.Mui-disabled": { opacity: 0.4 },
+              }}
+            >
+              <ThumbDownAltRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
+            </IconButton>
+          </span>
         </Tooltip>
       )}
 
