@@ -1,3 +1,4 @@
+import { documentTokens } from "../theme/tokens";
 import { resolveDocumentTheme, tint } from "./documentTheme";
 
 // Layout styles for printed documents. A template is *data*, not a copy of
@@ -43,7 +44,8 @@ type Palette = ReturnType<typeof resolveDocumentTheme>;
 type Template = (c: Palette) => Partial<DocumentStyle> &
   Pick<DocumentStyle, "tableHeader" | "totalBar" | "title">;
 
-const NEUTRAL = { ink: "#1f2230", muted: "#6b7280", label: "#6b7185", hairline: "#e3e5ef" };
+const NEUTRAL = documentTokens.neutral;
+const WARM = documentTokens.warm;
 
 const BUILDERS: Record<string, Template> = {
   classic: (c) => ({
@@ -53,14 +55,17 @@ const BUILDERS: Record<string, Template> = {
   }),
 
   minimal: (c) => ({
-    ...{ ink: "#1b1a17", muted: "#6f6a5f", label: "#8f8a7d", hairline: "#e8e5de" },
+    ink: WARM.ink,
+    muted: WARM.inkMuted,
+    label: WARM.label,
+    hairline: WARM.hairline,
     supportsTopBar: false,
     logoHeight: 30,
     rowPy: 1.6,
     sectionGap: 5,
     title: { size: "0.95rem", weight: 700, letterSpacing: "0.1em", color: c.primary },
-    tableHeader: { bg: "transparent", color: "#8f8a7d", radius: "0", rule: "#e8e5de" },
-    totalBar: { bg: "transparent", color: "#1b1a17", radius: "0", border: "none", size: "1.4rem", rule: true },
+    tableHeader: { bg: "transparent", color: WARM.label, radius: "0", rule: WARM.hairline },
+    totalBar: { bg: "transparent", color: WARM.ink, radius: "0", border: "none", size: "1.4rem", rule: true },
     cardRadius: "12px",
   }),
 
@@ -79,8 +84,8 @@ const BUILDERS: Record<string, Template> = {
     rowPy: 0.65,
     sectionGap: 3,
     title: { size: "1.7rem", weight: 800, letterSpacing: "0", color: c.primary },
-    tableHeader: { bg: "#f1f3f7", color: "#1f2230", radius: "6px", rule: null },
-    totalBar: { bg: "transparent", color: "#1f2230", radius: "8px", border: `1.5px solid ${c.primary}`, size: "1rem", rule: false },
+    tableHeader: { bg: documentTokens.compactHeaderBg, color: NEUTRAL.ink, radius: "6px", rule: null },
+    totalBar: { bg: "transparent", color: NEUTRAL.ink, radius: "8px", border: `1.5px solid ${c.primary}`, size: "1rem", rule: false },
     cardRadius: "10px",
   }),
 };

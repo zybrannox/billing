@@ -66,7 +66,7 @@ const CheckboxField = React.memo(
                   mr: direction === "row" ? 2.5 : 0,
                   "& .MuiFormControlLabel-label": {
                     color: "var(--slate-900)",
-                    fontSize: "0.85rem",
+                    fontSize: "var(--fs-md)",
                     fontWeight: 500,
                   },
                 }}
@@ -88,13 +88,13 @@ const CheckboxField = React.memo(
           </FormGroup>
 
           {error && (
-            <FormHelperText sx={{ mx: 0, mt: 0.5, color: "var(--red-500)", fontSize: "0.75rem" }}>
+            <FormHelperText sx={{ mx: 0, mt: 0.5, color: "var(--red-500)", fontSize: "var(--fs-xs)" }}>
               {error}
             </FormHelperText>
           )}
 
           {helperText && !error && (
-            <FormHelperText sx={{ mx: 0, mt: 0.5, color: "var(--slate-500)", fontSize: "0.75rem" }}>
+            <FormHelperText sx={{ mx: 0, mt: 0.5, color: "var(--slate-500)", fontSize: "var(--fs-xs)" }}>
               {helperText}
             </FormHelperText>
           )}
@@ -112,7 +112,7 @@ const CheckboxField = React.memo(
           sx={{
             "& .MuiFormControlLabel-label": {
               color: "var(--slate-900)",
-              fontSize: "0.85rem",
+              fontSize: "var(--fs-md)",
               fontWeight: 500,
             },
           }}
@@ -132,13 +132,13 @@ const CheckboxField = React.memo(
         />
 
         {error && (
-          <FormHelperText sx={{ mx: 0, mt: 0.25, color: "var(--red-500)", fontSize: "0.75rem" }}>
+          <FormHelperText sx={{ mx: 0, mt: 0.25, color: "var(--red-500)", fontSize: "var(--fs-xs)" }}>
             {error}
           </FormHelperText>
         )}
 
         {helperText && !error && (
-          <FormHelperText sx={{ mx: 0, mt: 0.25, color: "var(--slate-500)", fontSize: "0.75rem" }}>
+          <FormHelperText sx={{ mx: 0, mt: 0.25, color: "var(--slate-500)", fontSize: "var(--fs-xs)" }}>
             {helperText}
           </FormHelperText>
         )}

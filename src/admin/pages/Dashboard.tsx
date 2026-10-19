@@ -14,11 +14,13 @@ import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import DonutSmallRoundedIcon from "@mui/icons-material/DonutSmallRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import { apiService } from "../../api/service";
-import { formatDate } from "../../utils/dateFormatter";
+import { formatDate } from "../../format/date";
 import { getSemanticColor } from "../../utils/colors";
 import { getDeliveryBadge, type RecentDelivery } from "../../utils/deliveryStatus";
 import { useAppStore } from "../../store/useAppStore";
 import { useDialogStore } from "../../store/useDialogStore";
+import { formatRupeesWhole as money } from "../../format/money";
+import { formatShortDate } from "../../format/date";
 
 type Granularity = "day" | "week" | "month" | "year";
 
@@ -99,8 +101,6 @@ interface DashboardSummary {
   top_customers: TopCustomer[];
 }
 
-const money = (v: number) =>
-  `₹${v.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 
 const STATUS_STYLES: Record<string, { bg: string; color: string; label: string }> = {
   pending: { bg: "var(--amber-100)", color: "var(--amber-800)", label: "Pending" },
@@ -168,7 +168,7 @@ function getDueLabel(
 // ---------------------------------------------------------------------
 function getRangeLabel(granularity: Granularity): string {
   const now = new Date();
-  const fmt = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  const fmt = formatShortDate;
 
   if (granularity === "day") {
     const start = new Date(now);
@@ -233,7 +233,7 @@ export function StatCard({
       }}
     >
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <Typography variant="body2" sx={{ color: "var(--slate-500)", fontWeight: 600, fontSize: "0.825rem" }}>
+        <Typography variant="body2" sx={{ color: "var(--slate-500)", fontWeight: 600, fontSize: "var(--fs-sm)" }}>
           {label}
         </Typography>
         <Box
@@ -256,7 +256,7 @@ export function StatCard({
       <Box sx={{ minWidth: 0 }}>
         <Typography
           sx={{
-            fontSize: "1.5rem",
+            fontSize: "var(--fs-6xl)",
             fontWeight: 800,
             color: "var(--slate-900)",
             lineHeight: 1.1,
@@ -302,7 +302,7 @@ function GranularityToggle({ value, onChange, dark }: { value: Granularity; onCh
               py: 0.75,
               borderRadius: 999,
               cursor: "pointer",
-              fontSize: "0.8rem",
+              fontSize: "var(--fs-sm)",
               fontWeight: 700,
               fontFamily: "inherit",
               color: dark
@@ -363,7 +363,7 @@ function ActivityTabToggle({
               py: 0.75,
               borderRadius: 999,
               cursor: "pointer",
-              fontSize: "0.8rem",
+              fontSize: "var(--fs-sm)",
               fontWeight: 700,
               fontFamily: "inherit",
               color: active ? "var(--white)" : "var(--slate-500)",
@@ -385,7 +385,7 @@ function ActivityTabToggle({
                   borderRadius: 999,
                   bgcolor: "var(--red-600)",
                   color: "var(--white)",
-                  fontSize: "0.6rem",
+                  fontSize: "var(--fs-2xs)",
                   fontWeight: 800,
                   display: "flex",
                   alignItems: "center",
@@ -598,8 +598,8 @@ function StatusDonut({
           ))}
         </svg>
         <Box sx={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-          <Typography sx={{ fontWeight: 800, fontSize: "1.35rem", color: "var(--slate-900)", lineHeight: 1 }}>{total}</Typography>
-          <Typography variant="caption" sx={{ color: "var(--slate-400)", fontSize: "0.65rem", mt: 0.25 }}>{centerLabel}</Typography>
+          <Typography sx={{ fontWeight: 800, fontSize: "var(--fs-5xl)", color: "var(--slate-900)", lineHeight: 1 }}>{total}</Typography>
+          <Typography variant="caption" sx={{ color: "var(--slate-400)", fontSize: "var(--fs-2xs)", mt: 0.25 }}>{centerLabel}</Typography>
         </Box>
       </Box>
       <Box sx={{ display: "flex", flexDirection: "column", gap: 1.25, flex: 1, minWidth: 0 }}>
@@ -665,7 +665,7 @@ function AttentionRow({ project, onClick }: { project: AttentionProject; onClick
           alignItems: "center",
           justifyContent: "center",
           fontWeight: 800,
-          fontSize: "0.9rem",
+          fontSize: "var(--fs-lg)",
           flexShrink: 0,
         }}
       >
@@ -689,7 +689,7 @@ function AttentionRow({ project, onClick }: { project: AttentionProject; onClick
             color: tone.color,
             border: "1px solid",
             borderColor: tone.border,
-            fontSize: "0.7rem",
+            fontSize: "var(--fs-2xs)",
             fontWeight: 800,
             whiteSpace: "nowrap",
           }}
@@ -761,7 +761,7 @@ function DeliveryRow({ delivery, onClick }: { delivery: RecentDelivery; onClick:
           borderRadius: 999,
           bgcolor: badge.bg,
           color: badge.color,
-          fontSize: "0.7rem",
+          fontSize: "var(--fs-2xs)",
           fontWeight: 800,
           whiteSpace: "nowrap",
           flexShrink: 0,
@@ -818,7 +818,7 @@ function CustomerLeaderboardRow({ rank, customer, maxSpent }: { rank: number; cu
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontSize: "0.68rem",
+            fontSize: "var(--fs-2xs)",
             fontWeight: 800,
             bgcolor: medal.bg,
             color: medal.color,
@@ -839,7 +839,7 @@ function CustomerLeaderboardRow({ rank, customer, maxSpent }: { rank: number; cu
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontSize: "0.72rem",
+            fontSize: "var(--fs-2xs)",
             fontWeight: 800,
             flexShrink: 0,
           }}
@@ -854,7 +854,7 @@ function CustomerLeaderboardRow({ rank, customer, maxSpent }: { rank: number; cu
             {customer.order_count} {customer.order_count === 1 ? "order" : "orders"}
           </Typography>
         </Box>
-        <Typography sx={{ fontWeight: 800, color: "var(--slate-900)", fontSize: "0.9rem", flexShrink: 0 }}>
+        <Typography sx={{ fontWeight: 800, color: "var(--slate-900)", fontSize: "var(--fs-lg)", flexShrink: 0 }}>
           {money(customer.total_spent)}
         </Typography>
       </Box>
@@ -911,7 +911,7 @@ export function SectionCard({
           >
             {icon}
           </Box>
-          <Typography sx={{ fontWeight: 700, color: "var(--slate-900)", fontSize: "1.05rem" }}>
+          <Typography sx={{ fontWeight: 700, color: "var(--slate-900)", fontSize: "var(--fs-2xl)" }}>
             {title}
           </Typography>
         </Box>
@@ -1037,7 +1037,7 @@ export default function Dashboard() {
 
         <Box sx={{ position: "relative", display: "flex", flexDirection: { xs: "column", md: "row" }, justifyContent: "space-between", alignItems: { xs: "flex-start", md: "flex-start" }, gap: 3 }}>
           <Box>
-            <Typography sx={{ color: "rgba(255,255,255,0.55)", fontWeight: 700, fontSize: "0.85rem" }}>
+            <Typography sx={{ color: "rgba(255,255,255,0.55)", fontWeight: 700, fontSize: "var(--fs-md)" }}>
               {getGreeting()}{username ? `, ${username}` : ""}
             </Typography>
             {/* component="h1" - this is the page's real heading (the
@@ -1087,7 +1087,7 @@ export default function Dashboard() {
                 border: "1px solid rgba(255,255,255,0.15)",
                 bgcolor: "rgba(255,255,255,0.08)",
                 color: "rgba(255,255,255,0.85)",
-                fontSize: "0.8rem",
+                fontSize: "var(--fs-sm)",
                 fontWeight: 600,
                 whiteSpace: "nowrap",
               }}
@@ -1180,17 +1180,17 @@ export default function Dashboard() {
               data.attention_projects.length > 0 ? (
                 <Box sx={{ display: "flex", gap: 0.75 }}>
                   {creditUnpaidCount > 0 && (
-                    <Box sx={{ px: 1.1, py: 0.35, borderRadius: 999, bgcolor: "var(--violet-50)", color: "var(--violet-600)", fontSize: "0.7rem", fontWeight: 800 }}>
+                    <Box sx={{ px: 1.1, py: 0.35, borderRadius: 999, bgcolor: "var(--violet-50)", color: "var(--violet-600)", fontSize: "var(--fs-2xs)", fontWeight: 800 }}>
                       {creditUnpaidCount} on credit
                     </Box>
                   )}
                   {overdueCount > 0 && (
-                    <Box sx={{ px: 1.1, py: 0.35, borderRadius: 999, bgcolor: "var(--red-50)", color: "var(--red-600)", fontSize: "0.7rem", fontWeight: 800 }}>
+                    <Box sx={{ px: 1.1, py: 0.35, borderRadius: 999, bgcolor: "var(--red-50)", color: "var(--red-600)", fontSize: "var(--fs-2xs)", fontWeight: 800 }}>
                       {overdueCount} overdue
                     </Box>
                   )}
                   {urgentCount > 0 && (
-                    <Box sx={{ px: 1.1, py: 0.35, borderRadius: 999, bgcolor: "var(--amber-50)", color: "var(--amber-600)", fontSize: "0.7rem", fontWeight: 800 }}>
+                    <Box sx={{ px: 1.1, py: 0.35, borderRadius: 999, bgcolor: "var(--amber-50)", color: "var(--amber-600)", fontSize: "var(--fs-2xs)", fontWeight: 800 }}>
                       {urgentCount} urgent
                     </Box>
                   )}
@@ -1303,7 +1303,7 @@ export default function Dashboard() {
                           alignItems: "center",
                           justifyContent: "center",
                           fontWeight: 800,
-                          fontSize: "0.85rem",
+                          fontSize: "var(--fs-md)",
                           flexShrink: 0,
                         }}
                       >
@@ -1324,7 +1324,7 @@ export default function Dashboard() {
                     <Typography variant="body2" sx={{ color: "var(--slate-600)" }} noWrap>
                       {formatDate(inv.created_at)}
                     </Typography>
-                    <Typography sx={{ fontWeight: 700, color: "var(--slate-900)", fontSize: "0.9rem", textAlign: "right" }}>
+                    <Typography sx={{ fontWeight: 700, color: "var(--slate-900)", fontSize: "var(--fs-lg)", textAlign: "right" }}>
                       {money(inv.amount)}
                     </Typography>
                     <Box sx={{ textAlign: "right" }}>
@@ -1336,7 +1336,7 @@ export default function Dashboard() {
                           borderRadius: "8px",
                           bgcolor: style.bg,
                           color: style.color,
-                          fontSize: "0.7rem",
+                          fontSize: "var(--fs-2xs)",
                           fontWeight: 700,
                           letterSpacing: "0.02em",
                           textTransform: "uppercase",

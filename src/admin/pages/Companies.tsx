@@ -11,6 +11,7 @@ import CompanyInvoicesList from "../components/CompanyInvoicesList";
 import { useDialogStore } from "../../store/useDialogStore";
 import { useConfirmDialogStore } from "../../hooks/useconfirmDialogStore";
 import { apiService } from "../../api/service";
+import { formatRupees } from "../../format/money";
 
 interface Company {
   id: number;
@@ -47,7 +48,7 @@ const buildBaseColumns = (): GridColDef[] => [
     flex: 1,
     editable: true,
     type: "number",
-    valueFormatter: (value: number | null) => (value != null ? `₹${value.toLocaleString("en-IN")}` : "No limit"),
+    valueFormatter: (value: number | null) => (value != null ? formatRupees(value) : "No limit"),
   },
 ];
 

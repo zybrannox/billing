@@ -4,7 +4,7 @@ import RequestQuoteRoundedIcon from "@mui/icons-material/RequestQuoteRounded";
 import FolderOpenRoundedIcon from "@mui/icons-material/FolderOpenRounded";
 
 import { apiService } from "../../api/service";
-import { formatDateTime } from "../../utils/dateFormatter";
+import { formatDateTime } from "../../format/date";
 import { getSemanticColor } from "../../utils/colors";
 import { getApiErrorMessage } from "../../utils/apiError";
 import { downloadQuotationPdf } from "../../utils/downloadDocument";
@@ -16,6 +16,7 @@ import { semanticChipSx } from "../../ui/chipStyles";
 import CrudActions from "../../ui/Actions";
 import ListPager from "../../ui/ListPager";
 import type { QuotationStatus } from "./quotationSheetUtils";
+import { formatRupeesWhole as money } from "../../format/money";
 
 interface QuotationRow {
   id: number;
@@ -33,7 +34,6 @@ interface QuotationListResponse {
 }
 
 const PAGE_SIZE = 10;
-const money = (v: number) => `₹${v.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 
 // Same status set and colouring as the quotation view's own.
 const statusColor = (status: QuotationStatus) =>
@@ -189,7 +189,7 @@ export default function CustomerQuotationsList({ customerId }: { customerId: num
 
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <Box sx={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 0.5 }}>
-              <FolderOpenRoundedIcon sx={{ fontSize: "0.95rem", color: "var(--slate-400)", flexShrink: 0 }} />
+              <FolderOpenRoundedIcon sx={{ fontSize: "var(--fs-xl)", color: "var(--slate-400)", flexShrink: 0 }} />
               <Typography variant="body2" color="text.secondary" noWrap>
                 {q.project_type || "—"}
               </Typography>

@@ -61,7 +61,7 @@ const RadioField = React.memo(
                     marginRight: "4px",
                     "& .MuiFormControlLabel-label": {
                       color: value === opt.value ? "var(--slate-900)" : "var(--slate-600)",
-                      fontSize: "0.85rem",
+                      fontSize: "var(--fs-md)",
                       fontWeight: value === opt.value ? 500 : 400,
                       transition: "color 0.15s ease",
                       userSelect: "none",
@@ -97,7 +97,7 @@ const RadioField = React.memo(
               sx={{
                 marginLeft: 0,
                 marginTop: "4px",
-                fontSize: "0.75rem",
+                fontSize: "var(--fs-xs)",
                 color: "var(--red-500)",
               }}
             >
@@ -119,7 +119,7 @@ const RadioField = React.memo(
             margin: 0,
             "& .MuiFormControlLabel-label": {
               color: error ? "var(--red-500)" : isSingleChecked ? "var(--slate-900)" : "var(--slate-600)",
-              fontSize: "0.85rem",
+              fontSize: "var(--fs-md)",
               fontWeight: isSingleChecked ? 500 : 400,
               transition: "color 0.15s ease",
               userSelect: "none",
@@ -153,7 +153,7 @@ const RadioField = React.memo(
             sx={{
               marginLeft: 0,
               marginTop: "4px",
-              fontSize: "0.75rem",
+              fontSize: "var(--fs-xs)",
               color: "var(--red-500)",
             }}
           >

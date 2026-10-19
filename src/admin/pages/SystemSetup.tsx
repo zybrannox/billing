@@ -8,6 +8,7 @@ import { GenericDialog } from "../../ui/Dialog";
 import AddListOption from "../../common/pages/AddListOption";
 import DocumentDesignSettings from "../components/DocumentDesignSettings";
 import { useListOptionsStore, type ListOption } from "../../store/useListOptionsStore";
+import { formatRupees } from "../../format/money";
 
 // Project Type and Item Type are the categories wired up so far. Both the
 // backend (app/list_options) and this page's plumbing are already generic
@@ -30,7 +31,7 @@ const statusColumn: GridColDef<ListOption & { isActive: boolean }> = {
       size="small"
       sx={{
         fontWeight: 600,
-        fontSize: "0.75rem",
+        fontSize: "var(--fs-xs)",
         color: params.value ? "var(--emerald-600)" : "var(--slate-500)",
         backgroundColor: params.value
           ? "rgba(5, 150, 105, 0.1)"
@@ -49,7 +50,7 @@ const rateColumn: GridColDef<ListOption & { isActive: boolean }> = {
   field: "rate",
   headerName: "Rate (₹/sq ft)",
   width: 140,
-  renderCell: ({ value }) => (value != null ? `₹${Number(value).toLocaleString()}` : "—"),
+  renderCell: ({ value }) => (value != null ? formatRupees(Number(value)) : "—"),
 };
 
 function CategorySection({

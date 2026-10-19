@@ -101,7 +101,7 @@ export default function SearchInput({
         ...InputProps,
         sx: {
           height: 36,
-          fontSize: "0.85rem",
+          fontSize: "var(--fs-md)",
           borderRadius: "var(--border-radius-md, 6px)",
           bgcolor: "var(--white)",
           paddingLeft: "10px",

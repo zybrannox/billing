@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Box, Typography } from "@mui/material";
 import { invoiceTheme } from "./invoiceTheme";
+import { formatRupees } from "../../format/money";
 
 // Shared chrome between the editable Create Invoice/Quotation screens and
 // the read-only printable views - same document, two modes, both use this
@@ -19,7 +20,7 @@ export function InvoicePanelLabel({ children }: { children: ReactNode }) {
   return (
     <Typography
       sx={{
-        fontSize: "0.7rem",
+        fontSize: "var(--fs-2xs)",
         fontWeight: 700,
         letterSpacing: "0.08em",
         color: invoiceTheme.label,
@@ -83,22 +84,22 @@ export function InvoiceLineItem({
       }}
     >
       <Box sx={{ display: "flex", gap: 1.5, minWidth: 0 }}>
-        <Typography sx={{ fontSize: "0.85rem", color: invoiceTheme.label, fontWeight: 600, flexShrink: 0, width: 18 }}>
+        <Typography sx={{ fontSize: "var(--fs-md)", color: invoiceTheme.label, fontWeight: 600, flexShrink: 0, width: 18 }}>
           {index}
         </Typography>
         <Box sx={{ minWidth: 0 }}>
-          <Typography sx={{ fontSize: "0.9rem", fontWeight: 600, color: invoiceTheme.ink }}>
+          <Typography sx={{ fontSize: "var(--fs-lg)", fontWeight: 600, color: invoiceTheme.ink }}>
             {description}
           </Typography>
           {meta && (
-            <Typography sx={{ fontSize: "0.78rem", color: invoiceTheme.inkMuted, mt: 0.25 }}>
+            <Typography sx={{ fontSize: "var(--fs-sm)", color: invoiceTheme.inkMuted, mt: 0.25 }}>
               {meta}
               {rate ? ` · ${rate}` : ""}
             </Typography>
           )}
         </Box>
       </Box>
-      <Typography sx={{ fontSize: "0.9rem", fontWeight: 700, color: invoiceTheme.ink, whiteSpace: "nowrap", flexShrink: 0 }}>
+      <Typography sx={{ fontSize: "var(--fs-lg)", fontWeight: 700, color: invoiceTheme.ink, whiteSpace: "nowrap", flexShrink: 0 }}>
         {amount}
       </Typography>
     </Box>
@@ -144,15 +145,15 @@ export function InvoiceTotalCard({
         {hasDiscount && (
           <>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2 }}>
-              <Typography sx={{ fontSize: "0.85rem", color: invoiceTheme.inkMuted }}>Subtotal</Typography>
-              <Typography sx={{ fontSize: "0.85rem", fontWeight: 600, color: invoiceTheme.ink }}>
-                ₹{subtotal.toLocaleString()}
+              <Typography sx={{ fontSize: "var(--fs-md)", color: invoiceTheme.inkMuted }}>Subtotal</Typography>
+              <Typography sx={{ fontSize: "var(--fs-md)", fontWeight: 600, color: invoiceTheme.ink }}>
+                {formatRupees(subtotal)}
               </Typography>
             </Box>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2, mt: 0.5 }}>
-              <Typography sx={{ fontSize: "0.85rem", color: invoiceTheme.inkMuted }}>Discount</Typography>
-              <Typography sx={{ fontSize: "0.85rem", fontWeight: 600, color: invoiceTheme.ink }}>
-                −₹{discountAmount.toLocaleString()}
+              <Typography sx={{ fontSize: "var(--fs-md)", color: invoiceTheme.inkMuted }}>Discount</Typography>
+              <Typography sx={{ fontSize: "var(--fs-md)", fontWeight: 600, color: invoiceTheme.ink }}>
+                −{formatRupees(discountAmount)}
               </Typography>
             </Box>
           </>
@@ -185,18 +186,18 @@ export function InvoiceTotalCard({
               color: invoiceTheme.ink,
             }}
           >
-            ₹{total.toLocaleString()}
+            {formatRupees(total)}
           </Typography>
         </Box>
 
         {hasAdvance && (
           <>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2, mt: 0.5 }}>
-              <Typography sx={{ fontSize: "0.85rem", color: invoiceTheme.inkMuted }}>
+              <Typography sx={{ fontSize: "var(--fs-md)", color: invoiceTheme.inkMuted }}>
                 Advance Received{paymentMethod ? ` (${paymentMethod})` : ""}
               </Typography>
-              <Typography sx={{ fontSize: "0.85rem", fontWeight: 600, color: invoiceTheme.ink }}>
-                −₹{advanceAmount.toLocaleString()}
+              <Typography sx={{ fontSize: "var(--fs-md)", fontWeight: 600, color: invoiceTheme.ink }}>
+                −{formatRupees(advanceAmount)}
               </Typography>
             </Box>
             <Box
@@ -210,11 +211,11 @@ export function InvoiceTotalCard({
                 borderTop: `1px solid ${invoiceTheme.hairline}`,
               }}
             >
-              <Typography sx={{ fontWeight: 700, fontSize: "0.9rem", color: invoiceTheme.ink }}>
+              <Typography sx={{ fontWeight: 700, fontSize: "var(--fs-lg)", color: invoiceTheme.ink }}>
                 Balance Due
               </Typography>
-              <Typography sx={{ fontWeight: 800, fontSize: "1.3rem", color: invoiceTheme.ink }}>
-                ₹{balanceDue.toLocaleString()}
+              <Typography sx={{ fontWeight: 800, fontSize: "var(--fs-5xl)", color: invoiceTheme.ink }}>
+                {formatRupees(balanceDue)}
               </Typography>
             </Box>
           </>

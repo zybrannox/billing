@@ -259,7 +259,7 @@ export default function GenerateQuotation() {
               value={discountAmount}
               onChange={(e) => setDiscountAmount(e.target.value)}
               sx={{
-                "& .MuiInputBase-root": { px: 1, height: 40, fontSize: "0.875rem" },
+                "& .MuiInputBase-root": { px: 1, height: 40, fontSize: "var(--fs-md)" },
                 "& input": { textAlign: "right" },
               }}
             />

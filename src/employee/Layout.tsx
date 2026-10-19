@@ -1,7 +1,7 @@
 import React from "react";
+import { useTheme } from "@mui/material/styles";
 import { Box, CssBaseline } from "@mui/material";
 import { Outlet } from "react-router-dom";
-import { createTheme, ThemeProvider } from "@mui/material/styles";
 import IconButton from "@mui/material/IconButton";
 import { AppBar as MuiAppBar, Toolbar as MuiToolbar } from "@mui/material";
 import { MenuOutlined } from "@mui/icons-material";
@@ -12,31 +12,16 @@ import Drawer from "../common/components/Drawer";
 import { Suspense } from "react";
 import PageSpinner from "../common/components/PageSpinner";
 
-// Heading variants get their own fontFamily (see index.css's --font-
-// heading/h1-h6 rule) - same reasoning as admin/Layout.tsx's identical
-// theme override.
-const theme = createTheme({
-  typography: {
-    fontFamily: "var(--font-noto-sans)",
-    h1: { fontFamily: "var(--font-heading)" },
-    h2: { fontFamily: "var(--font-heading)" },
-    h3: { fontFamily: "var(--font-heading)" },
-    h4: { fontFamily: "var(--font-heading)" },
-    h5: { fontFamily: "var(--font-heading)" },
-    h6: { fontFamily: "var(--font-heading)" },
-  },
-});
 
 export default function EmployeeLayout() {
+  const theme = useTheme();
   const [open, setOpen] = React.useState(false);
 
   const handleDrawerToggle = () => setOpen((p) => !p);
   const handleDrawerClose = () => setOpen(false);
 
   return (
-    // `theme` was previously created but never actually provided to the
-    // tree - see admin/Layout.tsx's identical fix for why.
-    <ThemeProvider theme={theme}>
+    <>
       <CssBaseline />
       <Box sx={{ display: "flex" }}>
         {/* Drawer: component decides permanent vs temporary based on breakpoints */}
@@ -61,7 +46,7 @@ export default function EmployeeLayout() {
           >
             <MuiToolbar sx={{ justifyContent: "space-between" }}>
               <IconButton onClick={handleDrawerToggle}>
-                <MenuOutlined sx={{ color: "#000" }} />
+                <MenuOutlined sx={{ color: "var(--black)" }} />
               </IconButton>
               <div>
                 <Avatar />
@@ -77,7 +62,7 @@ export default function EmployeeLayout() {
               minWidth: 0,
               width: "100%",
               height: "100%",
-              backgroundColor: "#fff",
+              backgroundColor: "var(--white)",
               transition: theme.transitions.create("margin", {
                 easing: theme.transitions.easing.sharp,
                 duration: theme.transitions.duration.enteringScreen,
@@ -90,6 +75,6 @@ export default function EmployeeLayout() {
           </Box>
         </Box>
       </Box>
-    </ThemeProvider>
+    </>
   );
 }

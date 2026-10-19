@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { portalApiService } from "../../api/portalService";
 import Chip from "../../ui/Chip";
 import { semanticChipSx } from "../../ui/chipStyles";
-import { formatDateTime } from "../../utils/dateFormatter";
+import { formatDateTime } from "../../format/date";
 
 interface JobRequestItem {
   id: number;

@@ -55,7 +55,7 @@ export default function ConfirmDialog({
     >
       <Typography
         sx={{
-          fontSize: "0.875rem",
+          fontSize: "var(--fs-md)",
           color: "var(--slate-500, var(--slate-500))",
           lineHeight: 1.5,
         }}
@@ -66,7 +66,7 @@ export default function ConfirmDialog({
       {error && (
         <Typography
           sx={{
-            fontSize: "0.8125rem",
+            fontSize: "var(--fs-sm)",
             fontWeight: 600,
             color: "var(--rose-600)",
             bgcolor: "rgba(225, 29, 72, 0.06)",

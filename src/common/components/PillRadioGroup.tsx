@@ -32,7 +32,7 @@ export default function PillRadioGroup<T extends string>({
               borderRadius: 999,
               px: 1.5,
               py: 0.5,
-              fontSize: "0.8rem",
+              fontSize: "var(--fs-sm)",
               fontWeight: 700,
               fontFamily: "inherit",
               cursor: "pointer",

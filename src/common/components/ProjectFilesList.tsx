@@ -373,7 +373,7 @@ const ProjectFilesList = () => {
             sx={{
               fontWeight: 600,
               color: "var(--slate-500)",
-              fontSize: "0.7rem",
+              fontSize: "var(--fs-2xs)",
               textTransform: "uppercase",
               letterSpacing: "0.03em",
             }}
@@ -392,7 +392,7 @@ const ProjectFilesList = () => {
                 setViewAllOpen(true);
               }}
               sx={{
-                fontSize: "0.7rem",
+                fontSize: "var(--fs-2xs)",
                 fontWeight: 600,
                 color: "var(--blue-600)",
                 cursor: "pointer",
@@ -425,27 +425,27 @@ const ProjectFilesList = () => {
           {uploadProgress !== null ? (
             <>
               <CircularProgress size={13} thickness={5} sx={{ color: "var(--blue-600)" }} />
-              <Typography sx={{ fontSize: "0.7rem", fontWeight: 600 }}>
+              <Typography sx={{ fontSize: "var(--fs-2xs)", fontWeight: 600 }}>
                 Uploading {uploadProgress}%
               </Typography>
             </>
           ) : (
             <>
               <UploadFileRounded sx={{ fontSize: 15 }} />
-              <Typography sx={{ fontSize: "0.7rem", fontWeight: 600 }}>Add files</Typography>
+              <Typography sx={{ fontSize: "var(--fs-2xs)", fontWeight: 600 }}>Add files</Typography>
             </>
           )}
         </Box>
       </Box>
 
       {uploadError && (
-        <Typography sx={{ fontSize: "0.7rem", color: "var(--red-500)", mb: 0.75 }}>
+        <Typography sx={{ fontSize: "var(--fs-2xs)", color: "var(--red-500)", mb: 0.75 }}>
           {uploadError}
         </Typography>
       )}
 
       {totalFiles === 0 ? (
-        <Typography variant="body2" sx={{ color: "var(--slate-400)", fontSize: "0.8125rem" }}>
+        <Typography variant="body2" sx={{ color: "var(--slate-400)", fontSize: "var(--fs-sm)" }}>
           No files available in this project
         </Typography>
       ) : (
@@ -503,7 +503,7 @@ const ProjectFilesList = () => {
               <Typography
                 noWrap
                 sx={{
-                  fontSize: "0.75rem",
+                  fontSize: "var(--fs-xs)",
                   fontWeight: isDownloaded ? 600 : 500,
                   color: isDownloaded ? "var(--emerald-800)" : "var(--slate-700)",
                 }}
@@ -539,7 +539,7 @@ const ProjectFilesList = () => {
               "&:hover": { backgroundColor: "var(--blue-100)", borderColor: "var(--blue-300)" },
             }}
           >
-            <Typography sx={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--blue-600)" }}>
+            <Typography sx={{ fontSize: "var(--fs-xs)", fontWeight: 700, color: "var(--blue-600)" }}>
               +{hiddenCount} more
             </Typography>
           </Box>
@@ -585,7 +585,7 @@ const ProjectFilesList = () => {
                 indeterminate={selectedPaths.size > 0 && selectedPaths.size < files.length}
                 sx={{ p: 0.5 }}
               />
-              <Typography sx={{ fontSize: "0.75rem", color: "var(--slate-500)", fontWeight: 500 }}>
+              <Typography sx={{ fontSize: "var(--fs-xs)", color: "var(--slate-500)", fontWeight: 500 }}>
                 Select all
               </Typography>
             </Box>
@@ -690,7 +690,7 @@ const ProjectFilesList = () => {
                       variant="body2"
                       noWrap
                       sx={{
-                        fontSize: "0.8125rem",
+                        fontSize: "var(--fs-sm)",
                         color: isDownloaded ? "var(--emerald-800)" : "var(--slate-900)",
                         fontWeight: isDownloaded ? 600 : 500,
                       }}
@@ -701,7 +701,7 @@ const ProjectFilesList = () => {
                     {isPurged ? (
                       <Typography
                         variant="caption"
-                        sx={{ display: "block", color: "var(--slate-400)", fontSize: "0.7rem", fontStyle: "italic" }}
+                        sx={{ display: "block", color: "var(--slate-400)", fontSize: "var(--fs-2xs)", fontStyle: "italic" }}
                       >
                         Original removed after 7 days - thumbnail only
                       </Typography>
@@ -709,7 +709,7 @@ const ProjectFilesList = () => {
                       typeof file === "object" && (file.width || file.height) && (
                         <Typography
                           variant="caption"
-                          sx={{ display: "block", color: "var(--slate-500)", fontSize: "0.7rem" }}
+                          sx={{ display: "block", color: "var(--slate-500)", fontSize: "var(--fs-2xs)" }}
                         >
                           {file.width || "?"}" × {file.height || "?"}"
                         </Typography>

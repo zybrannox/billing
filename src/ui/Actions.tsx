@@ -38,7 +38,7 @@ import {
   ApartmentRounded,
   PersonAddRounded,
 } from "@mui/icons-material";
-import { formatDateTime } from "../utils/dateFormatter";
+import { formatDateTime } from "../format/date";
 
 interface MilestoneMeta {
   at: string;
@@ -134,7 +134,7 @@ const ProjectDetailsTooltip = ({ data }: { data: any }) => (
         fontWeight: 600,
         mb: 1.25,
         color: "var(--slate-900)",
-        fontSize: "0.8125rem",
+        fontSize: "var(--fs-sm)",
       }}
     >
       Project Details
@@ -168,7 +168,7 @@ const ProjectDetailsTooltip = ({ data }: { data: any }) => (
         >
           <Typography
             variant="caption"
-            sx={{ fontWeight: 500, color: "var(--slate-500)", fontSize: "0.75rem" }}
+            sx={{ fontWeight: 500, color: "var(--slate-500)", fontSize: "var(--fs-xs)" }}
           >
             {item.label}
           </Typography>
@@ -177,7 +177,7 @@ const ProjectDetailsTooltip = ({ data }: { data: any }) => (
             sx={{
               fontWeight: 500,
               color: "var(--slate-900)",
-              fontSize: "0.75rem",
+              fontSize: "var(--fs-xs)",
               textAlign: "right",
             }}
           >
@@ -195,7 +195,7 @@ const ProjectDetailsTooltip = ({ data }: { data: any }) => (
         sx={{
           fontWeight: 500,
           color: "var(--slate-500)",
-          fontSize: "0.75rem",
+          fontSize: "var(--fs-xs)",
           display: "block",
           mb: 0.375,
         }}
@@ -208,7 +208,7 @@ const ProjectDetailsTooltip = ({ data }: { data: any }) => (
           display: "block",
           lineHeight: 1.5,
           color: "var(--slate-700)",
-          fontSize: "0.75rem",
+          fontSize: "var(--fs-xs)",
           wordBreak: "break-word",
         }}
       >
@@ -551,7 +551,7 @@ const CrudActions = ({
                   <ListItemIcon>
                     <ReceiptLongRounded fontSize="small" sx={{ color: "var(--indigo-500)" }} />
                   </ListItemIcon>
-                  <ListItemText primaryTypographyProps={{ fontSize: "0.8125rem", fontWeight: 500 }}>
+                  <ListItemText primaryTypographyProps={{ fontSize: "var(--fs-sm)", fontWeight: 500 }}>
                     View Invoice
                   </ListItemText>
                 </MenuItem>
@@ -559,9 +559,9 @@ const CrudActions = ({
               {shareInvoice && (
                 <MenuItem onClick={runAndClose(onShareInvoice)} sx={{ py: 0.875 }}>
                   <ListItemIcon>
-                    <WhatsApp fontSize="small" sx={{ color: "#25D366" }} />
+                    <WhatsApp fontSize="small" sx={{ color: "var(--brand-whatsapp)" }} />
                   </ListItemIcon>
-                  <ListItemText primaryTypographyProps={{ fontSize: "0.8125rem", fontWeight: 500 }}>
+                  <ListItemText primaryTypographyProps={{ fontSize: "var(--fs-sm)", fontWeight: 500 }}>
                     Share to WhatsApp
                   </ListItemText>
                 </MenuItem>
@@ -571,7 +571,7 @@ const CrudActions = ({
                   <ListItemIcon>
                     <PersonRounded fontSize="small" sx={{ color: "var(--cyan-600)" }} />
                   </ListItemIcon>
-                  <ListItemText primaryTypographyProps={{ fontSize: "0.8125rem", fontWeight: 500 }}>
+                  <ListItemText primaryTypographyProps={{ fontSize: "var(--fs-sm)", fontWeight: 500 }}>
                     View Customer
                   </ListItemText>
                 </MenuItem>
@@ -581,7 +581,7 @@ const CrudActions = ({
                   <ListItemIcon>
                     <ApartmentRounded fontSize="small" sx={{ color: "var(--cyan-600)" }} />
                   </ListItemIcon>
-                  <ListItemText primaryTypographyProps={{ fontSize: "0.8125rem", fontWeight: 500 }}>
+                  <ListItemText primaryTypographyProps={{ fontSize: "var(--fs-sm)", fontWeight: 500 }}>
                     View Company
                   </ListItemText>
                 </MenuItem>
@@ -595,9 +595,9 @@ const CrudActions = ({
                       sx={{ py: 0.875 }}
                     >
                       <ListItemIcon>
-                        <WhatsApp fontSize="small" sx={{ color: "#25D366" }} />
+                        <WhatsApp fontSize="small" sx={{ color: "var(--brand-whatsapp)" }} />
                       </ListItemIcon>
-                      <ListItemText primaryTypographyProps={{ fontSize: "0.8125rem", fontWeight: 500 }}>
+                      <ListItemText primaryTypographyProps={{ fontSize: "var(--fs-sm)", fontWeight: 500 }}>
                         Notify Client
                       </ListItemText>
                     </MenuItem>
@@ -609,7 +609,7 @@ const CrudActions = ({
                   <ListItemIcon>
                     <DownloadForOfflineRounded fontSize="small" sx={{ color: "var(--sky-600)" }} />
                   </ListItemIcon>
-                  <ListItemText primaryTypographyProps={{ fontSize: "0.8125rem", fontWeight: 500 }}>
+                  <ListItemText primaryTypographyProps={{ fontSize: "var(--fs-sm)", fontWeight: 500 }}>
                     Download All
                   </ListItemText>
                 </MenuItem>
@@ -619,7 +619,7 @@ const CrudActions = ({
                   <ListItemIcon>
                     <VisibilityRounded fontSize="small" sx={{ color: "var(--indigo-500)" }} />
                   </ListItemIcon>
-                  <ListItemText primaryTypographyProps={{ fontSize: "0.8125rem", fontWeight: 500 }}>
+                  <ListItemText primaryTypographyProps={{ fontSize: "var(--fs-sm)", fontWeight: 500 }}>
                     Preview
                   </ListItemText>
                 </MenuItem>
@@ -629,7 +629,7 @@ const CrudActions = ({
                   <ListItemIcon>
                     <EditRounded fontSize="small" sx={{ color: "var(--blue-600)" }} />
                   </ListItemIcon>
-                  <ListItemText primaryTypographyProps={{ fontSize: "0.8125rem", fontWeight: 500 }}>
+                  <ListItemText primaryTypographyProps={{ fontSize: "var(--fs-sm)", fontWeight: 500 }}>
                     Edit
                   </ListItemText>
                 </MenuItem>
@@ -643,7 +643,7 @@ const CrudActions = ({
                       <ToggleOffRounded fontSize="small" sx={{ color: "var(--slate-500)" }} />
                     )}
                   </ListItemIcon>
-                  <ListItemText primaryTypographyProps={{ fontSize: "0.8125rem", fontWeight: 500 }}>
+                  <ListItemText primaryTypographyProps={{ fontSize: "var(--fs-sm)", fontWeight: 500 }}>
                     {isActive ? "Deactivate" : "Activate"}
                   </ListItemText>
                 </MenuItem>
@@ -658,7 +658,7 @@ const CrudActions = ({
                     <ListItemIcon>
                       <InfoRounded fontSize="small" sx={{ color: "var(--sky-600)" }} />
                     </ListItemIcon>
-                    <ListItemText primaryTypographyProps={{ fontSize: "0.8125rem", fontWeight: 500 }}>
+                    <ListItemText primaryTypographyProps={{ fontSize: "var(--fs-sm)", fontWeight: 500 }}>
                       Details
                     </ListItemText>
                   </MenuItem>
@@ -669,7 +669,7 @@ const CrudActions = ({
                   <ListItemIcon>
                     <DeleteForeverRounded fontSize="small" sx={{ color: "var(--rose-600)" }} />
                   </ListItemIcon>
-                  <ListItemText primaryTypographyProps={{ fontSize: "0.8125rem", fontWeight: 500 }}>
+                  <ListItemText primaryTypographyProps={{ fontSize: "var(--fs-sm)", fontWeight: 500 }}>
                     Delete
                   </ListItemText>
                 </MenuItem>
@@ -743,9 +743,9 @@ const CrudActions = ({
             onClick={onShareInvoice}
             sx={{
               ...actionIconSx,
-              color: "#25D366",
-              backgroundColor: "rgba(37, 211, 102, 0.08)",
-              "&:hover": { backgroundColor: "rgba(37, 211, 102, 0.16)" },
+              color: "var(--brand-whatsapp)",
+              backgroundColor: "var(--brand-whatsapp-soft)",
+              "&:hover": { backgroundColor: "var(--brand-whatsapp-soft-hover)" },
             }}
           >
             <WhatsApp sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />

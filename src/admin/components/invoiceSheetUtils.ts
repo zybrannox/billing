@@ -3,6 +3,8 @@
 // only-export-components rule requires this for fast refresh to work) -
 // same reasoning as common/components/itemLineUtils.ts.
 
+import { formatRupees } from "../../format/money";
+
 export interface InvoiceItem {
   id: number;
   description: string | null;
@@ -69,8 +71,7 @@ export interface InvoicePayment {
   recorded_by: string | null;
 }
 
-export const formatCurrency = (val: number) =>
-  `₹${val.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+export { formatRupeesFixed as formatCurrency } from "../../format/money";
 
 // Feet uses the ' mark, inches uses " - whichever the line was actually
 // measured in (see GenerateInvoice.tsx's per-row unit toggle), not always
@@ -100,4 +101,4 @@ export const lineItemMeta = (item: MeasuredLine) =>
 export const lineItemRate = (item: MeasuredLine) =>
   item.is_manual_total
     ? undefined
-    : `₹${item.rate.toLocaleString("en-IN")}${item.has_dimensions === false ? " each" : "/sq ft"}`;
+    : `${formatRupees(item.rate)}${item.has_dimensions === false ? " each" : "/sq ft"}`;

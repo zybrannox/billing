@@ -72,3 +72,17 @@ export function formatDate(isoString: string | null | undefined): string {
     return isoString;
   }
 }
+
+/** 18 October 2026 - the printed documents' date style (always English, day first). */
+export function formatLongDate(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return isNaN(d.getTime())
+    ? ""
+    : d.toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
+}
+
+/** 5 Oct 2026 - compact form for chart axes and date ranges. */
+export function formatShortDate(d: Date): string {
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { InvoiceDetail } from "../admin/components/invoiceSheetUtils";
-import { invoiceToDocument, longDate, quotationToDocument, sampleInvoiceDocument } from "./documentAdapters";
+import { invoiceToDocument, quotationToDocument, sampleInvoiceDocument } from "./documentAdapters";
+import { formatLongDate as longDate } from "../format/date";
 import { DEFAULT_DOCUMENT_SETTINGS } from "./documentSettings";
 import { resolveDocumentStyle, TEMPLATES } from "./documentTemplates";
 import { isHexColor, resolveDocumentTheme, THEME_PRESETS, tint } from "./documentTheme";

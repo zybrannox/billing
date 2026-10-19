@@ -1,4 +1,6 @@
 
+import { basics } from "../theme/tokens";
+
 // Renders a DOM node (the printable invoice sheet) to a single-page-per-
 // screen-height PDF, image-based rather than real PDF text - the simplest
 // approach that guarantees the PDF looks exactly like what's on screen
@@ -40,7 +42,7 @@ export async function generateInvoicePdf(node: HTMLElement, filename: string): P
   const canvas = await html2canvas(node, {
     scale: 2,
     useCORS: true,
-    backgroundColor: "#ffffff",
+    backgroundColor: basics.white,
   });
 
   // A4 in points (jsPDF's default unit). A real page margin on every side -
@@ -75,7 +77,7 @@ export async function generateInvoicePdf(node: HTMLElement, filename: string): P
     sliceCanvas.width = canvas.width;
     sliceCanvas.height = sliceHeightPx;
     const ctx = sliceCanvas.getContext("2d")!;
-    ctx.fillStyle = "#ffffff";
+    ctx.fillStyle = basics.white;
     ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
     ctx.drawImage(
       canvas,

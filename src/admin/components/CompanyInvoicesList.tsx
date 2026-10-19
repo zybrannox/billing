@@ -9,7 +9,7 @@ import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 
 import { apiService } from "../../api/service";
-import { formatDateTime } from "../../utils/dateFormatter";
+import { formatDateTime } from "../../format/date";
 import { getSemanticColor } from "../../utils/colors";
 import { useDialogStore } from "../../store/useDialogStore";
 import { useConfirmDialogStore } from "../../hooks/useconfirmDialogStore";
@@ -19,6 +19,7 @@ import Chip from "../../ui/Chip";
 import { semanticChipSx } from "../../ui/chipStyles";
 import CrudActions from "../../ui/Actions";
 import RecordPaymentDialog, { type RecordPaymentTarget } from "./RecordPaymentDialog";
+import { formatRupeesWhole as money } from "../../format/money";
 
 interface InvoiceRow {
   id: number;
@@ -44,7 +45,6 @@ interface InvoiceListResponse {
   total_pages: number;
 }
 
-const money = (v: number) => `₹${v.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 
 // Two contexts share this component (via `mode`) rather than duplicating
 // it: a quick "peek" from the Companies list's row accordion (see
@@ -209,7 +209,7 @@ export default function CompanyInvoicesList({
 
           <Tooltip title={inv.customer_name || ""}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, width: 130, flexShrink: 0 }}>
-              <PersonRoundedIcon sx={{ fontSize: "0.95rem", color: "var(--slate-400)", flexShrink: 0 }} />
+              <PersonRoundedIcon sx={{ fontSize: "var(--fs-xl)", color: "var(--slate-400)", flexShrink: 0 }} />
               <Typography variant="body2" color="text.secondary" noWrap>
                 {inv.customer_name || "—"}
               </Typography>
@@ -220,7 +220,7 @@ export default function CompanyInvoicesList({
             title={inv.project_type && inv.project_description ? `${inv.project_type} — ${inv.project_description}` : ""}
           >
             <Box sx={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 0.5 }}>
-              <FolderOpenRoundedIcon sx={{ fontSize: "0.95rem", color: "var(--slate-400)", flexShrink: 0 }} />
+              <FolderOpenRoundedIcon sx={{ fontSize: "var(--fs-xl)", color: "var(--slate-400)", flexShrink: 0 }} />
               <Typography variant="body2" color="text.secondary" noWrap>
                 {inv.project_type || "—"}
                 {inv.project_description ? ` — ${inv.project_description}` : ""}
@@ -316,14 +316,14 @@ export default function CompanyInvoicesList({
               padding: 0,
               cursor: "pointer",
               color: "var(--blue-600)",
-              fontSize: "0.8125rem",
+              fontSize: "var(--fs-sm)",
               fontWeight: 700,
               fontFamily: "inherit",
               "&:hover": { textDecoration: "underline" },
             }}
           >
             View Full Billing History
-            <ArrowForwardRoundedIcon sx={{ fontSize: "0.9rem" }} />
+            <ArrowForwardRoundedIcon sx={{ fontSize: "var(--fs-lg)" }} />
           </Box>
         )}
       </Box>

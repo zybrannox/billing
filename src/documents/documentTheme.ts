@@ -1,3 +1,5 @@
+import { basics, documentTokens, palette } from "../theme/tokens";
+
 // Colour themes for printed documents. Only the accent is a choice - every
 // other tone (ink, muted text, hairlines) is shared, so a document stays
 // legible and consistent whichever accent is picked, and adding a preset is
@@ -9,15 +11,17 @@ export interface ThemePreset {
   color: string;
 }
 
+const { accents } = documentTokens;
+
 export const THEME_PRESETS: ThemePreset[] = [
-  { key: "indigo", label: "Indigo", color: "#2b2d8f" },
-  { key: "emerald", label: "Emerald", color: "#047857" },
-  { key: "teal", label: "Teal", color: "#0f766e" },
-  { key: "crimson", label: "Crimson", color: "#b91c1c" },
-  { key: "amber", label: "Amber", color: "#b45309" },
-  { key: "violet", label: "Violet", color: "#6d28d9" },
-  { key: "slate", label: "Slate", color: "#334155" },
-  { key: "terracotta", label: "Terracotta", color: "#c1512f" },
+  { key: "indigo", label: "Indigo", color: accents.indigo },
+  { key: "emerald", label: "Emerald", color: accents.emerald },
+  { key: "teal", label: "Teal", color: accents.teal },
+  { key: "crimson", label: "Crimson", color: accents.crimson },
+  { key: "amber", label: "Amber", color: accents.amber },
+  { key: "violet", label: "Violet", color: accents.violet },
+  { key: "slate", label: "Slate", color: accents.slate },
+  { key: "terracotta", label: "Terracotta", color: accents.terracotta },
 ];
 
 export const CUSTOM_THEME_KEY = "custom";
@@ -63,10 +67,7 @@ export function resolveDocumentTheme(settings: {
 
   return {
     primary,
-    onPrimary: luminance(primary) > 0.45 ? "#111827" : "#ffffff",
-    ink: "#1f2230",
-    muted: "#6b7280",
-    label: "#6b7185",
-    hairline: "#e3e5ef",
+    onPrimary: luminance(primary) > 0.45 ? palette.gray[900] : basics.white,
+    ...documentTokens.neutral,
   };
 }

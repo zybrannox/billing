@@ -166,7 +166,7 @@ const gridSx = React.useMemo(
     "& .MuiDataGrid-columnHeaderTitle": {
       color: "var(--slate-700)",
       fontWeight: 700,
-      fontSize: "0.75rem",
+      fontSize: "var(--fs-xs)",
       letterSpacing: "0.05em",
       textTransform: "uppercase",
     },
@@ -183,7 +183,7 @@ const gridSx = React.useMemo(
     },
     "& .MuiTablePagination-title": { color: "var(--slate-600)" },
     "& .MuiTablePagination-displayedRows": { color: "var(--slate-600)" },
-    "& .MuiTablePagination-selectLabel": { color: "var(--slate-600)", fontSize: "0.8125rem" },
+    "& .MuiTablePagination-selectLabel": { color: "var(--slate-600)", fontSize: "var(--fs-sm)" },
     // Minimal, matching the pagination prev/next buttons right next to it
     // (transparent by default, a soft hover pill, no persistent border/box)
     // rather than a fully outlined input - this is a footer control, not a
@@ -192,7 +192,7 @@ const gridSx = React.useMemo(
       display: "flex",
       alignItems: "center",
       color: "var(--slate-700)",
-      fontSize: "0.8125rem",
+      fontSize: "var(--fs-sm)",
       fontWeight: 500,
       borderRadius: "8px",
       padding: "4px 22px 4px 8px",
@@ -515,13 +515,13 @@ const gridSx = React.useMemo(
         return [
           <GridActionsCellItem
             key="save"
-            icon={<SaveIcon sx={{ fontSize: "1.125rem" }} />}
+            icon={<SaveIcon sx={{ fontSize: "var(--fs-3xl)" }} />}
             label="Save"
             onClick={handleSaveClick(params.id)}
           />,
           <GridActionsCellItem
             key="cancel"
-            icon={<CancelIcon sx={{ fontSize: "1.125rem" }} />}
+            icon={<CancelIcon sx={{ fontSize: "var(--fs-3xl)" }} />}
             label="Cancel"
             onClick={handleCancelClick(params.id)}
           />,

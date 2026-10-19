@@ -38,7 +38,7 @@ import {
 import { type InvoiceDetail, type InvoiceItem } from "../components/invoiceSheetUtils";
 
 const numberFieldSx = {
-  "& .MuiInputBase-root": { px: 1, height: 40, fontSize: "0.875rem" },
+  "& .MuiInputBase-root": { px: 1, height: 40, fontSize: "var(--fs-md)" },
   "& input": { textAlign: "right" as const, px: 0.5, py: 0.75 },
   "& input[type=number]": { MozAppearance: "textfield" as const },
   "& input[type=number]::-webkit-outer-spin-button, & input[type=number]::-webkit-inner-spin-button": {
@@ -47,7 +47,7 @@ const numberFieldSx = {
   },
   "& .MuiInputAdornment-root": {
     m: 0,
-    "& .MuiTypography-root": { fontSize: "0.75rem", color: "var(--slate-500)", fontWeight: 600 },
+    "& .MuiTypography-root": { fontSize: "var(--fs-xs)", color: "var(--slate-500)", fontWeight: 600 },
   },
 };
 
@@ -281,15 +281,15 @@ export default function EditInvoice() {
             </Box>
             <Box>
               <InvoicePanelLabel>Billed To</InvoicePanelLabel>
-              <Typography sx={{ fontWeight: 700, color: "var(--slate-900)", fontSize: "0.95rem" }}>
+              <Typography sx={{ fontWeight: 700, color: "var(--slate-900)", fontSize: "var(--fs-xl)" }}>
                 {customerName}
               </Typography>
               {customer && (
                 <Box sx={{ mt: 0.25 }}>
-                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: "0.85rem", lineHeight: 1.4 }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: "var(--fs-md)", lineHeight: 1.4 }}>
                     {customer.email}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: "0.85rem", lineHeight: 1.4 }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: "var(--fs-md)", lineHeight: 1.4 }}>
                     {customer.contact_number}
                   </Typography>
                 </Box>

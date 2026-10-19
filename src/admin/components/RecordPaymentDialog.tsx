@@ -7,10 +7,10 @@ import Dropdown from "../../ui/Dropdown";
 import TextField from "../../ui/TextField";
 import { apiService } from "../../api/service";
 import { getApiErrorMessage } from "../../utils/apiError";
+import { formatRupees as money } from "../../format/money";
 
 const PAYMENT_METHODS = ["Cash", "UPI", "Bank Transfer", "Card", "Cheque", "Other"];
 
-const money = (v: number) => `₹${v.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 
 export interface RecordPaymentTarget {
   id: number;
@@ -85,7 +85,7 @@ function RecordPaymentForm({
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 1.75 }}>
-      <Typography sx={{ fontSize: "0.875rem", color: "var(--slate-500)", lineHeight: 1.5 }}>
+      <Typography sx={{ fontSize: "var(--fs-md)", color: "var(--slate-500)", lineHeight: 1.5 }}>
         {invoice.invoice_number} · Total {money(invoice.amount)} · Balance due{" "}
         <b style={{ color: "var(--slate-800)" }}>{money(invoice.balance_due)}</b>
       </Typography>
@@ -119,7 +119,7 @@ function RecordPaymentForm({
       {error && (
         <Typography
           sx={{
-            fontSize: "0.8125rem",
+            fontSize: "var(--fs-sm)",
             fontWeight: 600,
             color: "var(--rose-600)",
             bgcolor: "rgba(225, 29, 72, 0.06)",

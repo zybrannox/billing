@@ -132,7 +132,7 @@ const FileUploadField = forwardRef<HTMLInputElement, FileUploadFieldProps>(
             sx={{
               mb: 1,
               textAlign: "left",
-              color: disabled ? "var(--slate-400)" : "#000",
+              color: disabled ? "var(--slate-400)" : "var(--black)",
               fontWeight: 500,
             }}
           >
@@ -173,10 +173,10 @@ const FileUploadField = forwardRef<HTMLInputElement, FileUploadFieldProps>(
               ? "var(--slate-100)"
               : isDragOver
               ? "var(--blue-50)"
-              : "#FFF",
+              : "var(--white)",
             transition: "all 0.15s ease-in-out",
             "&:hover": {
-              borderColor: disabled ? "var(--slate-300)" : displayError ? "var(--red-600)" : "#000",
+              borderColor: disabled ? "var(--slate-300)" : displayError ? "var(--red-600)" : "var(--black)",
             },
             "&:focus-visible": {
               outline: "2px solid var(--blue-600)",
@@ -184,13 +184,13 @@ const FileUploadField = forwardRef<HTMLInputElement, FileUploadFieldProps>(
             },
           }}
         >
-          <UploadFile sx={{ color: disabled ? "var(--slate-400)" : "#000" }} />
+          <UploadFile sx={{ color: disabled ? "var(--slate-400)" : "var(--black)" }} />
 
           <Box>
             <Typography
               variant="body2"
               sx={{
-                color: disabled ? "var(--slate-400)" : "#000",
+                color: disabled ? "var(--slate-400)" : "var(--black)",
                 fontWeight: 500,
               }}
             >
@@ -211,7 +211,7 @@ const FileUploadField = forwardRef<HTMLInputElement, FileUploadFieldProps>(
         </Paper>
 
         {displayError && (
-          <Alert severity="error" sx={{ mt: 1, py: 0.25, px: 1.5, fontSize: "0.8125rem" }}>
+          <Alert severity="error" sx={{ mt: 1, py: 0.25, px: 1.5, fontSize: "var(--fs-sm)" }}>
             {displayError}
           </Alert>
         )}
@@ -254,7 +254,7 @@ const FileUploadField = forwardRef<HTMLInputElement, FileUploadFieldProps>(
               mt: 1.5,
               border: "1px solid var(--slate-200)",
               borderRadius: 1,
-              backgroundColor: "#FFF",
+              backgroundColor: "var(--white)",
               overflow: "hidden",
             }}
           >
@@ -288,7 +288,7 @@ const FileUploadField = forwardRef<HTMLInputElement, FileUploadFieldProps>(
                   <Typography
                     variant="body2"
                     sx={{
-                      color: "#000",
+                      color: "var(--black)",
                       fontWeight: 500,
                       whiteSpace: "nowrap",
                       overflow: "hidden",

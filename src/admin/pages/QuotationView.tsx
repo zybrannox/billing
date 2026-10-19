@@ -41,13 +41,11 @@ import AsyncSearchSelect from "../../ui/AsyncSearchSelect";
 import DateTimePicker from "../../ui/DateTimePicker";
 import PillRadioGroup from "../../common/components/PillRadioGroup";
 import { PRIORITY_OPTIONS, CLIENT_STATUS_OPTIONS } from "../../common/components/pillRadioOptions";
+import { formatRupeesFixed as formatCurrency } from "../../format/money";
 
 interface EmployeeOption {
   username: string;
 }
-
-const formatCurrency = (val: number) =>
-  `₹${val.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 // Two hosts share this component: the routed /admin/quotations/:id page
 // (the id comes from the URL) and the global "viewQuotation" dialog (see
@@ -382,7 +380,7 @@ export default function QuotationView({
                 }}
               >
                 <ListItemIcon>
-                  <WhatsAppIcon fontSize="small" sx={{ color: "#25D366" }} />
+                  <WhatsAppIcon fontSize="small" sx={{ color: "var(--brand-whatsapp)" }} />
                 </ListItemIcon>
                 <ListItemText>Share to WhatsApp</ListItemText>
               </MenuItem>

@@ -38,7 +38,7 @@ import {
 
 const colHeaderSx = {
   fontWeight: 700,
-  fontSize: "0.725rem",
+  fontSize: "var(--fs-2xs)",
   letterSpacing: "0.05em",
   textTransform: "uppercase" as const,
   color: "var(--slate-500)",
@@ -58,7 +58,7 @@ const numberFieldSx = {
   "& .MuiInputBase-root": {
     px: 1,
     height: 44,
-    fontSize: "0.9rem",
+    fontSize: "var(--fs-lg)",
   },
   "& input": {
     textAlign: "right" as const,
@@ -75,7 +75,7 @@ const numberFieldSx = {
   "& .MuiInputAdornment-root": {
     m: 0,
     "& .MuiTypography-root": {
-      fontSize: "0.8rem",
+      fontSize: "var(--fs-sm)",
       color: "var(--slate-500)",
       fontWeight: 600,
     },
@@ -86,7 +86,7 @@ const textFieldSx = {
   "& .MuiInputBase-root": {
     px: 1.25,
     height: 44,
-    fontSize: "0.9rem",
+    fontSize: "var(--fs-lg)",
   },
   "& input": {
     py: 0.75,
@@ -119,7 +119,7 @@ function UnitSelect({
       style={{
         border: "none",
         background: "transparent",
-        fontSize: "0.8rem",
+        fontSize: "var(--fs-sm)",
         fontWeight: 600,
         color: "var(--slate-500)",
         cursor: "pointer",
@@ -237,7 +237,7 @@ export default function ItemLineEditor({ items, onChange, itemTypeOptions }: Ite
                     bgcolor: idx % 2 === 0 ? "var(--white)" : "var(--slate-50)",
                   }}
                 >
-                  <Typography variant="body2" sx={{ color: "var(--slate-400)", fontWeight: 600, fontSize: "0.8rem" }}>
+                  <Typography variant="body2" sx={{ color: "var(--slate-400)", fontWeight: 600, fontSize: "var(--fs-sm)" }}>
                     {idx + 1}
                   </Typography>
 
@@ -306,11 +306,11 @@ export default function ItemLineEditor({ items, onChange, itemTypeOptions }: Ite
                     }}
                   />
 
-                  <Typography variant="body2" sx={{ fontWeight: 600, color: "var(--slate-700)", textAlign: "right", pr: 0.5, fontSize: "0.85rem" }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600, color: "var(--slate-700)", textAlign: "right", pr: 0.5, fontSize: "var(--fs-md)" }}>
                     {isMeasured(row) ? (
                       <>
                         {sqFtOf(row)}{" "}
-                        <Typography component="span" sx={{ fontSize: "0.75rem", color: "var(--slate-500)", fontWeight: 500 }}>
+                        <Typography component="span" sx={{ fontSize: "var(--fs-xs)", color: "var(--slate-500)", fontWeight: 500 }}>
                           sq ft
                         </Typography>
                       </>
@@ -350,7 +350,7 @@ export default function ItemLineEditor({ items, onChange, itemTypeOptions }: Ite
                         }}
                       >
                         <VisibilityOffRoundedIcon sx={{ fontSize: 15 }} />
-                        <Typography sx={{ fontSize: "0.75rem", fontWeight: 600, fontStyle: "italic" }}>
+                        <Typography sx={{ fontSize: "var(--fs-xs)", fontWeight: 600, fontStyle: "italic" }}>
                           Hidden
                         </Typography>
                       </Box>

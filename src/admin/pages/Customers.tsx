@@ -16,6 +16,7 @@ import Chip from "../../ui/Chip";
 import { semanticChipSx } from "../../ui/chipStyles";
 import { shareToWhatsAppAfter } from "../../utils/shareToWhatsApp";
 import { getApiErrorMessage } from "../../utils/apiError";
+import { formatRupees } from "../../format/money";
 
 interface Customer {
   id: number;
@@ -82,8 +83,8 @@ const buildBaseColumns = (companies: CompanyOption[]): GridColDef[] => [
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, height: "inherit" }}>
           <Chip label={meta.label} sx={semanticChipSx(meta.color)} />
           {row.payment_status === "pending" && !!row.outstanding_balance && (
-            <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--amber-800)" }}>
-              ₹{row.outstanding_balance.toLocaleString("en-IN")}
+            <span style={{ fontSize: "var(--fs-xs)", fontWeight: 700, color: "var(--amber-800)" }}>
+              {formatRupees(row.outstanding_balance)}
             </span>
           )}
         </Box>

@@ -87,7 +87,7 @@ export default function FilterMenu({
             color="primary"
             sx={{
               "& .MuiBadge-badge": {
-                fontSize: "0.65rem",
+                fontSize: "var(--fs-2xs)",
                 height: 16,
                 minWidth: 16,
                 padding: "0 4px",

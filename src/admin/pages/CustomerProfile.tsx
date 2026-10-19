@@ -14,7 +14,7 @@ import RequestQuoteRoundedIcon from "@mui/icons-material/RequestQuoteRounded";
 import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import { apiService } from "../../api/service";
-import { formatDateTime } from "../../utils/dateFormatter";
+import { formatDateTime } from "../../format/date";
 import { getSemanticColor } from "../../utils/colors";
 import { getInitials } from "../../utils/appSupport";
 import Chip from "../../ui/Chip";
@@ -23,6 +23,7 @@ import CustomerInvoicesDrawer from "../components/CustomerInvoicesDrawer";
 import CustomerQuotationsDrawer from "../components/CustomerQuotationsDrawer";
 import Table from "../../common/components/Table";
 import { SectionCard, StatCard } from "./Dashboard";
+import { formatRupeesWhole as money } from "../../format/money";
 
 interface CustomerData {
   id: number;
@@ -58,8 +59,6 @@ interface CustomerProfileData {
   quotation_count: number;
 }
 
-const money = (v: number) =>
-  `₹${v.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 
 // Same column set as the admin Projects table (see common/pages/Projects.tsx)
 // trimmed to what's relevant once already scoped to one customer - this is
@@ -138,7 +137,7 @@ function DrawerButton({
         py: 0.85,
         borderRadius: 999,
         cursor: "pointer",
-        fontSize: "0.8rem",
+        fontSize: "var(--fs-sm)",
         fontWeight: 700,
         fontFamily: "inherit",
         flexShrink: 0,
@@ -243,7 +242,7 @@ export default function CustomerProfile() {
           cursor: "pointer",
           color: "var(--slate-500)",
           fontWeight: 600,
-          fontSize: "0.85rem",
+          fontSize: "var(--fs-md)",
           "&:hover": { color: "var(--slate-900)" },
         }}
       >
@@ -272,7 +271,7 @@ export default function CustomerProfile() {
             alignItems: "center",
             justifyContent: "center",
             fontWeight: 800,
-            fontSize: "1.35rem",
+            fontSize: "var(--fs-5xl)",
             flexShrink: 0,
           }}
         >
@@ -283,12 +282,12 @@ export default function CustomerProfile() {
             {fullName}
           </h1>
           <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 2, mt: 0.5 }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, color: "var(--slate-500)", fontSize: "0.85rem", fontWeight: 500 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, color: "var(--slate-500)", fontSize: "var(--fs-md)", fontWeight: 500 }}>
               <PhoneRoundedIcon sx={{ fontSize: 15 }} />
               {customer.contact_number}
             </Box>
             {customer.email && (
-              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, color: "var(--slate-500)", fontSize: "0.85rem", fontWeight: 500 }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, color: "var(--slate-500)", fontSize: "var(--fs-md)", fontWeight: 500 }}>
                 <EmailRoundedIcon sx={{ fontSize: 15 }} />
                 {customer.email}
               </Box>

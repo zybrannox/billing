@@ -43,7 +43,7 @@ export const SemanticSelectEditCell = (props: SemanticSelectEditProps) => {
         // without these, MUI's Select falls back to its own defaults
         // (16px font, ~16.5px vertical padding, 4px radius), which reads
         // oversized and out of place against the rest of the row.
-        fontSize: "0.85rem",
+        fontSize: "var(--fs-md)",
         borderRadius: "var(--border-radius-md, 6px)",
         bgcolor: "var(--white)",
         transition: "background-color 0.2s ease, box-shadow 0.2s ease",
@@ -72,7 +72,7 @@ export const SemanticSelectEditCell = (props: SemanticSelectEditProps) => {
           key={opt}
           value={opt}
           sx={{
-            fontSize: "0.85rem",
+            fontSize: "var(--fs-md)",
             color: getSemanticColor(semantic, opt as string),
           }}
         >

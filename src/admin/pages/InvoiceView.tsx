@@ -341,7 +341,7 @@ export default function InvoiceView() {
               }}
             >
               <ListItemIcon>
-                <WhatsAppIcon fontSize="small" sx={{ color: "#25D366" }} />
+                <WhatsAppIcon fontSize="small" sx={{ color: "var(--brand-whatsapp)" }} />
               </ListItemIcon>
               <ListItemText>Share to WhatsApp</ListItemText>
             </MenuItem>

@@ -18,6 +18,7 @@ import { semanticChipSx } from "../../ui/chipStyles";
 import Table from "../../common/components/Table";
 import CompanyInvoicesList from "../components/CompanyInvoicesList";
 import { SectionCard, StatCard } from "./Dashboard";
+import { formatRupeesWhole as money } from "../../format/money";
 
 interface CompanyData {
   id: number;
@@ -54,7 +55,6 @@ interface CompanyProfileData {
   contacts: ContactItem[];
 }
 
-const money = (v: number) => `₹${v.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 
 const PAYMENT_STATUS_META: Record<string, { color: string; label: string }> = {
   paid: { color: "var(--green-600)", label: "Paid" },
@@ -113,7 +113,7 @@ function ProfileTabToggle({
               py: 0.75,
               borderRadius: 999,
               cursor: "pointer",
-              fontSize: "0.8rem",
+              fontSize: "var(--fs-sm)",
               fontWeight: 700,
               fontFamily: "inherit",
               color: active ? "var(--white)" : "var(--slate-500)",
@@ -215,7 +215,7 @@ export default function CompanyProfile() {
           cursor: "pointer",
           color: "var(--slate-500)",
           fontWeight: 600,
-          fontSize: "0.85rem",
+          fontSize: "var(--fs-md)",
           "&:hover": { color: "var(--slate-900)" },
         }}
       >
@@ -244,7 +244,7 @@ export default function CompanyProfile() {
             alignItems: "center",
             justifyContent: "center",
             fontWeight: 800,
-            fontSize: "1.35rem",
+            fontSize: "var(--fs-5xl)",
             flexShrink: 0,
           }}
         >
@@ -256,18 +256,18 @@ export default function CompanyProfile() {
           </h1>
           <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 2, mt: 0.5 }}>
             {company.phone && (
-              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, color: "var(--slate-500)", fontSize: "0.85rem", fontWeight: 500 }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, color: "var(--slate-500)", fontSize: "var(--fs-md)", fontWeight: 500 }}>
                 <PhoneRoundedIcon sx={{ fontSize: 15 }} />
                 {company.phone}
               </Box>
             )}
             {company.billing_email && (
-              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, color: "var(--slate-500)", fontSize: "0.85rem", fontWeight: 500 }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, color: "var(--slate-500)", fontSize: "var(--fs-md)", fontWeight: 500 }}>
                 <EmailRoundedIcon sx={{ fontSize: 15 }} />
                 {company.billing_email}
               </Box>
             )}
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, color: "var(--slate-500)", fontSize: "0.85rem", fontWeight: 500 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, color: "var(--slate-500)", fontSize: "var(--fs-md)", fontWeight: 500 }}>
               {company.payment_terms_days > 0 ? `NET-${company.payment_terms_days} terms` : "Due on receipt"}
             </Box>
           </Box>

@@ -54,7 +54,7 @@ const Pagination = ({
           "& .MuiPaginationItem-root": {
             minWidth: 30,
             height: 30,
-            fontSize: "0.875rem",
+            fontSize: "var(--fs-md)",
             lineHeight: 1,
           },
 

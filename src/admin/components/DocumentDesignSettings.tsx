@@ -15,6 +15,7 @@ import {
   resolveDocumentTheme,
 } from "../../documents/documentTheme";
 import { useDocumentSettings, useDocumentSettingsStore } from "../../store/useDocumentSettingsStore";
+import { documentTokens } from "../../theme/tokens";
 import { getApiErrorMessage } from "../../utils/apiError";
 
 const MAX_LOGO_BYTES = 2 * 1024 * 1024;
@@ -68,7 +69,7 @@ function ToggleRow({
   return (
     <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2 }}>
       <Box>
-        <Typography sx={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--slate-700)" }}>{label}</Typography>
+        <Typography sx={{ fontSize: "var(--fs-md)", fontWeight: 600, color: "var(--slate-700)" }}>{label}</Typography>
         <Typography variant="caption" sx={{ color: "var(--slate-500)" }}>
           {hint}
         </Typography>
@@ -109,7 +110,7 @@ function LogoField() {
 
   return (
     <Box>
-      <Typography sx={{ fontSize: "0.75rem", fontWeight: 500, color: "var(--slate-700)", mb: 0.75 }}>Logo</Typography>
+      <Typography sx={{ fontSize: "var(--fs-xs)", fontWeight: 500, color: "var(--slate-700)", mb: 0.75 }}>Logo</Typography>
       <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
         <Box
           sx={{
@@ -209,10 +210,10 @@ function TemplatePicker({
                 <DocumentSheet data={sampleInvoiceDocument(candidate)} settings={candidate} logoUrl={logoUrl} />
               </Box>
             </Box>
-            <Typography sx={{ fontWeight: 700, fontSize: "0.85rem", color: "var(--slate-800)", mt: 1 }}>
+            <Typography sx={{ fontWeight: 700, fontSize: "var(--fs-md)", color: "var(--slate-800)", mt: 1 }}>
               {t.label}
             </Typography>
-            <Typography sx={{ fontSize: "0.72rem", color: "var(--slate-500)", lineHeight: 1.35 }}>
+            <Typography sx={{ fontSize: "var(--fs-2xs)", color: "var(--slate-500)", lineHeight: 1.35 }}>
               {t.description}
             </Typography>
           </Box>
@@ -231,7 +232,7 @@ function ThemePicker({
   customColor: string | null;
   onChange: (theme: string, customColor: string | null) => void;
 }) {
-  const custom = isHexColor(customColor) ? customColor : "#2b2d8f";
+  const custom = isHexColor(customColor) ? customColor : documentTokens.accents.indigo;
   const swatch = (key: string, color: string, label: string, preview?: ReactNode) => {
     const selected = theme === key;
     return (
@@ -284,7 +285,7 @@ function ThemePicker({
                 const v = e.target.value.startsWith("#") ? e.target.value : `#${e.target.value}`;
                 if (/^#[0-9a-fA-F]{0,6}$/.test(v)) onChange(CUSTOM_THEME_KEY, v);
               }}
-              placeholder="#2b2d8f"
+              placeholder={documentTokens.accents.indigo}
             />
           </Box>
         </Box>
@@ -439,7 +440,7 @@ function DesignEditor({ initial }: { initial: DocumentSettings }) {
 
       {/* Live preview: the real renderer on sample data, scaled to fit. */}
       <Box sx={{ position: { lg: "sticky" }, top: { lg: 16 } }}>
-        <Typography sx={{ fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.06em", color: "var(--slate-500)", mb: 1 }}>
+        <Typography sx={{ fontSize: "var(--fs-xs)", fontWeight: 700, letterSpacing: "0.06em", color: "var(--slate-500)", mb: 1 }}>
           LIVE PREVIEW
         </Typography>
         <Box sx={{ overflow: "hidden", borderRadius: 3, border: "1px solid var(--slate-200)", bgcolor: "var(--slate-100)", p: 1.5 }}>

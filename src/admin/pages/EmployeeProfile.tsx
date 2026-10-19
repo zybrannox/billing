@@ -11,7 +11,7 @@ import LocalPrintshopRoundedIcon from "@mui/icons-material/LocalPrintshopRounded
 import LocalShippingRoundedIcon from "@mui/icons-material/LocalShippingRounded";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import { apiService } from "../../api/service";
-import { formatDateTime } from "../../utils/dateFormatter";
+import { formatDateTime } from "../../format/date";
 import { getSemanticColor } from "../../utils/colors";
 import { getInitials } from "../../utils/appSupport";
 import Chip from "../../ui/Chip";
@@ -181,7 +181,7 @@ export default function EmployeeProfile() {
           cursor: "pointer",
           color: "var(--slate-500)",
           fontWeight: 600,
-          fontSize: "0.85rem",
+          fontSize: "var(--fs-md)",
           "&:hover": { color: "var(--slate-900)" },
         }}
       >
@@ -210,7 +210,7 @@ export default function EmployeeProfile() {
             alignItems: "center",
             justifyContent: "center",
             fontWeight: 800,
-            fontSize: "1.35rem",
+            fontSize: "var(--fs-5xl)",
             flexShrink: 0,
           }}
         >
@@ -224,11 +224,11 @@ export default function EmployeeProfile() {
             <Chip label={user.is_active ? "Active" : "Inactive"} sx={semanticChipSx(statusStyle)} />
           </Box>
           <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 2, mt: 0.5 }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, color: "var(--slate-500)", fontSize: "0.85rem", fontWeight: 500 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, color: "var(--slate-500)", fontSize: "var(--fs-md)", fontWeight: 500 }}>
               <PhoneRoundedIcon sx={{ fontSize: 15 }} />
               {user.phone}
             </Box>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, color: "var(--slate-500)", fontSize: "0.85rem", fontWeight: 500 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, color: "var(--slate-500)", fontSize: "var(--fs-md)", fontWeight: 500 }}>
               <EmailRoundedIcon sx={{ fontSize: 15 }} />
               {user.email}
             </Box>

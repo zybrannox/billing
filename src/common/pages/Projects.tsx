@@ -21,7 +21,7 @@ import AddCustomer from "./AddCustomer";
 import DeliveryCheck from "./DeliveryCheck";
 import Button from "../../ui/Button";
 import { getRowClassName } from "../../utils/appSupport";
-import { formatDateTime } from "../../utils/dateFormatter";
+import { formatDateTime } from "../../format/date";
 import Table from "../components/Table";
 import ProjectFilesList from "../components/ProjectFilesList";
 import TableSearchBar from "../components/TableSearchBar";

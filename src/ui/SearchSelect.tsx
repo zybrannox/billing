@@ -76,7 +76,7 @@ export default function SearchSelect({
         autoHighlight
         openOnFocus
         noOptionsText={
-          <Typography sx={{ fontSize: "0.8rem", color: "text.secondary" }}>{noOptionsText}</Typography>
+          <Typography sx={{ fontSize: "var(--fs-sm)", color: "text.secondary" }}>{noOptionsText}</Typography>
         }
         clearIcon={<CloseIcon sx={{ fontSize: 15, color: "var(--red-600)" }} />}
         slotProps={{
@@ -97,7 +97,7 @@ export default function SearchSelect({
               key={key}
               {...rest}
               style={{
-                fontSize: "0.85rem",
+                fontSize: "var(--fs-md)",
                 paddingTop: 6,
                 paddingBottom: 6,
                 borderRadius: "var(--border-radius-sm, 4px)",
@@ -127,7 +127,7 @@ export default function SearchSelect({
             }}
             sx={{
               "& .MuiInputBase-input::placeholder": { color: "text.secondary", opacity: 0.7 },
-              "& .MuiFormHelperText-root": { marginLeft: 0, marginTop: "4px", fontSize: "0.75rem" },
+              "& .MuiFormHelperText-root": { marginLeft: 0, marginTop: "4px", fontSize: "var(--fs-xs)" },
             }}
           />
         )}
@@ -137,7 +137,7 @@ export default function SearchSelect({
             minHeight: 36,
             paddingY: "2px !important",
             paddingLeft: "10px !important",
-            fontSize: "0.85rem",
+            fontSize: "var(--fs-md)",
             borderRadius: "var(--border-radius-md, 6px)",
             bgcolor: disabled ? "rgba(0, 0, 0, 0.02)" : "var(--white)",
             transition: "background-color 0.2s ease, box-shadow 0.2s ease",

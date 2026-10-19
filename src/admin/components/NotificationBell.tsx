@@ -11,7 +11,7 @@ import {
 import NotificationsRoundedIcon from "@mui/icons-material/NotificationsRounded";
 import LocalShippingRoundedIcon from "@mui/icons-material/LocalShippingRounded";
 import { apiService } from "../../api/service";
-import { formatDateTime } from "../../utils/dateFormatter";
+import { formatDateTime } from "../../format/date";
 import { getDeliveryBadge, countActionable, type RecentDelivery } from "../../utils/deliveryStatus";
 
 // The admin topbar's delivery notification feed - "a project was just
@@ -84,7 +84,7 @@ export default function NotificationBell() {
         <Badge
           badgeContent={actionableCount}
           color="error"
-          sx={{ "& .MuiBadge-badge": { fontSize: "0.65rem", fontWeight: 700, minWidth: 16, height: 16 } }}
+          sx={{ "& .MuiBadge-badge": { fontSize: "var(--fs-2xs)", fontWeight: 700, minWidth: 16, height: 16 } }}
         >
           <NotificationsRoundedIcon sx={{ fontSize: 22 }} />
         </Badge>
@@ -112,7 +112,7 @@ export default function NotificationBell() {
         }}
       >
         <Box sx={{ px: 2, py: 1.5, borderBottom: "1px solid var(--slate-100)" }}>
-          <Typography sx={{ fontWeight: 700, fontSize: "0.9rem", color: "var(--slate-900)" }}>
+          <Typography sx={{ fontWeight: 700, fontSize: "var(--fs-lg)", color: "var(--slate-900)" }}>
             Recent Deliveries
           </Typography>
           <Typography variant="caption" color="text.secondary">
@@ -188,7 +188,7 @@ export default function NotificationBell() {
                       borderRadius: 999,
                       bgcolor: badge.bg,
                       color: badge.color,
-                      fontSize: "0.65rem",
+                      fontSize: "var(--fs-2xs)",
                       fontWeight: 800,
                       whiteSpace: "nowrap",
                       flexShrink: 0,

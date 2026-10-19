@@ -2,6 +2,7 @@ import { forwardRef, type ReactNode } from "react";
 import { Box, Paper, Typography } from "@mui/material";
 import { useDocumentSettings } from "../store/useDocumentSettingsStore";
 import { resolveDocumentStyle, type DocumentStyle } from "./documentTemplates";
+import { documentTokens } from "../theme/tokens";
 import type { DocumentSettings } from "./documentSettings";
 import type { DocumentData } from "./documentTypes";
 
@@ -96,7 +97,7 @@ const DocumentSheet = forwardRef<
       sx={{
         maxWidth: 840,
         mx: "auto",
-        bgcolor: "#ffffff",
+        bgcolor: documentTokens.paper,
         color: s.ink,
         borderRadius: s.cardRadius,
         border: "1px solid var(--slate-200)",

@@ -40,7 +40,7 @@ const openedMixin = (theme: Theme): CSSObject => ({
     duration: theme.transitions.duration.enteringScreen,
   }),
   overflowX: "hidden",
-  backgroundColor: "#fff",
+  backgroundColor: "var(--white)",
   color: "var(--admin-gray)",
   borderTopRightRadius: "24px",
   borderBottomRightRadius: "24px",
@@ -58,7 +58,7 @@ const closedMixin = (theme: Theme): CSSObject => ({
   [theme.breakpoints.up("sm")]: {
     width: `calc(${theme.spacing(8)} + 1px)`,
   },
-  backgroundColor: "#fff",
+  backgroundColor: "var(--white)",
   color: "var(--admin-gray)",
   borderTopRightRadius: "24px",
   borderBottomRightRadius: "24px",
@@ -106,7 +106,7 @@ const DrawerHeader = styled("div")(({ theme }) => ({
 const closeButtonSx = {
   p: 0.625,
   borderRadius: "100%",
-  color: "#000",
+  color: "var(--black)",
   transition: "all 0.15s ease-in-out",
   "&:active": { transform: "scale(0.95)" },
 };
@@ -295,7 +295,7 @@ const Drawer: React.FC<Props> = ({ open, onClose, onToggle, navigations }) => {
               display: open ? "inline-flex" : "none",
             }}
           >
-            <CloseOutlined sx={{ fontSize: "1.2rem" }} />
+            <CloseOutlined sx={{ fontSize: "var(--fs-4xl)" }} />
           </IconButton>
         </DrawerHeader>
 
@@ -320,7 +320,7 @@ const Drawer: React.FC<Props> = ({ open, onClose, onToggle, navigations }) => {
           // corners, drop shadow) instead of the unrelated dark
           // --admin-body-bg it used before - same component, same theme,
           // regardless of viewport.
-          backgroundColor: "#fff",
+          backgroundColor: "var(--white)",
           color: "var(--admin-gray)",
           borderTopRightRadius: "24px",
           borderBottomRightRadius: "24px",
@@ -331,7 +331,7 @@ const Drawer: React.FC<Props> = ({ open, onClose, onToggle, navigations }) => {
       <DrawerHeader sx={{ px: 2 }}>
         <DrawerLogo showText />
         <IconButton onClick={onClose} size="small" sx={closeButtonSx}>
-          <CloseOutlined sx={{ fontSize: "1.2rem" }} />
+          <CloseOutlined sx={{ fontSize: "var(--fs-4xl)" }} />
         </IconButton>
       </DrawerHeader>
 

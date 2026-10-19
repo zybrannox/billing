@@ -110,7 +110,7 @@ const DateTimePicker = React.memo(
                       minHeight: 36,
                       paddingLeft: "10px !important",
                       paddingRight: "6px !important", // Gives inner spacing for the adornment
-                      fontSize: "0.85rem",
+                      fontSize: "var(--fs-md)",
                       borderRadius: "var(--border-radius-md, 6px)",
                       bgcolor: disabled ? "rgba(0, 0, 0, 0.02)" : "var(--white)",
                       transition:
@@ -154,7 +154,7 @@ const DateTimePicker = React.memo(
                     "& .MuiPickersInputBase-input::placeholder": {
                       color: "text.secondary",
                       opacity: 0.7,
-                      fontSize: "0.85rem",
+                      fontSize: "var(--fs-md)",
                     },
 
                     "& .MuiIconButton-root": {
@@ -172,7 +172,7 @@ const DateTimePicker = React.memo(
                     "& .MuiFormHelperText-root": {
                       marginLeft: 0,
                       marginTop: "4px",
-                      fontSize: "0.75rem",
+                      fontSize: "var(--fs-xs)",
                     },
                   },
                 },
@@ -189,7 +189,7 @@ const DateTimePicker = React.memo(
 
                     // Calendar Day Cells
                     "& .MuiPickersDay-root": {
-                      fontSize: "0.78rem",
+                      fontSize: "var(--fs-sm)",
                       borderRadius: "var(--border-radius-sm, 4px)",
                       "&.Mui-selected": {
                         bgcolor: "var(--blue-500) !important",
@@ -207,7 +207,7 @@ const DateTimePicker = React.memo(
                       minHeight: "40px",
                     },
                     "& .MuiPickersCalendarHeader-label": {
-                      fontSize: "0.85rem",
+                      fontSize: "var(--fs-md)",
                       fontWeight: 600,
                     },
 
@@ -216,7 +216,7 @@ const DateTimePicker = React.memo(
                       borderLeft: "1px solid rgba(0, 0, 0, 0.06)",
                     },
                     "& .MuiMenuItem-root": {
-                      fontSize: "0.8rem",
+                      fontSize: "var(--fs-sm)",
                       borderRadius: "var(--border-radius-sm, 4px)",
                       margin: "2px 4px",
                       padding: "4px 8px",
@@ -231,7 +231,7 @@ const DateTimePicker = React.memo(
                     "& .MuiPickersLayout-actionBar": {
                       padding: "8px 12px",
                       "& .MuiButton-root": {
-                        fontSize: "0.78rem",
+                        fontSize: "var(--fs-sm)",
                         textTransform: "none",
                         fontWeight: 500,
                         borderRadius: "var(--border-radius-sm, 4px)",

@@ -76,14 +76,14 @@ const TextField = forwardRef<HTMLDivElement, CustomTextFieldProps>(
               color: error ? undefined : "var(--admin-gray, var(--slate-500))",
               marginLeft: 0,
               marginTop: "4px",
-              fontSize: "0.75rem",
+              fontSize: "var(--fs-xs)",
             },
             // Matches ui/Dropdown.tsx and ui/AsyncSearchSelect.tsx exactly,
             // so every field in a form reads as one consistent control style.
             "& .MuiOutlinedInput-root": {
               marginTop: 0,
               minHeight: 36,
-              fontSize: "0.85rem",
+              fontSize: "var(--fs-md)",
               borderRadius: "var(--border-radius-md, 6px)",
               color: "var(--slate-900)",
               bgcolor: "var(--white)",

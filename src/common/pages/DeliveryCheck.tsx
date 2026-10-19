@@ -17,6 +17,7 @@ import {
   InvoiceLineItem,
   InvoiceTotalCard,
 } from "../../admin/components/InvoiceDocument";
+import { formatRupees } from "../../format/money";
 
 // No payment gateway anywhere in this app - recorded manually by an admin
 // after money already changed hands some other way. Mirrors the backend's
@@ -182,7 +183,7 @@ export default function DeliveryCheck() {
     if (!projectId || !invoice) return;
     showDialog({
       title: "Deliver on credit?",
-      description: `₹${invoice.balance_due.toLocaleString("en-IN")} is still unpaid on this order. It'll be marked Delivered and recorded as a credit sale - the balance stays tracked as due until it's actually paid.`,
+      description: `${formatRupees(invoice.balance_due)} is still unpaid on this order. It'll be marked Delivered and recorded as a credit sale - the balance stays tracked as due until it's actually paid.`,
       confirmText: "Deliver on Credit",
       isDestructive: true,
       onConfirm: async () => {
@@ -272,7 +273,7 @@ export default function DeliveryCheck() {
               borderRadius: 1.5,
               bgcolor: statusStyle.bg,
               color: statusStyle.color,
-              fontSize: "0.75rem",
+              fontSize: "var(--fs-xs)",
               fontWeight: 700,
               textTransform: "uppercase",
               letterSpacing: "0.5px",
@@ -307,8 +308,8 @@ export default function DeliveryCheck() {
                 ? `Qty ${item.pieces}`
                 : `${item.width} × ${item.height} (${item.sq_ft} sq ft)`
             }
-            rate={item.is_manual_total ? undefined : `₹${item.rate.toLocaleString()}`}
-            amount={`₹${item.total.toLocaleString()}`}
+            rate={item.is_manual_total ? undefined : formatRupees(item.rate)}
+            amount={formatRupees(item.total)}
           />
         ))}
       </InvoiceLineItemsSection>

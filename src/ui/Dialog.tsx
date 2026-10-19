@@ -118,7 +118,7 @@ export function GenericDialog({
             variant="h6"
             component="h2"
             sx={{
-              fontSize: "1.125rem",
+              fontSize: "var(--fs-3xl)",
               fontWeight: 600,
               background: "var(--blue-gradient)",
               WebkitBackgroundClip: "text",
@@ -133,7 +133,7 @@ export function GenericDialog({
             <Typography
               variant="body2"
               sx={{
-                fontSize: "0.8125rem",
+                fontSize: "var(--fs-sm)",
                 color: "var(--slate-500, var(--slate-500))",
                 mt: 0.5,
                 lineHeight: 1.4,

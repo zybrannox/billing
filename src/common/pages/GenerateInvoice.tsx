@@ -17,7 +17,7 @@ import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
 import DiscountRoundedIcon from "@mui/icons-material/DiscountRounded";
 
 import { apiService } from "../../api/service";
-import { formatDate } from "../../utils/dateFormatter";
+import { formatDate } from "../../format/date";
 import TextField from "../../ui/TextField";
 import DateTimePicker from "../../ui/DateTimePicker";
 import Dropdown from "../../ui/Dropdown";
@@ -100,7 +100,7 @@ const numberFieldSx = {
   "& .MuiInputBase-root": {
     px: 1,
     height: 40,
-    fontSize: "0.875rem",
+    fontSize: "var(--fs-md)",
   },
   "& input": {
     textAlign: "right" as const,
@@ -117,7 +117,7 @@ const numberFieldSx = {
   "& .MuiInputAdornment-root": {
     m: 0,
     "& .MuiTypography-root": {
-      fontSize: "0.75rem",
+      fontSize: "var(--fs-xs)",
       color: "var(--slate-500)",
       fontWeight: 600,
     },
@@ -128,7 +128,7 @@ const textFieldSx = {
   "& .MuiInputBase-root": {
     px: 1.25,
     height: 40,
-    fontSize: "0.875rem",
+    fontSize: "var(--fs-md)",
   },
   "& input": {
     py: 0.75,
@@ -371,7 +371,7 @@ export default function GenerateInvoice() {
               py: 0.75,
               borderRadius: 999,
               cursor: "pointer",
-              fontSize: "0.8rem",
+              fontSize: "var(--fs-sm)",
               fontWeight: 700,
               fontFamily: "inherit",
               color: active ? "var(--white)" : "var(--slate-500)",
@@ -555,15 +555,15 @@ export default function GenerateInvoice() {
               </Box>
               <Box>
                 <InvoicePanelLabel>Billed To</InvoicePanelLabel>
-                <Typography sx={{ fontWeight: 700, color: "var(--slate-900)", fontSize: "0.95rem" }}>
+                <Typography sx={{ fontWeight: 700, color: "var(--slate-900)", fontSize: "var(--fs-xl)" }}>
                   {customerName}
                 </Typography>
                 {customer && (
                   <Box sx={{ mt: 0.25 }}>
-                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: "0.85rem", lineHeight: 1.4 }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: "var(--fs-md)", lineHeight: 1.4 }}>
                       {customer.email}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: "0.85rem", lineHeight: 1.4 }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: "var(--fs-md)", lineHeight: 1.4 }}>
                       {customer.contact_number}
                     </Typography>
                   </Box>
@@ -618,7 +618,7 @@ export default function GenerateInvoice() {
               </Typography>
               {project.delivery_date && (
                 <Box sx={{ ml: "auto", display: "flex", alignItems: "center", gap: 0.5 }}>
-                  <EventRoundedIcon sx={{ fontSize: "1rem", color: "var(--slate-400)" }} />
+                  <EventRoundedIcon sx={{ fontSize: "var(--fs-xl)", color: "var(--slate-400)" }} />
                   <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
                     Target Delivery: {formatDate(project.delivery_date)}
                   </Typography>

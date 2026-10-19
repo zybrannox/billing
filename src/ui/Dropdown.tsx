@@ -116,7 +116,7 @@ export default function Dropdown({
           />
         }
         noOptionsText={
-          <Typography sx={{ fontSize: "0.8rem", color: "text.secondary" }}>
+          <Typography sx={{ fontSize: "var(--fs-sm)", color: "text.secondary" }}>
             No options
           </Typography>
         }
@@ -132,7 +132,7 @@ export default function Dropdown({
               border: "1px solid rgba(0, 0, 0, 0.08)",
               "& .MuiAutocomplete-noOptions": {
                 padding: "8px 12px",
-                fontSize: "0.8rem",
+                fontSize: "var(--fs-sm)",
               },
             },
           },
@@ -171,7 +171,7 @@ export default function Dropdown({
                 {...tagProps}
                 sx={{
                   height: 24,
-                  fontSize: "0.75rem",
+                  fontSize: "var(--fs-xs)",
                   fontWeight: 500,
                   bgcolor: "rgba(0, 0, 0, 0.04)",
                   border: "1px solid rgba(0, 0, 0, 0.08)",
@@ -197,7 +197,7 @@ export default function Dropdown({
             minHeight: 36,
             paddingY: "2px !important",
             paddingX: "8px !important",
-            fontSize: "0.85rem",
+            fontSize: "var(--fs-md)",
             borderRadius: "var(--border-radius-md, 6px)",
             bgcolor: disabled ? "rgba(0, 0, 0, 0.02)" : "var(--white)",
             transition: "background-color 0.2s ease, box-shadow 0.2s ease",
@@ -253,7 +253,7 @@ export default function Dropdown({
               key={key}
               {...rest}
               style={{
-                fontSize: "0.85rem",
+                fontSize: "var(--fs-md)",
                 paddingTop: 6,
                 paddingBottom: 6,
                 borderRadius: "var(--border-radius-sm, 4px)",
@@ -300,7 +300,7 @@ export default function Dropdown({
               "& .MuiFormHelperText-root": {
                 marginLeft: 0,
                 marginTop: "4px",
-                fontSize: "0.75rem",
+                fontSize: "var(--fs-xs)",
               },
             }}
           />

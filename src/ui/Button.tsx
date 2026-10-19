@@ -80,17 +80,17 @@ const Button = ({
     small: {
       height: 28,
       padding: "2px 10px",
-      fontSize: "0.75rem",
+      fontSize: "var(--fs-xs)",
     },
     medium: {
       height: 36,
       padding: "6px 14px",
-      fontSize: "0.85rem",
+      fontSize: "var(--fs-md)",
     },
     large: {
       height: 42,
       padding: "8px 20px",
-      fontSize: "0.95rem",
+      fontSize: "var(--fs-xl)",
     },
   };
 

@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Box, CircularProgress, IconButton, Popover, Tooltip, Typography } from "@mui/material";
 import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
 import { apiService } from "../../api/service";
-import { formatDateTime } from "../../utils/dateFormatter";
+import { formatDateTime } from "../../format/date";
+import { formatRupees as money } from "../../format/money";
 
 interface Payment {
   id: number;
@@ -13,8 +14,6 @@ interface Payment {
   recorded_by: string | null;
 }
 
-const money = (v: number) =>
-  `${v < 0 ? "−" : ""}₹${Math.abs(v).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 
 // An icon button that lists every payment recorded against one invoice
 // (GET /invoices/{id}/payments) in a popover, fetched fresh each time it's
@@ -52,7 +51,7 @@ export default function PaymentHistory({ invoiceId }: { invoiceId: number }) {
             "&:hover": { backgroundColor: "rgba(100, 116, 139, 0.16)" },
           }}
         >
-          <HistoryRoundedIcon sx={{ fontSize: "1.125rem" }} />
+          <HistoryRoundedIcon sx={{ fontSize: "var(--fs-3xl)" }} />
         </IconButton>
       </Tooltip>
 
@@ -65,7 +64,7 @@ export default function PaymentHistory({ invoiceId }: { invoiceId: number }) {
         slotProps={{ paper: { sx: { width: 340, maxWidth: "calc(100vw - 32px)", mt: -1, p: 2, borderRadius: 3 } } }}
       >
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", mb: 1 }}>
-          <Typography sx={{ fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.05em", color: "var(--slate-500)" }}>
+          <Typography sx={{ fontSize: "var(--fs-xs)", fontWeight: 700, letterSpacing: "0.05em", color: "var(--slate-500)" }}>
             PAYMENT HISTORY
           </Typography>
           {payments && payments.length > 0 && (

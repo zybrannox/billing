@@ -97,7 +97,7 @@ const Menu = React.memo(() => {
           sx={{
             color: "var(--slate-900)",
             fontWeight: 600,
-            fontSize: "0.875rem",
+            fontSize: "var(--fs-md)",
           }}
           noWrap
         >
@@ -108,7 +108,7 @@ const Menu = React.memo(() => {
           variant="caption"
           sx={{
             color: "var(--slate-500)",
-            fontSize: "0.75rem",
+            fontSize: "var(--fs-xs)",
             mt: 0.25,
           }}
           noWrap
@@ -129,7 +129,7 @@ const Menu = React.memo(() => {
           py: 1,
           borderRadius: "6px",
           color: "var(--slate-600)",
-          fontSize: "0.85rem",
+          fontSize: "var(--fs-md)",
           fontWeight: 500,
           transition: "all 0.15s ease-in-out",
 

@@ -1,23 +1,16 @@
 import { formatDimension, type InvoiceDetail } from "../admin/components/invoiceSheetUtils";
 import type { DocumentSettings } from "./documentSettings";
 import type { DocumentData, DocumentLine, DocumentParty, DocumentPayment } from "./documentTypes";
+import { formatAmount, formatInr, formatPlain } from "../format/money";
+import { formatLongDate } from "../format/date";
 
 // Adapters: turn a domain object (an invoice, a quotation) into the generic
 // DocumentData the renderer draws. All the document-specific wording and
 // arithmetic lives here, so supporting another document type means writing
 // one more adapter - DocumentSheet doesn't change.
 
-const NUMBER = { minimumFractionDigits: 2, maximumFractionDigits: 2 } as const;
-const num = (v: number) => v.toLocaleString("en-IN", NUMBER);
-const money = (v: number) => `INR ${num(v)}`;
-
-export const longDate = (iso: string | null | undefined) => {
-  if (!iso) return "";
-  const d = new Date(iso);
-  return isNaN(d.getTime())
-    ? ""
-    : d.toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
-};
+const num = formatAmount;
+const money = formatInr;
 
 interface ItemLike {
   description: string | null;
@@ -64,7 +57,7 @@ const lineFromItem = (item: ItemLike): DocumentLine => {
   const measured = item.has_dimensions !== false;
   const atRate = item.is_manual_total
     ? ""
-    : ` @ ${item.rate.toLocaleString("en-IN")} per ${measured ? "sq ft" : "unit"}`;
+    : ` @ ${formatPlain(item.rate)} per ${measured ? "sq ft" : "unit"}`;
   const dims = measured
     ? `${formatDimension(item.width, item.unit)} x ${formatDimension(item.height, item.unit)} (${item.sq_ft} sq ft)`
     : "";
@@ -81,7 +74,7 @@ const lineFromItem = (item: ItemLike): DocumentLine => {
 
 const paymentsOf = (invoice: InvoiceDetail): DocumentPayment[] =>
   (invoice.payments ?? []).map((p) => ({
-    date: longDate(p.paid_at),
+    date: formatLongDate(p.paid_at),
     method: p.amount < 0 ? "Adjustment" : (p.payment_method ?? "-"),
     reference: p.payment_reference || "-",
     amount: p.amount < 0 ? `-${money(Math.abs(p.amount))}` : money(p.amount),
@@ -93,11 +86,11 @@ export function invoiceToDocument(invoice: InvoiceDetail, settings: DocumentSett
     label: "INVOICE",
     number: invoice.invoice_number,
     dates: [
-      { label: "Issue date", value: longDate(invoice.created_at) },
+      { label: "Issue date", value: formatLongDate(invoice.created_at) },
       ...(invoice.project?.delivery_date
-        ? [{ label: "Delivery date", value: longDate(invoice.project.delivery_date) }]
+        ? [{ label: "Delivery date", value: formatLongDate(invoice.project.delivery_date) }]
         : []),
-      ...(invoice.due_date ? [{ label: "Due date", value: longDate(invoice.due_date) }] : []),
+      ...(invoice.due_date ? [{ label: "Due date", value: formatLongDate(invoice.due_date) }] : []),
     ],
     billedToLabel: "Billed to",
     billedTo: partyFromCustomer(invoice.customer),
@@ -136,8 +129,8 @@ export function quotationToDocument(
     label: "QUOTATION",
     number: quotation.quotation_number,
     dates: [
-      { label: "Quotation date", value: longDate(quotation.created_at) },
-      ...(quotation.valid_until ? [{ label: "Valid until", value: longDate(quotation.valid_until) }] : []),
+      { label: "Quotation date", value: formatLongDate(quotation.created_at) },
+      ...(quotation.valid_until ? [{ label: "Valid until", value: formatLongDate(quotation.valid_until) }] : []),
       ...(quotation.project_type ? [{ label: "Job type", value: quotation.project_type }] : []),
     ],
     billedToLabel: "Quoted to",

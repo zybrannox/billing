@@ -52,7 +52,7 @@ export default function CustomerDrawerShell({
             }}
           >
             <Box sx={{ minWidth: 0 }}>
-              <Typography sx={{ fontWeight: 700, fontSize: "1.1rem", color: "var(--slate-900)" }} noWrap>
+              <Typography sx={{ fontWeight: 700, fontSize: "var(--fs-3xl)", color: "var(--slate-900)" }} noWrap>
                 {customer.first_name} {customer.last_name}
               </Typography>
               <Typography variant="body2" color="text.secondary" noWrap>
@@ -66,7 +66,7 @@ export default function CustomerDrawerShell({
           </Box>
           <Box sx={{ p: 2.5, overflowY: "auto", flex: 1 }}>
             <Typography
-              sx={{ fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.05em", color: "var(--slate-500)", mb: 1.5 }}
+              sx={{ fontSize: "var(--fs-xs)", fontWeight: 700, letterSpacing: "0.05em", color: "var(--slate-500)", mb: 1.5 }}
             >
               {title}
             </Typography>
