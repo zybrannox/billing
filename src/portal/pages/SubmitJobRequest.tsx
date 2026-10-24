@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import CustomForm, { type FieldDefinition } from "../../common/components/CustomForm";
+import CustomForm, { type FieldDefinition } from "../../ui/CustomForm";
 import { portalApiService } from "../../api/portalService";
 import { CHUNK_UPLOAD_THRESHOLD } from "../../utils/chunkedUpload";
 import { getApiErrorMessage } from "../../utils/apiError";
 import type { UploadItem } from "../../ui/GmailFileUploader";
+import { messages } from "../../messages";
 
 const fields: FieldDefinition[] = [
   {
@@ -61,7 +62,7 @@ export default function SubmitJobRequest() {
 
     const items: UploadItem[] = formData.files || [];
     if (items.some((item) => item.status === "uploading")) {
-      alert("Please wait for all files to finish uploading before submitting.");
+      alert(messages.errors.uploadsPending);
       return;
     }
 

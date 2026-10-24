@@ -1,0 +1,127 @@
+import React from "react";
+import { useTheme } from "@mui/material/styles";
+import { Box, Tooltip } from "@mui/material";
+import { Outlet } from "react-router-dom";
+import IconButton from "@mui/material/IconButton";
+import { AppBar as MuiAppBar, Toolbar as MuiToolbar } from "@mui/material";
+import { MenuOutlined } from "@mui/icons-material";
+import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
+import RequestQuoteRoundedIcon from "@mui/icons-material/RequestQuoteRounded";
+import { adminNavigations } from "./navigation";
+import Avatar from "../ui/Avatar";
+import Menu from "../ui/Menu";
+import Drawer from "../ui/Drawer";
+import NotificationBell from "../features/projects/NotificationBell";
+import { useDialogStore } from "../store/useDialogStore";
+import { useOnDialogClose } from "../hooks/useOnDialogClose";
+import { useInvalidateBilling } from "../features/billing/queries";
+import { Suspense } from "react";
+import PageSpinner from "../ui/PageSpinner";
+
+
+export default function AdminLayout() {
+  const theme = useTheme();
+  const [open, setOpen] = React.useState(false);
+  const openDialog = useDialogStore((s) => s.openDialog);
+
+  // A record dialog (invoice, quotation, payment, ...) may have changed what
+  // the invoice/quotation lists behind it show; refetch whichever are mounted.
+  const invalidateBilling = useInvalidateBilling();
+  useOnDialogClose(invalidateBilling);
+
+  // No auto-close timer: on mobile the drawer is a temporary overlay that
+  // must stay open until the user picks a link or taps the backdrop/close
+  // button - auto-closing it after a few seconds mid-decision is a trap.
+
+  const handleDrawerToggle = () => setOpen((p) => !p);
+  const handleDrawerClose = () => setOpen(false);
+
+  return (
+    <>
+      <Box sx={{ display: "flex" }}>
+        {/* Drawer: component decides permanent vs temporary based on breakpoints */}
+        <Drawer
+          open={open}
+          onClose={handleDrawerClose}
+          onToggle={handleDrawerToggle}
+          navigations={adminNavigations}
+        />
+        {/* Main area */}
+        {/* minWidth: 0 is required so this flex item actually shrinks when
+            the drawer expands, instead of being held to its content's
+            intrinsic width (the classic flexbox min-width:auto trap). */}
+        <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+          {/* Topbar */}
+          <MuiAppBar
+            position="relative"
+            sx={{
+              background: "transparent",
+              boxShadow: "none",
+              zIndex: !open ? theme.zIndex.drawer + 1 : theme.zIndex.appBar,
+            }}
+          >
+            <MuiToolbar sx={{ justifyContent: "space-between" }}>
+              <IconButton color="inherit" onClick={handleDrawerToggle}>
+                <MenuOutlined sx={{ color: "var(--black)" }} />
+              </IconButton>
+
+              <Box sx={{ display: "flex", alignItems: "center" }}>
+                {/* Reachable from every admin page, not just Projects' own
+                    per-row action - opens the same GenerateInvoice dialog
+                    with no project pre-selected, so it defaults to its own
+                    "New Job" mode instead of the read-only preview a
+                    known project id would show (see GenerateInvoice.tsx's
+                    isNewJob/showExistingPicker branches). */}
+                <Tooltip title="Create Invoice">
+                  <IconButton
+                    onClick={() => openDialog("invoiceDesignComplete")}
+                    sx={{
+                      mr: 0.5,
+                      color: "var(--slate-600)",
+                      "&:hover": { bgcolor: "rgba(0, 0, 0, 0.04)" },
+                    }}
+                  >
+                    <ReceiptLongRoundedIcon sx={{ fontSize: 22 }} />
+                  </IconButton>
+                </Tooltip>
+                {/* A pre-invoice estimate for a customer who hasn't
+                    committed to the job yet - see GenerateQuotation.tsx.
+                    Reachable from every admin page, same as Create
+                    Invoice, since there's no "Quotations" nav item. */}
+                <Tooltip title="Create Quotation">
+                  <IconButton
+                    onClick={() => openDialog("quotation")}
+                    sx={{
+                      mr: 0.5,
+                      color: "var(--slate-600)",
+                      "&:hover": { bgcolor: "rgba(0, 0, 0, 0.04)" },
+                    }}
+                  >
+                    <RequestQuoteRoundedIcon sx={{ fontSize: 22 }} />
+                  </IconButton>
+                </Tooltip>
+                <NotificationBell />
+                <Avatar />
+                <Menu />
+              </Box>
+            </MuiToolbar>
+          </MuiAppBar>
+          {/* Page content */}
+          <Suspense fallback={<PageSpinner />}>
+            <Outlet />
+          </Suspense>
+        </Box>
+      </Box>
+
+      {/* invoiceDesignComplete/quotation dialogs themselves now live in
+          App.tsx, mounted globally (see that file's comment) - not here.
+          They used to be admin-only by accident: an employee's own
+          "Mark design as completed" row action (see features/projects/
+          Projects.tsx, which EmployeeLayout also renders at "/") opens
+          the exact same "invoiceDesignComplete" dialog type, but with
+          the <Dialog> only mounted in this admin-only layout, nothing
+          was listening for that state change on the employee side - the
+          dialog would silently never appear for them. */}
+    </>
+  );
+}

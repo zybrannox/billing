@@ -29,7 +29,20 @@ export const SEMANTIC_COLORS = {
   status:{
     Active: "var(--green-600)",
     InActive: "var(--red-600)",
-  }
+  },
+  // Invoice and quotation lifecycles. A cancelled invoice / rejected
+  // quotation is a closed-out, neutral state (grey), not an alarm.
+  invoiceStatus: {
+    pending: "var(--blue-600)",
+    paid: "var(--green-600)",
+    cancelled: "var(--slate-500)",
+  },
+  quotationStatus: {
+    pending: "var(--blue-600)",
+    accepted: "var(--green-600)",
+    converted: "var(--green-600)",
+    rejected: "var(--slate-500)",
+  },
 } as const;
 
 type SemanticCategory =
@@ -37,7 +50,9 @@ type SemanticCategory =
   | "clientStatus"
   | "projectStatus"
   | "printStatus"
-  | "status";
+  | "status"
+  | "invoiceStatus"
+  | "quotationStatus";
 
 export const getSemanticColor = (
   category: SemanticCategory,

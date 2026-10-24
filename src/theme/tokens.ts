@@ -5,7 +5,7 @@
 //     colour theme are generated from it (see generateCss.ts and the
 //     design-tokens plugin in vite.config.ts) - no hand-written token CSS;
 //   - the MUI theme (muiTheme.ts) reads it;
-//   - the printed documents (src/documents) take their accent palette and
+//   - the printed documents (src/features/documents) take their accent palette and
 //     neutrals from it.
 //
 // Rules for what lives here:
@@ -177,7 +177,7 @@ export const legacy = {
 } as const;
 
 // ---------------------------------------------------------------------------
-// Printed documents (invoices, quotations) - see src/documents. These feed
+// Printed documents (invoices, quotations) - see src/features/documents. These feed
 // html2canvas, so plain hex only.
 // ---------------------------------------------------------------------------
 export const documentTokens = {

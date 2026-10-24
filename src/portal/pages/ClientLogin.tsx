@@ -6,7 +6,7 @@ import { getApiErrorMessage } from "../../utils/apiError";
 import Button from "../../ui/Button";
 import TextField from "../../ui/TextField";
 
-// Mirrors common/components/auth/Login.tsx, posting to /client-auth/*
+// Mirrors features/auth/Login.tsx, posting to /client-auth/*
 // instead of /auth/* and landing on the portal, never the staff app.
 interface MeResponse {
   customer_id: number;

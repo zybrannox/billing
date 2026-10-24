@@ -4,6 +4,7 @@ import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CloseIcon from "@mui/icons-material/Close";
 import { apiService } from "../api/service";
+import { messages } from "../messages";
 
 interface AsyncSearchSelectProps {
   label?: React.ReactNode;
@@ -155,7 +156,7 @@ export default function AsyncSearchSelect({
         }
         noOptionsText={
           <Typography sx={{ fontSize: "var(--fs-sm)", color: "text.secondary" }}>
-            No options
+            {messages.common.noOptions}
           </Typography>
         }
         popupIcon={<ExpandMoreIcon sx={{ fontSize: 18, color: "text.secondary" }} />}

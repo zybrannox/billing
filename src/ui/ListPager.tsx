@@ -1,6 +1,7 @@
 import { Box, IconButton, Tooltip, Typography } from "@mui/material";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
+import { messages } from "../messages";
 
 // Compact previous / "1–10 of 37" / next control for short server-paginated
 // lists (the invoice and quotation drawers). Renders nothing when everything
@@ -21,7 +22,7 @@ export default function ListPager({
 
   return (
     <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-      <Tooltip title="Previous page">
+      <Tooltip title={messages.common.previousPage}>
         <span>
           <IconButton size="small" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
             <ChevronLeftRoundedIcon fontSize="small" />
@@ -31,7 +32,7 @@ export default function ListPager({
       <Typography variant="caption" color="text.secondary">
         {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, total)} of {total}
       </Typography>
-      <Tooltip title="Next page">
+      <Tooltip title={messages.common.nextPage}>
         <span>
           <IconButton size="small" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)}>
             <ChevronRightRoundedIcon fontSize="small" />

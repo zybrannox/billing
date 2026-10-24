@@ -40,7 +40,7 @@ const TextField = forwardRef<HTMLDivElement, CustomTextFieldProps>(
         {label && (
           <label
             htmlFor={inputId}
-            className={`text-xs font-medium mb-1.5 block text-left transition-colors ${
+            className={`text-xs font-semibold mb-1 block text-left transition-colors ${
               error
                 ? "text-red-500"
                 : disabled
@@ -82,18 +82,18 @@ const TextField = forwardRef<HTMLDivElement, CustomTextFieldProps>(
             // so every field in a form reads as one consistent control style.
             "& .MuiOutlinedInput-root": {
               marginTop: 0,
-              minHeight: 36,
+              minHeight: 34,
               fontSize: "var(--fs-md)",
-              borderRadius: "var(--border-radius-md, 6px)",
+              borderRadius: "8px",
               color: "var(--slate-900)",
               bgcolor: "var(--white)",
               transition: "background-color 0.2s ease, box-shadow 0.2s ease",
               "& fieldset": {
-                borderColor: "rgba(0, 0, 0, 0.12)",
+                borderColor: "var(--slate-300)",
                 transition: "border-color 0.2s ease, box-shadow 0.2s ease",
               },
               "&:hover fieldset": {
-                borderColor: "var(--blue-300, var(--blue-300))",
+                borderColor: "var(--slate-400)",
               },
               "&.Mui-focused fieldset": {
                 borderColor: "var(--blue-500, var(--blue-500))",

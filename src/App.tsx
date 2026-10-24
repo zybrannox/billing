@@ -11,36 +11,36 @@ import { useClientAppStore, type ClientUser } from "./store/useClientAppStore";
 import { apiService } from "./api/service";
 import { portalApiService } from "./api/portalService";
 import { API } from "./api/endpoints";
-import ProtectedRoute from "./common/components/auth/ProtectedRoute";
-import ClientProtectedRoute from "./common/components/auth/ClientProtectedRoute";
-import ErrorBoundary from "./common/components/ErrorBoundary";
-import PageSpinner from "./common/components/PageSpinner";
+import ProtectedRoute from "./features/auth/ProtectedRoute";
+import ClientProtectedRoute from "./features/auth/ClientProtectedRoute";
+import ErrorBoundary from "./ui/ErrorBoundary";
+import PageSpinner from "./ui/PageSpinner";
 
 // Every page and layout loads on demand, so a visitor only downloads the code
 // for the part of the app they actually use - a portal client never fetches
 // the admin app, the data grid or the PDF libraries. The shell that has to
 // exist from the first paint (auth guards, the error boundary, the global
 // confirm dialog) stays eager.
-const AdminLayout = lazy(() => import("./admin/Layout"));
-const Employee = lazy(() => import("./admin/pages/Employee"));
-const EmployeeProfile = lazy(() => import("./admin/pages/EmployeeProfile"));
-const AddEmployee = lazy(() => import("./admin/pages/AddEmployee"));
-const EmployeeLayout = lazy(() => import("./employee/Layout"));
-const Projects = lazy(() => import("./common/pages/Projects"));
-const Customers = lazy(() => import("./admin/pages/Customers"));
-const CustomerProfile = lazy(() => import("./admin/pages/CustomerProfile"));
-const Companies = lazy(() => import("./admin/pages/Companies"));
-const CompanyProfile = lazy(() => import("./admin/pages/CompanyProfile"));
-const JobRequests = lazy(() => import("./admin/pages/JobRequests"));
-const InvoiceView = lazy(() => import("./admin/pages/InvoiceView"));
-const EditInvoice = lazy(() => import("./admin/pages/EditInvoice"));
-const GenerateInvoice = lazy(() => import("./common/pages/GenerateInvoice"));
-const GenerateQuotation = lazy(() => import("./common/pages/GenerateQuotation"));
-const SystemSetup = lazy(() => import("./admin/pages/SystemSetup"));
-const Dashboard = lazy(() => import("./admin/pages/Dashboard"));
-const Login = lazy(() => import("./common/components/auth/Login"));
-const ForgotPassword = lazy(() => import("./common/components/auth/ForgotPassword"));
-const PortalLayout = lazy(() => import("./portal/Layout"));
+const AdminLayout = lazy(() => import("./layouts/AdminLayout"));
+const Employee = lazy(() => import("./features/employees/Employee"));
+const EmployeeProfile = lazy(() => import("./features/employees/EmployeeProfile"));
+const AddEmployee = lazy(() => import("./features/employees/AddEmployee"));
+const EmployeeLayout = lazy(() => import("./layouts/EmployeeLayout"));
+const Projects = lazy(() => import("./features/projects/Projects"));
+const Customers = lazy(() => import("./features/customers/Customers"));
+const CustomerProfile = lazy(() => import("./features/customers/CustomerProfile"));
+const Companies = lazy(() => import("./features/companies/Companies"));
+const CompanyProfile = lazy(() => import("./features/companies/CompanyProfile"));
+const JobRequests = lazy(() => import("./features/job-requests/JobRequests"));
+const InvoiceView = lazy(() => import("./features/billing/InvoiceView"));
+const EditInvoice = lazy(() => import("./features/billing/EditInvoice"));
+const GenerateInvoice = lazy(() => import("./features/billing/GenerateInvoice"));
+const GenerateQuotation = lazy(() => import("./features/billing/GenerateQuotation"));
+const SystemSetup = lazy(() => import("./features/system/SystemSetup"));
+const Dashboard = lazy(() => import("./features/dashboard/Dashboard"));
+const Login = lazy(() => import("./features/auth/Login"));
+const ForgotPassword = lazy(() => import("./features/auth/ForgotPassword"));
+const PortalLayout = lazy(() => import("./layouts/PortalLayout"));
 const ClientLogin = lazy(() => import("./portal/pages/ClientLogin"));
 const PortalForgotPassword = lazy(() => import("./portal/pages/ForgotPassword"));
 const ActivateAccount = lazy(() => import("./portal/pages/ActivateAccount"));
@@ -50,9 +50,9 @@ const PortalBilling = lazy(() => import("./portal/pages/PortalBilling"));
 const PortalInvoiceDetail = lazy(() => import("./portal/pages/PortalInvoiceDetail"));
 const SubmitJobRequest = lazy(() => import("./portal/pages/SubmitJobRequest"));
 const PortalJobRequests = lazy(() => import("./portal/pages/PortalJobRequests"));
-const QuotationView = lazy(() => import("./admin/pages/QuotationView"));
+const QuotationView = lazy(() => import("./features/billing/QuotationView"));
 const QuotationDialogView = lazy(() =>
-  import("./admin/pages/QuotationView").then((m) => ({ default: m.QuotationDialogView })),
+  import("./features/billing/QuotationView").then((m) => ({ default: m.QuotationDialogView })),
 );
 
 function App() {
@@ -249,12 +249,12 @@ function App() {
               AdminLayout and EmployeeLayout, so every "View Invoice" action in
               the app (admin or employee) can open it regardless of which
               layout/route triggered it, the same way ConfirmDialog above is
-              available everywhere. See admin/pages/InvoiceView.tsx's own
+              available everywhere. See features/billing/InvoiceView.tsx's own
               top comment for why this replaced a standalone routed page. */}
           <Dialog type="viewInvoice" title="Invoice" children={<Suspense fallback={<PageSpinner />}><InvoiceView /></Suspense>} maxWidth="md" />
 
           {/* Same idea as viewInvoice, for quotations: opened from a
-              quotation card (see admin/components/CustomerQuotationsList.tsx)
+              quotation card (see features/billing/CustomerQuotationsList.tsx)
               so viewing one never navigates away from the customer. */}
           <Dialog type="viewQuotation" title="Quotation" children={<Suspense fallback={<PageSpinner />}><QuotationDialogView /></Suspense>} maxWidth="md" />
 
@@ -265,15 +265,15 @@ function App() {
           <Dialog type="editInvoice" title="Edit Invoice" children={<Suspense fallback={<PageSpinner />}><EditInvoice /></Suspense>} maxWidth="xl" />
 
           {/* Same reasoning as viewInvoice above, moved here from
-              admin/Layout.tsx - a project's own "Mark design as completed"
-              row action (see common/pages/Projects.tsx, rendered under
+              layouts/AdminLayout.tsx - a project's own "Mark design as completed"
+              row action (see features/projects/Projects.tsx, rendered under
               EmployeeLayout too) opens this same "invoiceDesignComplete"
               dialog type for an employee working their own project, not just
               from the admin topbar's "Create Invoice" shortcut. Mounting it
               only in AdminLayout meant that action silently did nothing for
               an employee - openDialog set the store's state, but nothing in
               their tree was listening for it. xl, not md - both forms host a
-              full line-item table (see common/components/ItemLineEditor.tsx)
+              full line-item table (see features/billing/ItemLineEditor.tsx)
               that wants up to ~1280px to avoid its own internal horizontal
               scrollbar. */}
           <Dialog type="invoiceDesignComplete" title="Invoice" children={<Suspense fallback={<PageSpinner />}><GenerateInvoice /></Suspense>} maxWidth="xl" />

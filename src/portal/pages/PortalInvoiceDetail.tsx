@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { portalApiService } from "../../api/portalService";
-import InvoiceSheet from "../../admin/components/InvoiceSheet";
-import type { InvoiceDetail } from "../../admin/components/invoiceSheetUtils";
+import InvoiceSheet from "../../features/billing/InvoiceSheet";
+import type { InvoiceDetail } from "../../features/billing/invoiceSheetUtils";
 
 // Read-only - reuses the same printable InvoiceSheet the staff app uses
-// (admin/pages/InvoiceView.tsx) rather than building a second invoice
+// (features/billing/InvoiceView.tsx) rather than building a second invoice
 // layout, just fetched via /portal/invoices/{id} (ownership-checked
 // server-side, see app/portal/service.py) instead of the staff-only route.
 export default function PortalInvoiceDetail() {

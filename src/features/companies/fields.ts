@@ -1,0 +1,61 @@
+import type { FieldDefinition } from "../../ui/CustomForm";
+
+export const addCompanyFields: FieldDefinition[] = [
+  {
+    name: "name",
+    label: "Company Name",
+    type: "text",
+    required: true,
+    placeholder: "Enter company name",
+    row: 1,
+  },
+  {
+    name: "billing_email",
+    label: "Billing Email",
+    type: "email",
+    required: false,
+    placeholder: "Enter billing email (optional)",
+    row: 1,
+  },
+  {
+    name: "phone",
+    label: "Phone",
+    type: "text",
+    required: false,
+    placeholder: "Enter phone number (optional)",
+    row: 2,
+  },
+  {
+    name: "payment_terms_days",
+    label: "Payment Terms (days)",
+    type: "number",
+    required: false,
+    placeholder: "e.g. 30 for NET-30",
+    defaultValue: "0",
+    row: 2,
+  },
+  {
+    name: "credit_limit",
+    label: "Credit Limit (₹)",
+    type: "number",
+    required: false,
+    placeholder: "Optional - leave blank for no limit",
+    row: 3,
+  },
+  {
+    name: "billing_address",
+    label: "Billing Address",
+    type: "textarea",
+    required: false,
+    placeholder: "Enter billing address (optional)",
+    row: 3,
+  },
+  {
+    name: "notes",
+    label: "Notes",
+    type: "textarea",
+    required: false,
+    placeholder: "Internal notes (optional)",
+    row: 4,
+  },
+];

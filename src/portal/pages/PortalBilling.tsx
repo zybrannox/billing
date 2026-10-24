@@ -2,32 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import type { GridColDef } from "@mui/x-data-grid";
 import { useNavigate } from "react-router-dom";
 import { portalApiService } from "../../api/portalService";
-import Table from "../../common/components/Table";
+import Table from "../../ui/Table";
 import Chip from "../../ui/Chip";
 import { semanticChipSx } from "../../ui/chipStyles";
 import { getSemanticColor } from "../../utils/colors";
 import { formatDateTime } from "../../format/date";
-import { formatCurrency } from "../../admin/components/invoiceSheetUtils";
-
-interface Invoice {
-  id: number;
-  invoice_number: string;
-  amount: number;
-  status: string;
-  balance_due: number;
-  created_at: string;
-  due_date: string | null;
-  customer_name: string | null;
-  project_type: string | null;
-}
-
-interface InvoiceListResponse {
-  items: Invoice[];
-  total: number;
-  page: number;
-  page_size: number;
-  total_pages: number;
-}
+import { formatCurrency } from "../../features/billing/invoiceSheetUtils";
+import type { Invoice, InvoiceListResponse } from "../../api/types";
 
 export default function PortalBilling() {
   const navigate = useNavigate();

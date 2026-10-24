@@ -86,7 +86,7 @@ export function GenericDialog({
           // shrink-to-fit its content up to nearly the full viewport -
           // harmless for narrow forms, but it meant "xs"/"sm"/"md" never
           // actually capped anything, and any dialog whose content grew
-          // wide (see admin/Layout.tsx's invoice/quotation dialogs) could
+          // wide (see layouts/AdminLayout.tsx's invoice/quotation dialogs) could
           // silently balloon past its intended size.
           maxWidth: fullScreen ? "100%" : width ? "calc(100% - 32px)" : undefined,
           borderRadius: fullScreen ? 0 : "var(--border-radius-lg, 16px)",

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { getApiErrorMessage } from "../utils/apiError";
+import { messages } from "../messages";
 
 interface ConfirmDialogConfig {
   title?: string;
@@ -63,8 +64,8 @@ export const useConfirmDialogStore = create<ConfirmDialogState>((set, get) => ({
     set(() => ({
       openConfirmDialog: true,
       loading: false,
-      title: config.title ?? "Are you sure?",
-      description: config.description ?? "Please confirm your action.",
+      title: config.title ?? messages.common.areYouSure,
+      description: config.description ?? messages.common.pleaseConfirm,
       confirmText: config.confirmText ?? "Yes",
       cancelText: config.cancelText ?? "Cancel",
       isDestructive: config.isDestructive ?? false,
@@ -82,7 +83,7 @@ export const useConfirmDialogStore = create<ConfirmDialogState>((set, get) => ({
           // resetting loading and going quiet - a rejected delete (already
           // invoiced, still has projects on file, etc.) otherwise looks
           // indistinguishable from the click not registering at all.
-          set({ error: getApiErrorMessage(err, "Something went wrong. Please try again.") });
+          set({ error: getApiErrorMessage(err, messages.errors.generic) });
         } finally {
           set({ loading: false });
         }

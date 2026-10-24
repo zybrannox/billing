@@ -3,9 +3,6 @@ import {
   IconButton,
   Tooltip,
   Box,
-  Stack,
-  Typography,
-  Divider,
   Menu,
   MenuItem,
   ListItemIcon,
@@ -39,6 +36,8 @@ import {
   PersonAddRounded,
 } from "@mui/icons-material";
 import { formatDateTime } from "../format/date";
+import { messages } from "../messages";
+import ProjectDetailsTooltip from "./ProjectDetailsTooltip";
 
 interface MilestoneMeta {
   at: string;
@@ -68,21 +67,21 @@ interface CrudActionsProps {
   rejectQuotation?: boolean;
   cancelInvoice?: boolean;
   // Shares this row's invoice straight to WhatsApp (see
-  // admin/pages/InvoiceView.tsx's handleShareWhatsApp) without opening it
+  // features/billing/InvoiceView.tsx's handleShareWhatsApp) without opening it
   // first - used where a row already has everything needed to identify
-  // the invoice (see admin/components/CustomerInvoicesList.tsx).
+  // the invoice (see features/billing/CustomerInvoicesList.tsx).
   shareInvoice?: boolean;
   // Jumps from a project row (Ongoing Activities) straight to the
-  // customer profile it belongs to (see admin/pages/CustomerProfile.tsx).
+  // customer profile it belongs to (see features/customers/CustomerProfile.tsx).
   viewCustomer?: boolean;
   // Jumps from a customer row straight to the B2B company it's a contact
-  // of (see admin/pages/CompanyProfile.tsx).
+  // of (see features/companies/CompanyProfile.tsx).
   viewCompany?: boolean;
   // Grants portal access to a customer row (see Customers.tsx) - staff-
   // invited only, no public self-service signup (see app/client_auth).
   sendPortalInvite?: boolean;
   // Notifies a client their order is done via WhatsApp (see
-  // utils/notifyClientWhatsApp.ts) - lives in the orderMilestones "More
+  // features/projects/notifyClientWhatsApp.ts) - lives in the orderMilestones "More
   // actions" menu alongside shareInvoice.
   notifyClient?: boolean;
   data?: any;
@@ -126,97 +125,6 @@ interface CrudActionsProps {
   // Mark Paid, anything but "pending" disables Cancel.
   invoiceStatus?: string;
 }
-
-const ProjectDetailsTooltip = ({ data }: { data: any }) => (
-  <Box sx={{ p: 2, width: 260 }}>
-    <Typography
-      sx={{
-        fontWeight: 600,
-        mb: 1.25,
-        color: "var(--slate-900)",
-        fontSize: "var(--fs-sm)",
-      }}
-    >
-      Project Details
-    </Typography>
-
-    <Stack spacing={0.75}>
-      {[
-        { label: "Type", value: data?.project_type },
-        { label: "Assignee", value: data?.assigned_to },
-        { label: "Start Date", value: formatDateTime(data?.start_date) },
-        { label: "Delivery", value: formatDateTime(data?.delivery_date) },
-        { label: "Priority", value: data?.priority },
-        { label: "Client Status", value: data?.client_status },
-        { label: "Print Status", value: data?.print_status },
-        {
-          label: "Design Completed",
-          value: data?.design_completed_at
-            ? `${formatDateTime(data.design_completed_at)} by ${data.design_completed_by}`
-            : "Not yet",
-        },
-        {
-          label: "Delivered",
-          value: data?.delivered_at
-            ? `${formatDateTime(data.delivered_at)} by ${data.delivered_by}`
-            : "Not yet",
-        },
-      ].map((item, idx) => (
-        <Box
-          key={idx}
-          sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}
-        >
-          <Typography
-            variant="caption"
-            sx={{ fontWeight: 500, color: "var(--slate-500)", fontSize: "var(--fs-xs)" }}
-          >
-            {item.label}
-          </Typography>
-          <Typography
-            variant="caption"
-            sx={{
-              fontWeight: 500,
-              color: "var(--slate-900)",
-              fontSize: "var(--fs-xs)",
-              textAlign: "right",
-            }}
-          >
-            {item.value || "N/A"}
-          </Typography>
-        </Box>
-      ))}
-    </Stack>
-
-    <Divider sx={{ borderColor: "var(--slate-200)", my: 1.25 }} />
-
-    <Box>
-      <Typography
-        variant="caption"
-        sx={{
-          fontWeight: 500,
-          color: "var(--slate-500)",
-          fontSize: "var(--fs-xs)",
-          display: "block",
-          mb: 0.375,
-        }}
-      >
-        Description
-      </Typography>
-      <Typography
-        variant="caption"
-        sx={{
-          display: "block",
-          lineHeight: 1.5,
-          color: "var(--slate-700)",
-          fontSize: "var(--fs-xs)",
-          wordBreak: "break-word",
-        }}
-      >
-        {data?.description || "No description provided."}
-      </Typography>
-    </Box>
-  </Box>
-);
 
 const CrudActions = ({
   edit = false,
@@ -552,7 +460,7 @@ const CrudActions = ({
                     <ReceiptLongRounded fontSize="small" sx={{ color: "var(--indigo-500)" }} />
                   </ListItemIcon>
                   <ListItemText primaryTypographyProps={{ fontSize: "var(--fs-sm)", fontWeight: 500 }}>
-                    View Invoice
+                    {messages.actions.invoice.view}
                   </ListItemText>
                 </MenuItem>
               )}
@@ -562,7 +470,7 @@ const CrudActions = ({
                     <WhatsApp fontSize="small" sx={{ color: "var(--brand-whatsapp)" }} />
                   </ListItemIcon>
                   <ListItemText primaryTypographyProps={{ fontSize: "var(--fs-sm)", fontWeight: 500 }}>
-                    Share to WhatsApp
+                    {messages.actions.invoice.shareWhatsApp}
                   </ListItemText>
                 </MenuItem>
               )}
@@ -572,7 +480,7 @@ const CrudActions = ({
                     <PersonRounded fontSize="small" sx={{ color: "var(--cyan-600)" }} />
                   </ListItemIcon>
                   <ListItemText primaryTypographyProps={{ fontSize: "var(--fs-sm)", fontWeight: 500 }}>
-                    View Customer
+                    {messages.actions.customer.view}
                   </ListItemText>
                 </MenuItem>
               )}
@@ -582,7 +490,7 @@ const CrudActions = ({
                     <ApartmentRounded fontSize="small" sx={{ color: "var(--cyan-600)" }} />
                   </ListItemIcon>
                   <ListItemText primaryTypographyProps={{ fontSize: "var(--fs-sm)", fontWeight: 500 }}>
-                    View Company
+                    {messages.actions.company.view}
                   </ListItemText>
                 </MenuItem>
               )}
@@ -720,7 +628,7 @@ const CrudActions = ({
       )}
 
       {viewInvoice && (
-        <Tooltip title="View Invoice">
+        <Tooltip title={messages.actions.invoice.view}>
           <IconButton
             size={size}
             onClick={onViewInvoice}
@@ -737,7 +645,7 @@ const CrudActions = ({
       )}
 
       {shareInvoice && (
-        <Tooltip title="Share to WhatsApp">
+        <Tooltip title={messages.actions.invoice.shareWhatsApp}>
           <IconButton
             size={size}
             onClick={onShareInvoice}
@@ -754,7 +662,7 @@ const CrudActions = ({
       )}
 
       {viewCustomer && (
-        <Tooltip title="View Customer">
+        <Tooltip title={messages.actions.customer.view}>
           <IconButton
             size={size}
             onClick={onViewCustomer}
@@ -771,7 +679,7 @@ const CrudActions = ({
       )}
 
       {viewCompany && (
-        <Tooltip title="View Company">
+        <Tooltip title={messages.actions.company.view}>
           <IconButton
             size={size}
             onClick={onViewCompany}
@@ -788,7 +696,7 @@ const CrudActions = ({
       )}
 
       {downloadDocument && (
-        <Tooltip title={documentBusy ? "Preparing PDF…" : "Download PDF"}>
+        <Tooltip title={documentBusy ? messages.actions.document.preparing : messages.actions.document.download}>
           <span>
             <IconButton
               size={size}
@@ -809,7 +717,7 @@ const CrudActions = ({
       )}
 
       {acceptQuotation && (
-        <Tooltip title={quotationStatus !== "pending" ? "Only pending quotations can be accepted" : "Mark Accepted"}>
+        <Tooltip title={quotationStatus !== "pending" ? messages.actions.quotation.onlyPendingAccept : messages.actions.quotation.accept}>
           <span>
             <IconButton
               size={size}
@@ -830,7 +738,7 @@ const CrudActions = ({
       )}
 
       {rejectQuotation && (
-        <Tooltip title={quotationStatus !== "pending" ? "Only pending quotations can be rejected" : "Mark Rejected"}>
+        <Tooltip title={quotationStatus !== "pending" ? messages.actions.quotation.onlyPendingReject : messages.actions.quotation.reject}>
           <span>
             <IconButton
               size={size}
@@ -851,7 +759,7 @@ const CrudActions = ({
       )}
 
       {recordPayment && (
-        <Tooltip title={invoiceStatus !== "pending" ? "Only pending invoices can take payments" : "Record Payment"}>
+        <Tooltip title={invoiceStatus !== "pending" ? messages.actions.invoice.onlyPendingPayments : messages.actions.invoice.recordPayment}>
           <span>
             <IconButton
               size={size}
@@ -878,7 +786,7 @@ const CrudActions = ({
               ? "Already paid"
               : invoiceStatus === "cancelled"
                 ? "Cancelled invoices can't be marked paid"
-                : "Mark as Paid"
+                : messages.actions.invoice.markPaid
           }
         >
           <span>
@@ -905,7 +813,7 @@ const CrudActions = ({
       )}
 
       {cancelInvoice && (
-        <Tooltip title={invoiceStatus !== "pending" ? "Only pending invoices can be cancelled" : "Cancel Invoice"}>
+        <Tooltip title={invoiceStatus !== "pending" ? messages.actions.invoice.onlyPendingCancel : messages.actions.invoice.cancel}>
           <span>
             <IconButton
               size={size}
@@ -943,7 +851,7 @@ const CrudActions = ({
       )}
 
       {sendPortalInvite && (
-        <Tooltip title="Send Portal Invite">
+        <Tooltip title={messages.actions.customer.sendPortalInvite}>
           <IconButton
             size={size}
             onClick={onSendPortalInvite}

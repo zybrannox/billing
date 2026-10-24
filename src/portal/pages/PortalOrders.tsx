@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { GridColDef } from "@mui/x-data-grid";
 import { useNavigate } from "react-router-dom";
 import { portalApiService } from "../../api/portalService";
-import Table from "../../common/components/Table";
+import Table from "../../ui/Table";
 import Chip from "../../ui/Chip";
 import { semanticChipSx } from "../../ui/chipStyles";
 import { getSemanticColor } from "../../utils/colors";

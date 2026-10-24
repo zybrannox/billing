@@ -4,12 +4,12 @@ import { GenericDialog } from "./Dialog";
 import Button from "./Button";
 import Loader from "./Loader";
 import Dropdown from "./Dropdown";
+import { PAYMENT_METHODS } from "../domain/paymentMethods";
+import { messages } from "../messages";
 
 // Mirrors DeliveryCheck.tsx/GenerateInvoice.tsx's own copy - no payment
 // gateway anywhere in this app, so this is always a fixed, small set of
 // ways an admin manually recorded that money changed hands.
-const PAYMENT_METHODS = ["Cash", "UPI", "Bank Transfer", "Card", "Cheque", "Other"];
-
 interface ConfirmDialogProps {
   open: boolean;
   title?: string;
@@ -28,8 +28,8 @@ interface ConfirmDialogProps {
 
 export default function ConfirmDialog({
   open,
-  title = "Are you sure?",
-  description = "Please confirm your action.",
+  title = messages.common.areYouSure,
+  description = messages.common.pleaseConfirm,
   confirmText = "Yes",
   cancelText = "Cancel",
   isDestructive = false,

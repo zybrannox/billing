@@ -12,6 +12,7 @@
     "test": "vitest run",
     "check:bundle": "node scripts/check-bundle-size.mjs",
     "tokens": "node scripts/generate-tokens.mjs",
+    "api:types": "openapi-typescript ../billing_server/openapi.json -o src/api/schema.d.ts",
     "predev": "pnpm tokens"
   },
   "dependencies": {
@@ -47,6 +48,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
+    "openapi-typescript": "^7.13.0",
     "serve": "^14.2.6",
     "tailwindcss": "^4.1.17",
     "typescript": "~5.9.3",

@@ -18,17 +18,17 @@ export type EditingType =
   | "project"
   | "customer"
   // Opened from the Companies list's "+ Add Company" action (see
-  // admin/pages/Companies.tsx) - a B2B business account, admin-only.
+  // features/companies/Companies.tsx) - a B2B business account, admin-only.
   | "company"
   // Opened either from a project's own "Design completed" row action (id
   // already known - see GenerateInvoice.tsx) or from the admin topbar's
-  // "Create Invoice" shortcut (see admin/Layout.tsx) with no id at all, in
+  // "Create Invoice" shortcut (see layouts/AdminLayout.tsx) with no id at all, in
   // which case GenerateInvoice shows its own project picker first. Both
   // paths land on the exact same form, so there's only one "create an
   // invoice" implementation to keep in sync.
   | "invoiceDesignComplete"
   // Opened from the admin topbar's "Create Quotation" shortcut (see
-  // admin/Layout.tsx) - a pre-invoice estimate for a customer, with no
+  // layouts/AdminLayout.tsx) - a pre-invoice estimate for a customer, with no
   // project involved at all (see GenerateQuotation.tsx).
   | "quotation"
   // Opened from the "Deliver" row action (see DeliveryCheck.tsx) - shows
@@ -44,7 +44,7 @@ export type EditingType =
   // one never navigates away from wherever that action was clicked.
   | "viewInvoice"
   // Opened from the "Edit" action on a pending invoice's own "View
-  // Invoice" dialog (admin-only - see admin/pages/InvoiceView.tsx and
+  // Invoice" dialog (admin-only - see features/billing/InvoiceView.tsx and
   // EditInvoice.tsx) - lets an admin correct a mistake on an invoice
   // that's already been generated (line items, due date, discount)
   // instead of having to cancel and re-raise the whole thing. Same
@@ -52,7 +52,7 @@ export type EditingType =
   // once paid/cancelled, this isn't offered at all.
   | "editInvoice"
   // Opened from a quotation card in a customer's quotations drawer (see
-  // admin/components/CustomerQuotationsList.tsx) - the quotation view in a
+  // features/billing/CustomerQuotationsList.tsx) - the quotation view in a
   // dialog, the counterpart of "viewInvoice", instead of navigating to the
   // /admin/quotations/:id page.
   | "viewQuotation"
@@ -94,7 +94,7 @@ export const useDialogStore = create<UIState>((set, get) => ({
     // but only if nothing else opened a *different* dialog in the
     // meantime (e.g. GenerateInvoice.tsx closing its own "add invoice"
     // dialog and immediately opening the new invoice's "viewInvoice" one -
-    // see common/pages/GenerateInvoice.tsx). Without this check, this
+    // see features/billing/GenerateInvoice.tsx). Without this check, this
     // stale timeout would still fire 300ms later and wipe out that
     // freshly-opened dialog's editingType/editingId, closing it right
     // back out from under the user.

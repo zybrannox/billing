@@ -5,7 +5,8 @@ import { portalApiService } from "../../api/portalService";
 import { getApiErrorMessage } from "../../utils/apiError";
 import Button from "../../ui/Button";
 import TextField from "../../ui/TextField";
-import { MIN_PASSWORD_LENGTH, passwordTooShortMessage } from "../../config/passwordPolicy";
+import { MIN_PASSWORD_LENGTH, passwordTooShortMessage } from "../../features/auth/passwordPolicy";
+import { messages } from "../../messages";
 
 interface InviteLookup {
   valid: boolean;
@@ -66,7 +67,7 @@ function ActivateAccount() {
       return;
     }
     if (password !== confirmPassword) {
-      setErrorMessage("Passwords don't match.");
+      setErrorMessage(messages.errors.passwordsDontMatch);
       return;
     }
 

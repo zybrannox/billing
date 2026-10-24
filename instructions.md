@@ -43,6 +43,66 @@ sudo launchctl print system/com.zybrannox.billing.cloudflared | grep -E "state =
 
 The frontend doesn't need a restart after a rebuild — `serve` reads `dist/` from disk on every request.
 
+## Before deploying to the live server (checklist)
+
+Work through this top to bottom the first time you ship this version, and re-check the "every release" part each time after. Nothing here is optional unless marked.
+
+### A. One-time preparation (do these first)
+
+1. **Take a backup before touching anything.** On the live Mac: `cd billing_server && ./scripts/backup_db.sh`, then copy the dump off the machine. This is your rollback. (Needs the PostgreSQL client tools: `pg_dump`, `pg_restore`, `psql`, `createdb`, `dropdb` on `PATH`. Check with `which pg_dump`.)
+2. **Prove the backup restores:** `./scripts/verify_restore.sh`. Do not skip this - the restore scripts were written without access to `pg_dump`, so they have never been run.
+3. **Rotate the Gmail app password.** The old one was pasted into chat earlier and must be treated as exposed. Revoke it in Google (Account > Security > App passwords), create a new one, then on the server run `./scripts/set_secret.sh GMAIL_APP_PASSWORD --restart` (it verifies the login before saving, and rolls back on failure). Never paste the new value anywhere.
+4. **Production `.env` (`billing_server/.env`, mode 600):** `ENVIRONMENT=production`; `SECRET_KEY` and `CLIENT_SECRET_KEY` each 32+ random characters and *different* (`python -c "import secrets; print(secrets.token_urlsafe(48))"`); correct `DATABASE_URL`; Gmail settings; leave `ENABLE_API_DOCS` unset (off). The app refuses to start in production with weak or missing keys. `ls -l .env` should show `-rw-------`.
+5. **Admin account.** Production never uses the development default password. Either set `DEFAULT_ADMIN_PASSWORD` (10+ characters, not a dictionary word) in `.env` *before the first start of a fresh database*, or create the first admin by hand. Make sure no leftover test accounts exist (dev admin `zybrannox@gmail.com` with a weak password, any `load@example.com`, sample customers) - log in and check Employees and Customers.
+6. **Tune for the 8 GB iMac** (see "Operations" below): set `DB_POOL_SIZE=5` and `DB_MAX_OVERFLOW=5` in `.env`; keep Postgres `shared_buffers` around 256 MB and `max_connections` modest (50 is plenty); run a **single** uvicorn worker (request timings and the System Health numbers are per process). Exclude `billing_server/uploads` and the backup folder from Spotlight (System Settings > Siri & Spotlight > Search Privacy) and from Time Machine.
+7. **Disk space.** Check `df -h` - you need room for uploads, thumbnails, the database and at least two weeks of backups. System Health warns below 10% free; do not deploy below that.
+8. **Backups on a schedule.** Add `scripts/backup_db.sh` to a daily cron/launchd job (e.g. 02:00) and `scripts/verify_restore.sh` monthly. Decide where copies go besides this Mac.
+
+### B. Frontend build (on the machine that builds it)
+
+1. `cd billing && git status` - `vite.config.ts` must be exactly the committed production one.
+2. **Delete or move `billing/.env.local` on the build machine.** Vite loads it *over* `.env`, so a leftover copy makes the production build call `http://localhost:8000` and the live app shows a blank page / failed logins. `ls -a billing | grep .env` should list only `.env` (which points at `https://workspace-api.zybrannox.com`).
+3. `pnpm install --frozen-lockfile`, then `pnpm typecheck && pnpm lint && pnpm test`, then `npx vite build`, then `pnpm check:bundle` (initial load must stay under 300 KB gzipped; it is about 205 KB now).
+4. Set **CSP and HSTS headers at the static host / Cloudflare** for `workspace.zybrannox.com` (the repo cannot set them). Suggested: `Strict-Transport-Security: max-age=63072000; includeSubDomains`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, and a CSP that allows only your own origin plus the API origin.
+
+### C. Backend release (every release)
+
+1. `git pull`, then `./venv/bin/pip install -r requirements.txt` (new packages arrive: `psutil`, `sentry-sdk`, ...).
+2. `./venv/bin/python -m pytest -q` - all tests green. (If you changed a route or schema, also run `./venv/bin/python scripts/export_openapi.py` and `pnpm api:types`; a test fails if `openapi.json` is stale.)
+3. **Migrations, then restart - always in that order:**
+   ```bash
+   cd billing_server && ./venv/bin/alembic upgrade head
+   sudo launchctl kickstart -k system/com.zybrannox.billing.backend
+   ```
+   In production the app checks at startup that the database is at the latest migration and **refuses to start** otherwise (the log says `Run alembic upgrade head`). If the very first `alembic upgrade head` complains the database has no revision, the database predates Alembic tracking: find the newest migration whose changes are already present, run `alembic stamp <that revision>` once, then `alembic upgrade head`. Ask before guessing the revision - stamping the wrong one skips migrations. `SKIP_SCHEMA_CHECK=true` is an emergency bypass, not a fix.
+4. **Launchd settings to verify once** (`/Library/LaunchDaemons/com.zybrannox.billing.backend.plist`): `WorkingDirectory` is `billing_server` (uploads and thumbnails are stored in `./uploads`, relative to it - a different working directory silently creates a second, empty uploads folder), `KeepAlive` is on, and the log paths exist and are writable.
+5. Confirm the backend came back: `sudo launchctl print system/com.zybrannox.billing.backend | grep -E "state =|pid ="` and `curl -s -o /dev/null -w "%{http_code}\n" https://workspace-api.zybrannox.com/auth/me` (expect `401`, not `502`/`530`).
+
+### D. Smoke test on the live site (10 minutes, as admin)
+
+- [ ] Log in; log out; log in again. Check `https://workspace-api.zybrannox.com/docs` returns 404 (API docs are off).
+- [ ] Wrong password 3 times: a normal "Invalid credentials" message and no lockout of *other* people (rate limits are per real client IP behind the tunnel - try from your phone on mobile data while a colleague stays logged in).
+- [ ] Customers, Companies, Employees, Projects, Dashboard all load (no blank sections; Dashboard cards line up).
+- [ ] Create a project, generate an invoice, record a part payment, mark it paid. Open **System Setup > Audit Log** - the payment and mark-paid appear.
+- [ ] Download an invoice PDF, share one to WhatsApp, open a shared link in a private window.
+- [ ] Upload a photo and a PDF to a project; open the thumbnail; try a renamed `.exe` as `.pdf` (must be refused).
+- [ ] Forgot-password email arrives (proves the new Gmail app password works).
+- [ ] Client portal: invite, activate, log in, see invoices.
+- [ ] **System Setup > System Health** shows the live iMac's real numbers (not "can't load"), with a sensible verdict. Note the baseline memory free and app memory.
+
+### E. After going live
+
+- Watch **System Health** for the first day: memory free should stay above ~20%, no swap, the slowest 5% of requests under ~1 s. If it shows a problem it names the cause.
+- Set `SENTRY_DSN` if you want error alerts (optional).
+- Run the load test once against the live data when nobody is working: `./venv/bin/python scripts/load_test.py --base https://workspace-api.zybrannox.com --email <admin> --password <...> --users 5 --seconds 20` (read-only; target p95 under 200 ms).
+- Keep the pre-deploy backup for at least two weeks.
+
+### F. Rolling back
+
+- **Frontend:** rebuild the previous commit (`git checkout <previous> && npx vite build`) - `serve` picks it up immediately.
+- **Backend code only (no migration ran):** check out the previous commit and restart the backend.
+- **After a migration:** `./venv/bin/alembic downgrade -1` reverses the newest migration (each phase 4 migration is reversible), then check out the previous commit and restart. If data was damaged, restore the pre-deploy dump with `pg_restore --clean --no-owner --dbname <url> <dump>` (stop the backend first).
+
 ## Deploying changes
 
 **Frontend:** edit code, then rebuild — the running `serve` daemon picks it up automatically:
@@ -51,10 +111,14 @@ cd billing && npx vite build
 ```
 (`VITE_API_URL` is baked in at build time — if it changes, rebuild is required.)
 
-**Backend:** edit code, then restart the daemon:
+**Backend:** run any new migrations, **then** restart the daemon:
 ```bash
+cd billing_server && ./venv/bin/alembic upgrade head
 sudo launchctl kickstart -k system/com.zybrannox.billing.backend
 ```
+In production the app no longer creates tables itself: at startup it checks the database is at the Alembic head and refuses to boot otherwise (the error says `Run alembic upgrade head`). So the order is always migrate, then restart. `SKIP_SCHEMA_CHECK=true` bypasses the check in an emergency.
+
+After changing any route or response model: `./venv/bin/python scripts/export_openapi.py` (a test fails if `openapi.json` is stale), then `pnpm api:types` in `billing` to refresh the frontend's generated types.
 
 **Tunnel routing:** edit `~/.cloudflared/config.yml`, then:
 ```bash
@@ -139,6 +203,16 @@ Notes:
 - If the backend ever logs `... is readable by other users`, run `chmod 600` on that file.
 - Gmail has no API for creating app passwords, so rotation itself stays a manual step (every few months, or immediately after any exposure). Only a provider with an API key you can mint programmatically (SES, Resend, Postmark) can be rotated fully automatically.
 - The same `<NAME>_FILE` convention works with other hosts: Docker/Compose `secrets:` (mounted at `/run/secrets/...`), systemd `LoadCredential=`, Kubernetes secret volumes - set `GMAIL_APP_PASSWORD_FILE` to the mounted path.
+
+## Operations: backups, monitoring, load testing
+
+* **Backups:** `billing_server/scripts/backup_db.sh` writes a compressed `pg_dump` to `~/zybrannox-backups` (override with `BACKUP_DIR`) and prunes dumps older than 14 days. Schedule it daily (cron/launchd). It needs the PostgreSQL client tools (`pg_dump`). `scripts/verify_restore.sh` restores the newest dump into a throw-away database and compares row counts with the live one - run it monthly; a backup that has never been restored is only a hope.
+* **Errors:** set `SENTRY_DSN` to turn on error tracking (off by default; request bodies, cookies and headers are never sent).
+* **Slow queries:** anything over `SLOW_QUERY_MS` (300) is logged as `slow query N ms: ...` (statement text only, never parameters).
+* **Load test:** `./venv/bin/python scripts/load_test.py --email ... --password ... --users 10 --seconds 20` (read-only GETs; target p95 <= 200 ms). On 20,000 projects/invoices it measured a worst p95 of 49 ms.
+* **System Health (admin):** System Setup -> System Health shows the server machine's memory/CPU/disk, space used by the app (customer files, thumbnails, database, backups), memory per component, response times, slow queries, a 7-day trend, and a plain-English "why is it lagging?" verdict. Read-only and admin-only; it reports numbers and role labels only (never paths, command lines or settings). Folder sizes are measured by a background job every 10 minutes, so the screen itself costs almost nothing. If Postgres runs as a different macOS user, its memory shows "can't be read" - the database size is still shown. Needs `alembic upgrade head` (adds the `system_metrics` table) and `pip install -r requirements.txt` (adds `psutil`).
+* **Audit log:** payments, cancellations and deletions are recorded (System Setup -> Audit Log). The table is append-only; on Postgres a trigger rejects UPDATE/DELETE/TRUNCATE.
+* **Sessions:** a password change or reset signs the user out everywhere; an admin can also `POST /users/{id}/revoke-sessions`. After `LOGIN_MAX_FAILURES` (10) wrong passwords an account locks for `LOGIN_LOCKOUT_MINUTES` (15).
 
 ## Logs
 

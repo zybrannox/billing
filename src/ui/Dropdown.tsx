@@ -5,6 +5,7 @@ import CheckBoxOutlineBlankIcon from "@mui/icons-material/CheckBoxOutlineBlank";
 import CheckBoxIcon from "@mui/icons-material/CheckBox";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CloseIcon from "@mui/icons-material/Close";
+import { messages } from "../messages";
 
 export type DropdownOption =
   | string
@@ -117,7 +118,7 @@ export default function Dropdown({
         }
         noOptionsText={
           <Typography sx={{ fontSize: "var(--fs-sm)", color: "text.secondary" }}>
-            No options
+            {messages.common.noOptions}
           </Typography>
         }
         slotProps={{

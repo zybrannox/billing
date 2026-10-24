@@ -14,16 +14,18 @@ const Button = ({
   ...props
 }: CustomButtonProps) => {
   const variants = {
+    // The default (primary) button: one solid brand blue, no gradient. The
+    // name is kept so existing call sites don't change.
     gradient: {
-      background: "linear-gradient(135deg, var(--blue-600) 0%, var(--blue-900) 100%)",
+      backgroundColor: "var(--blue-600)",
       color: "var(--white)",
-      boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+      boxShadow: "0 1px 2px 0 rgba(15, 23, 42, 0.08)",
       "&:hover": {
-        background: "linear-gradient(135deg, var(--blue-500) 0%, var(--blue-900) 100%)",
-        boxShadow: "0 2px 4px -1px rgba(0, 0, 0, 0.1)",
+        backgroundColor: "var(--blue-700)",
+        boxShadow: "0 1px 3px 0 rgba(15, 23, 42, 0.16)",
       },
       "&:focus-visible": {
-        boxShadow: "0 0 0 3px rgba(30, 64, 175, 0.25)",
+        boxShadow: "0 0 0 3px rgba(37, 99, 235, 0.25)",
       },
     },
     blue: {
@@ -50,13 +52,13 @@ const Button = ({
     },
     outline: {
       backgroundColor: "var(--white)",
-      color: "text.primary",
-      border: "1px solid rgba(0, 0, 0, 0.12)",
-      boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+      color: "var(--slate-800)",
+      border: "1px solid var(--slate-300)",
+      boxShadow: "none",
       "&:hover": {
-        borderColor: "var(--blue-300, var(--blue-300))",
-        backgroundColor: "var(--blue-50, var(--blue-50))",
-        color: "var(--blue-600, var(--blue-600))",
+        borderColor: "var(--slate-400)",
+        backgroundColor: "var(--slate-50)",
+        color: "var(--slate-900)",
       },
       "&:focus-visible": {
         borderColor: "var(--blue-500, var(--blue-500))",
@@ -101,8 +103,8 @@ const Button = ({
       {...props}
       sx={{
         textTransform: "none",
-        fontWeight: 500,
-        borderRadius: "var(--border-radius-md, 6px)",
+        fontWeight: 600,
+        borderRadius: "8px",
         lineHeight: 1.25,
         display: "inline-flex",
         alignItems: "center",

@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { portalApiService } from "../../api/portalService";
-import ForgotPasswordForm from "../../common/components/auth/ForgotPasswordForm";
+import ForgotPasswordForm from "../../features/auth/ForgotPasswordForm";
 
 // Mirrors ClientLogin.tsx's centered-card layout - the client portal had
 // no forgot-password capability at all before this.
