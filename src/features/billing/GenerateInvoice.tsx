@@ -58,7 +58,8 @@ const buildInitialRows = (project: ProjectSummary): ItemRow[] => {
     newRow(
       `${project.project_type} – ${stripExtension(f.original_name)}`,
       f.pixel_width,
-      f.pixel_height
+      f.pixel_height,
+      f.id
     )
   );
 };

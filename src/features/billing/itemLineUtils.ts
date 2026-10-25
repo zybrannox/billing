@@ -38,6 +38,10 @@ export interface ItemRow {
   total: string;
   pixelWidth: number | null;
   pixelHeight: number | null;
+  // The uploaded file this line was started from (a ProjectFile id), so the
+  // invoice can later show exactly the files it billed for. null for lines
+  // typed by hand.
+  projectFileId: number | null;
 }
 
 // The one built-in item type that isn't priced by area - a service charge,
@@ -67,7 +71,8 @@ let rowCounter = 0;
 export const newRow = (
   description = "",
   pixelWidth: number | null = null,
-  pixelHeight: number | null = null
+  pixelHeight: number | null = null,
+  projectFileId: number | null = null
 ): ItemRow => ({
   key: `row-${++rowCounter}`,
   itemType: "",
@@ -80,6 +85,7 @@ export const newRow = (
   total: "",
   pixelWidth,
   pixelHeight,
+  projectFileId,
 });
 
 export const toNumber = (v: string): number => {
@@ -180,4 +186,5 @@ export const rowToItemPayload = (r: ItemRow) => ({
   rate: toNumber(r.rate),
   pieces: piecesOf(r),
   is_manual_total: r.total !== "",
+  ...(r.projectFileId != null ? { project_file_id: r.projectFileId } : {}),
 });

@@ -82,3 +82,12 @@ describe("row validation", () => {
     expect(invalidRowMessage(row({ itemType: "Others" }))).toMatch(/Others/);
   });
 });
+
+describe("rowToItemPayload file link", () => {
+  it("sends the file a line was started from, and nothing for hand-typed lines", () => {
+    const fromFile = { ...newRow("Flex – front", 800, 600, 42), width: "2", height: "3", rate: "10" };
+    expect(rowToItemPayload(fromFile)).toMatchObject({ project_file_id: 42 });
+    const typed = { ...newRow("Custom"), width: "2", height: "3", rate: "10" };
+    expect(rowToItemPayload(typed)).not.toHaveProperty("project_file_id");
+  });
+});

@@ -517,6 +517,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/files/invoice/{invoice_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Invoice Files
+         * @description The files an invoice actually billed for (not everything the project
+         *     holds), with what the gallery needs to choose between the full-size
+         *     original and the thumbnail. See app/project_files/invoice_files.py.
+         */
+        get: operations["list_invoice_files_files_invoice__invoice_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/files/purge-stale": {
         parameters: {
             query?: never;
@@ -2292,6 +2314,8 @@ export interface components {
              * @default 1
              */
             pieces: number;
+            /** Project File Id */
+            project_file_id?: number | null;
             /** Rate */
             rate: number;
             /**
@@ -2323,6 +2347,8 @@ export interface components {
             is_manual_total: boolean;
             /** Pieces */
             pieces: number;
+            /** Project File Id */
+            project_file_id: number | null;
             /** Rate */
             rate: number;
             /** Sort Order */
@@ -2688,10 +2714,34 @@ export interface components {
              */
             start_date: string;
         };
+        /**
+         * ProjectFileRead
+         * @description One file of a project, as the gallery needs it.
+         */
+        ProjectFileRead: {
+            /** Created At */
+            created_at: string;
+            /** Is Image */
+            is_image: boolean;
+            /** Original Available */
+            original_available: boolean;
+            /** Original Name */
+            original_name: string | null;
+            /** Path */
+            path: string;
+            /** Pixel Height */
+            pixel_height: number | null;
+            /** Pixel Width */
+            pixel_width: number | null;
+            /** Size Bytes */
+            size_bytes: number | null;
+        };
         /** ProjectFileSummary */
         ProjectFileSummary: {
             /** Height */
             height: number | null;
+            /** Id */
+            id: number;
             /** Original Name */
             original_name: string | null;
             /** Pixel Height */
@@ -4512,6 +4562,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_invoice_files_files_invoice__invoice_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoice_id: number;
+            };
+            cookie?: {
+                access_token?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectFileRead"][];
                 };
             };
             /** @description Validation Error */

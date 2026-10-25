@@ -31,3 +31,5 @@ export type AuditLogListResponse = Schemas["AuditLogListResponse"];
 export type SystemHealth = Schemas["SystemHealthRead"];
 export type HealthPoint = Schemas["HealthPointRead"];
 export type HealthFinding = Schemas["FindingRead"];
+
+export type ProjectFile = Schemas["ProjectFileRead"];

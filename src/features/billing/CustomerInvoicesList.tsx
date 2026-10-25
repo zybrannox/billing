@@ -19,6 +19,7 @@ import { semanticChipSx } from "../../ui/chipStyles";
 import CrudActions from "../../ui/Actions";
 import ListPager from "../../ui/ListPager";
 import PaymentHistory from "./PaymentHistory";
+import ProjectFilesButton from "./ProjectFilesButton";
 import RecordPaymentDialog, { type RecordPaymentTarget } from "./RecordPaymentDialog";
 import { formatRupeesWhole as money } from "../../format/money";
 import { messages } from "../../messages";
@@ -209,6 +210,7 @@ export default function CustomerInvoicesList({
           <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1 }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
               <PaymentHistory invoiceId={inv.id} />
+              <ProjectFilesButton invoiceId={inv.id} invoiceNumber={inv.invoice_number} />
               <Typography variant="caption" sx={{ color: "var(--amber-700)", fontWeight: 600 }} noWrap>
                 {inv.status === "pending" && inv.balance_due < inv.amount
                   ? `Paid ${money(inv.amount - inv.balance_due)} · ${money(inv.balance_due)} due`

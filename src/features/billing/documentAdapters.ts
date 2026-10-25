@@ -180,8 +180,8 @@ export function sampleInvoiceDocument(settings: DocumentSettings): DocumentData 
         company_address: "12 Market Road, Nagercoil",
       },
       items: [
-        { id: 1, description: "Shop front flex", width: 10, height: 30, unit: "ft", sq_ft: 300, rate: 10, pieces: 1, total: 3000, is_manual_total: false, has_dimensions: true, sort_order: 0 },
-        { id: 2, description: "Installation", width: 0, height: 0, unit: "ft", sq_ft: 0, rate: 650, pieces: 2, total: 1300, is_manual_total: false, has_dimensions: false, sort_order: 1 },
+        { id: 1, description: "Shop front flex", width: 10, height: 30, unit: "ft", sq_ft: 300, rate: 10, pieces: 1, total: 3000, is_manual_total: false, has_dimensions: true, sort_order: 0, project_file_id: null },
+        { id: 2, description: "Installation", width: 0, height: 0, unit: "ft", sq_ft: 0, rate: 650, pieces: 2, total: 1300, is_manual_total: false, has_dimensions: false, sort_order: 1, project_file_id: null },
       ],
       payments: [
         { id: 1, amount: 2000, payment_method: "UPI", payment_reference: "TXN123456", paid_at: today, recorded_by: null },

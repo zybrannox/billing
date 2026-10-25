@@ -93,7 +93,7 @@ function baseInvoice(): InvoiceDetail {
     project: null,
     customer: null,
     items: [
-      { id: 1, description: "Banner", width: 10, height: 10, unit: "ft", sq_ft: 100, rate: 10, pieces: 1, total: 1000, is_manual_total: false, has_dimensions: true, sort_order: 0 },
+      { id: 1, description: "Banner", width: 10, height: 10, unit: "ft", sq_ft: 100, rate: 10, pieces: 1, total: 1000, is_manual_total: false, has_dimensions: true, sort_order: 0, project_file_id: null },
     ],
     payments: [{ id: 1, amount: 400, payment_method: "Cash", payment_reference: "r1", paid_at: "2026-10-18T12:00:00", recorded_by: "alan" }],
   };

@@ -76,6 +76,8 @@ const rowFromItem = (item: InvoiceItem): ItemRow => ({
   total: item.is_manual_total ? item.total.toFixed(2) : "",
   pixelWidth: null,
   pixelHeight: null,
+  // Kept through an edit so the invoice still knows which files it billed.
+  projectFileId: item.project_file_id ?? null,
 });
 
 const extractErrorMessage = (err: any): string => {
