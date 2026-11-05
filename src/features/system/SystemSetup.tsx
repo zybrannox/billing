@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Navigate, useSearchParams } from "react-router-dom";
+import BackupRoundedIcon from "@mui/icons-material/BackupRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
 import ListAltRoundedIcon from "@mui/icons-material/ListAltRounded";
@@ -11,12 +12,13 @@ import { useAppStore } from "../../store/useAppStore";
 import type { BinListResponse } from "../../api/types";
 import SettingsLayout, { type SettingsNavItem } from "../../ui/SettingsLayout";
 import AuditLogPanel from "./AuditLogPanel";
+import BackupsPanel from "./BackupsPanel";
 import BinPanel from "./BinPanel";
 import DocumentDesignSettings from "./DocumentDesignSettings";
 import DropdownOptionsPanel from "./DropdownOptionsPanel";
 import SystemHealthPanel from "./SystemHealthPanel";
 
-type Section = "options" | "design" | "bin" | "audit" | "health";
+type Section = "options" | "design" | "bin" | "audit" | "health" | "backups";
 
 const WORKSPACE = "Workspace";
 const ADMINISTRATION = "Administration";
@@ -24,6 +26,7 @@ const ADMINISTRATION = "Administration";
 const SECTIONS: SettingsNavItem<Section>[] = [
   { value: "options", group: WORKSPACE, label: "Dropdown options", description: "Project types and billable items", icon: <ListAltRoundedIcon /> },
   { value: "design", group: WORKSPACE, label: "Invoice design", description: "Logo, colours, layout and wording", icon: <PaletteRoundedIcon /> },
+  { value: "backups", group: ADMINISTRATION, label: "Backups", description: "Is your data safely copied?", icon: <BackupRoundedIcon /> },
   { value: "bin", group: ADMINISTRATION, label: "Bin", description: "Restore what was deleted", icon: <DeleteOutlineRoundedIcon /> },
   { value: "audit", group: ADMINISTRATION, label: "All activity", description: "Who changed what, and when", icon: <HistoryRoundedIcon /> },
   { value: "health", group: ADMINISTRATION, label: "System health", description: "Is everything running OK?", icon: <MonitorHeartRoundedIcon /> },
@@ -54,7 +57,7 @@ export default function SystemSetup() {
   return (
     <SettingsLayout
       title="System setup"
-      description={isAdmin ? "Manage your workspace's lists, document design, deleted items and server." : "Manage your workspace's lists and document design."}
+      description={isAdmin ? "Manage your workspace's lists, document design, backups, deleted items and server." : "Manage your workspace's lists and document design."}
       items={items}
       value={section}
       onChange={(next) => setParams({ section: next }, { replace: true })}
@@ -63,6 +66,8 @@ export default function SystemSetup() {
         <DropdownOptionsPanel />
       ) : section === "design" ? (
         <DocumentDesignSettings />
+      ) : section === "backups" ? (
+        <BackupsPanel />
       ) : section === "bin" ? (
         <BinPanel />
       ) : section === "audit" ? (

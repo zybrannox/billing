@@ -44,6 +44,7 @@ const ACTION_LABELS: Record<string, string> = {
   "bin.erase": "Deleted forever",
   "bin.empty": "Bin emptied",
   "bin.expire": "Removed after 14 days",
+  "backup.run": "Backup taken",
   "share_link.create": "Share link created",
   "share_link.delete": "Share link revoked",
 };

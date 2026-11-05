@@ -25,6 +25,7 @@ export default function EmployeeLayout() {
   const canCreateInvoice = usePermission("invoice.create");
   const canEditInvoice = usePermission("invoice.edit");
   const canManageWorkspace = usePermission("workspace.manage");
+  const canSeeNotes = usePermission("notes.access");
   const canSeeInvoices = canCreateInvoice || canEditInvoice;
   const openDialog = useDialogStore((s) => s.openDialog);
 
@@ -41,7 +42,7 @@ export default function EmployeeLayout() {
       <Box sx={{ display: "flex" }}>
         {/* Drawer: component decides permanent vs temporary based on breakpoints */}
         <Drawer
-          navigations={employeeNavigations({ canManageWorkspace, canSeeInvoices })}
+          navigations={employeeNavigations({ canManageWorkspace, canSeeInvoices, canSeeNotes })}
           open={open}
           onClose={handleDrawerClose}
           onToggle={handleDrawerToggle}

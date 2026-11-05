@@ -123,6 +123,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/backups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Backup Status */
+        get: operations["get_backup_status_backups_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/backups/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Run Backup */
+        post: operations["run_backup_backups_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/bin/": {
         parameters: {
             query?: never;
@@ -1865,6 +1899,29 @@ export interface components {
             /** Id */
             id: number;
         };
+        /** BackupStatusRead */
+        BackupStatusRead: {
+            /** Backup Count */
+            backup_count: number;
+            /** Last Backup At */
+            last_backup_at: string | null;
+            /** Last Backup Size Bytes */
+            last_backup_size_bytes: number | null;
+            /** Last Restore Check At */
+            last_restore_check_at: string | null;
+            /** Last Restore Check Matched */
+            last_restore_check_matched: boolean | null;
+            /** On Separate Disk */
+            on_separate_disk: boolean;
+            /** Overdue */
+            overdue: boolean;
+            /** Scheduled */
+            scheduled: boolean;
+            /** Total Size Bytes */
+            total_size_bytes: number;
+            /** Uploads Last Copied At */
+            uploads_last_copied_at: string | null;
+        };
         /** BinItemRead */
         BinItemRead: {
             /** Deleted At */
@@ -3599,7 +3656,7 @@ export interface components {
         /** UserPermissionsUpdate */
         UserPermissionsUpdate: {
             /** Permissions */
-            permissions: ("invoice.create" | "invoice.edit" | "workspace.manage")[];
+            permissions: ("invoice.create" | "invoice.edit" | "workspace.manage" | "notes.access")[];
         };
         /** UserRead */
         UserRead: {
@@ -3887,6 +3944,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_backup_status_backups_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                access_token?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackupStatusRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_backup_backups_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                access_token?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackupStatusRead"];
                 };
             };
             /** @description Validation Error */

@@ -16,9 +16,14 @@ export const ACCESS_OPTIONS: { permission: Permission; label: string; descriptio
     label: "Workspace settings",
     description: "Change the dropdown options and invoice design in System setup.",
   },
+  {
+    permission: "notes.access",
+    label: "Notes",
+    description: "See, add, tick off and delete everyone's job notes.",
+  },
 ];
 
-// Short wording for a table cell or panel header: "None", "2 of 3" or "Full access".
+// Short wording for a table cell or panel header: "None", "2 of 4" or "Full access".
 export const accessSummary = (permissions: string[] = []) => {
   const on = ACCESS_OPTIONS.filter((o) => permissions.includes(o.permission)).length;
   if (on === 0) return "None";

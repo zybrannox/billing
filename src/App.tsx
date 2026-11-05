@@ -14,6 +14,7 @@ import { portalApiService } from "./api/portalService";
 import { API } from "./api/endpoints";
 import ProtectedRoute from "./features/auth/ProtectedRoute";
 import ClientProtectedRoute from "./features/auth/ClientProtectedRoute";
+import RequirePermission from "./features/auth/RequirePermission";
 import ErrorBoundary from "./ui/ErrorBoundary";
 import PageSpinner from "./ui/PageSpinner";
 
@@ -203,7 +204,7 @@ function App() {
             <Route element={<ProtectedRoute allowedRoles={["user", "moderator"]} />}>
               <Route path="/" element={<EmployeeLayout />}>
                 <Route index element={<Projects />} />
-                <Route path="notes" element={<Notes />} />
+                <Route path="notes" element={<RequirePermission permission="notes.access"><Notes /></RequirePermission>} />
                 <Route path="invoices" element={<InvoicesPage />} />
                 <Route path="invoices/:id" element={<InvoicesPage />} />
                 <Route path="system-setup" element={<SystemSetup />} />

@@ -326,7 +326,7 @@ function NoteRow({
 }
 
 // Quick notes about jobs: write it down, tick it green when it's done, and turn
-// it into a bill. Shared by all staff, so anyone can tick off anyone's note.
+// it into a bill. Shared by everyone with access, so anyone can tick off anyone's note.
 export default function Notes() {
   const queryClient = useQueryClient();
   const canBill = usePermission("invoice.create");
