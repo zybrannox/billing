@@ -1,11 +1,10 @@
 import { z } from "zod";
 
 // Mirrors the Add Project form (fields.ts's addProjectFields) and
-// the backend's accepted values (app/projects/model.py's ProjectBase,
-// Priority) - kept as an explicit schema rather than the auto-derived one
+// the backend's accepted values (app/projects/model.py's ProjectBase) - kept as an explicit schema rather than the auto-derived one
 // CustomForm builds per-field, because a few of these rules only make
 // sense across fields (delivery not preceding start) or as a closed set
-// (project_type/priority/client_status), which a per-field schema can't
+// (project_type/client_status), which a per-field schema can't
 // express.
 export const addProjectSchema = z
   .object({
@@ -24,7 +23,6 @@ export const addProjectSchema = z
     assigned_to: z.string().min(1, "Assignee is required"),
     start_date: z.string().datetime({ message: "Invalid start date" }),
     delivery_date: z.string().datetime({ message: "Invalid delivery date" }),
-    priority: z.enum(["Normal", "High", "Urgent"]),
     client_status: z.enum(["Confirmed", "Correction"]),
     // GmailFileUploader tracks each pick as an upload-in-progress object
     // ({status, path, ...}), not a raw File - optional since attachments

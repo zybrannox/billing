@@ -21,10 +21,9 @@ import DateTimePicker from "../../ui/DateTimePicker";
 import Button from "../../ui/Button";
 import ItemLineEditor from "./ItemLineEditor";
 import {
-  totalOf,
   toNumber,
-  checkRow,
-  invalidRowMessage,
+  collectRows,
+  subtotalOf,
   rowToItemPayload,
   OTHERS_ITEM_TYPE,
   type ItemRow,
@@ -37,6 +36,7 @@ import {
 } from "../../ui/InvoiceDocument";
 import { type InvoiceDetail, type InvoiceItem } from "./invoiceSheetUtils";
 import { messages } from "../../messages";
+import { getErrorMessage } from "../../utils/apiError";
 
 const numberFieldSx = {
   "& .MuiInputBase-root": { px: 1, height: 40, fontSize: "var(--fs-md)" },
@@ -79,13 +79,6 @@ const rowFromItem = (item: InvoiceItem): ItemRow => ({
   // Kept through an edit so the invoice still knows which files it billed.
   projectFileId: item.project_file_id ?? null,
 });
-
-const extractErrorMessage = (err: any): string => {
-  const detail = err?.detail ?? err?.message;
-  if (typeof detail === "string") return detail;
-  if (Array.isArray(detail) && detail[0]?.msg) return detail[0].msg;
-  return "Something went wrong while saving the invoice. Please try again.";
-};
 
 // Admin-only (opened from InvoiceView.tsx's "Edit" action, which is itself
 // only shown to admins) and only while an invoice is still pending - the
@@ -144,7 +137,7 @@ export default function EditInvoice() {
   }, [id]);
 
   const grandTotal = useMemo(
-    () => Math.round(items.reduce((sum, r) => sum + totalOf(r), 0) * 100) / 100,
+    () => subtotalOf(items),
     [items]
   );
 
@@ -154,23 +147,13 @@ export default function EditInvoice() {
     setRowError(null);
     setDiscountError(null);
 
-    const usable: ItemRow[] = [];
-    for (const row of items) {
-      const check = checkRow(row);
-      if (check === "empty") continue;
-      if (check === "invalid") {
-        setRowError(invalidRowMessage(row));
-        return;
-      }
-      usable.push(row);
-    }
-
-    if (usable.length === 0) {
-      setRowError(messages.errors.addAtLeastOneItem);
+    const { rows: usable, error: rowProblem } = collectRows(items);
+    if (rowProblem) {
+      setRowError(rowProblem);
       return;
     }
 
-    const subtotal = Math.round(usable.reduce((sum, r) => sum + totalOf(r), 0) * 100) / 100;
+    const subtotal = subtotalOf(usable);
     const discount = toNumber(discountAmount);
     if (discountAmount.trim() !== "" && discount > subtotal) {
       setDiscountError("Discount can't be more than the invoice subtotal.");
@@ -191,9 +174,9 @@ export default function EditInvoice() {
       });
       closeDialog();
       openDialog("viewInvoice", updated.id, "view");
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error updating invoice", err);
-      setSubmitError(extractErrorMessage(err?.response?.data || err));
+      setSubmitError(getErrorMessage(err, "Something went wrong while saving the invoice. Please try again."));
     } finally {
       setSubmitting(false);
     }

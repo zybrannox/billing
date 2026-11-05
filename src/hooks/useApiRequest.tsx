@@ -2,13 +2,14 @@
 import { useState } from "react";
 import { apiService } from "../api/service";
 import { useNavigate } from "react-router-dom";
+import { isAxiosError, type AxiosRequestConfig } from "axios";
 
 // GENERIC HOOK
 export function useApiRequest() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
-  const sendRequest = async <T = any,>({
+  const sendRequest = async <T = unknown,>({
     endpoint,
     method = "post",
     data,
@@ -18,9 +19,10 @@ export function useApiRequest() {
   }: {
     endpoint: string;
     method?: "get" | "post" | "put" | "patch" | "delete";
-    data?: any;
+    data?: unknown;
     onSuccess?: (res: T) => void;
-    onError?: (err: any) => void;
+    // Pass it to getErrorMessage / getErrorDetail in utils/apiError.
+    onError?: (err: unknown) => void;
     redirectTo?: string;
   }): Promise<T | undefined> => {
     setLoading(true);
@@ -28,7 +30,7 @@ export function useApiRequest() {
       // form-data support
       const isFormData =
         data instanceof FormData ||
-        Object.values(data || {}).some(
+        Object.values(data ?? {}).some(
           (v) => v instanceof File || v instanceof Blob,
         );
 
@@ -36,15 +38,15 @@ export function useApiRequest() {
 
       if (isFormData && !(data instanceof FormData)) {
         const form = new FormData();
-        Object.entries(data).forEach(([k, v]) => {
+        Object.entries(data as object).forEach(([k, v]) => {
           if (Array.isArray(v)) v.forEach((item) => form.append(k, item));
-          else if (v !== undefined && v !== null) form.append(k, v as any);
+          else if (v !== undefined && v !== null) form.append(k, v as string | Blob);
         });
         payload = form;
       }
 
       const api = {
-        get: () => apiService.get<T>(endpoint, payload),
+        get: () => apiService.get<T>(endpoint, payload as AxiosRequestConfig | undefined),
         post: () => apiService.post<T>(endpoint, payload),
         put: () => apiService.put<T>(endpoint, payload),
         patch: () => apiService.patch<T>(endpoint, payload),
@@ -59,9 +61,11 @@ export function useApiRequest() {
       if (redirectTo) navigate(redirectTo);
 
       return res;
-    } catch (err: any) {
-      console.error("API Error", err);
-      onError?.(err?.response?.data || err);
+    } catch (err) {
+      // Status only: the error object carries the request body, which for a
+      // login or password change means the password.
+      console.error("API Error", method, endpoint, isAxiosError(err) ? err.response?.status : "no response");
+      onError?.(isAxiosError(err) ? err.response?.data || err : err);
     } finally {
       setLoading(false);
     }

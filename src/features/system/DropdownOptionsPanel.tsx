@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Box, Switch, Typography } from "@mui/material";
+import { Box, IconButton, Switch, Tooltip, Typography } from "@mui/material";
+import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import ListAltRoundedIcon from "@mui/icons-material/ListAltRounded";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import Button from "../../ui/Button";
@@ -8,9 +9,10 @@ import { GenericDialog } from "../../ui/Dialog";
 import { ItemList, ItemRow } from "../../ui/ItemList";
 import ListState from "../../ui/ListState";
 import Panel from "../../ui/Panel";
-import { formatRupees } from "../../format/money";
 import { messages } from "../../messages";
-import { useListOptionsStore } from "../../store/useListOptionsStore";
+import { useListOptionsStore, type ListOption } from "../../store/useListOptionsStore";
+import ItemPricingDialog from "./ItemPricingDialog";
+import { pricingSummary } from "./itemPricing";
 import AddListOption from "./AddListOption";
 
 // Project Type and Item Type are the categories wired up so far. Both the
@@ -44,6 +46,7 @@ function CategoryPanel({
   hasRate?: boolean;
 }) {
   const [addOpen, setAddOpen] = useState(false);
+  const [pricingOption, setPricingOption] = useState<ListOption | null>(null);
   const options = useListOptionsStore((s) => s.allByCategory[category]);
   const loading = useListOptionsStore((s) => s.loading);
   const fetchAllOptions = useListOptionsStore((s) => s.fetchAllOptions);
@@ -63,8 +66,14 @@ function CategoryPanel({
   // still needs it to display correctly - so this list intentionally shows
   // inactive rows too (switched off, dimmed), not just the active ones a new
   // project's dropdown offers.
+  const activeCount = options?.filter((o) => o.is_active).length ?? 0;
+  const hiddenCount = (options?.length ?? 0) - activeCount;
+  const summary = options?.length
+    ? [`${activeCount} active`, hiddenCount ? `${hiddenCount} hidden` : null].filter(Boolean).join(" · ")
+    : description;
+
   return (
-    <Panel flush title={label} description={description} action={options && options.length > 0 ? addButton : undefined}>
+    <Panel flush title={label} description={summary} action={options && options.length > 0 ? addButton : undefined}>
       {!options ? (
         <Box sx={{ p: 2.5 }}>
           <ListState loading={loading} error={false} empty={false} errorText="" emptyText="" />
@@ -83,12 +92,33 @@ function CategoryPanel({
               key={option.id}
               title={option.value}
               muted={!option.is_active}
-              detail={
-                hasRate && option.rate != null ? `${formatRupees(Number(option.rate))} per sq ft` : undefined
-              }
+              detail={hasRate ? pricingSummary(option.rate, option.min_charges) : undefined}
               trailing={
                 <>
-                  <Typography sx={{ fontSize: "var(--fs-sm)", color: option.is_active ? "var(--emerald-700)" : "var(--slate-500)", fontWeight: 600, minWidth: 52, textAlign: "right" }}>
+                  {hasRate && (
+                    <Tooltip title="Edit rate and minimum charges">
+                      <IconButton
+                        size="small"
+                        aria-label={`Edit pricing for ${option.value}`}
+                        onClick={() => setPricingOption(option)}
+                        sx={{ color: "var(--slate-500)" }}
+                      >
+                        <EditRoundedIcon sx={{ fontSize: 17 }} />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                  <Typography
+                    component="span"
+                    sx={{
+                      px: 1,
+                      py: 0.25,
+                      borderRadius: "999px",
+                      fontSize: "var(--fs-2xs)",
+                      fontWeight: 700,
+                      color: option.is_active ? "var(--emerald-700)" : "var(--slate-500)",
+                      bgcolor: option.is_active ? "var(--emerald-50)" : "var(--slate-100)",
+                    }}
+                  >
                     {option.is_active ? "Active" : "Hidden"}
                   </Typography>
                   <Switch
@@ -103,6 +133,9 @@ function CategoryPanel({
           ))}
         </ItemList>
       )}
+      {pricingOption && (
+        <ItemPricingDialog key={pricingOption.id} option={pricingOption} onClose={() => setPricingOption(null)} />
+      )}
       <GenericDialog open={addOpen} onClose={() => setAddOpen(false)} title={`New ${label}`} maxWidth="xs">
         <AddListOption category={category} label={label} hasRate={hasRate} onSuccess={() => setAddOpen(false)} />
       </GenericDialog>
@@ -112,10 +145,10 @@ function CategoryPanel({
 
 export default function DropdownOptionsPanel() {
   return (
-    <>
+    <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "minmax(0, 1fr)", xl: "repeat(2, minmax(0, 1fr))" }, alignItems: "start" }}>
       {CATEGORIES.map((c) => (
         <CategoryPanel key={c.category} {...c} />
       ))}
-    </>
+    </Box>
   );
 }

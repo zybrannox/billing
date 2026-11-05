@@ -11,6 +11,12 @@ const CHUNK_SIZE = 20 * 1024 * 1024; // 20MB
 // separate requests) for the common case of ordinary-sized attachments.
 export const CHUNK_UPLOAD_THRESHOLD = 60 * 1024 * 1024; // 60MB
 
+// A failed chunk is retried this many times, waiting a little longer each time
+// (1s, 2s, 4s, 8s, 16s): a 1GB file is 50+ requests, and one dropped connection
+// or brief server restart shouldn't throw away everything already uploaded.
+const MAX_ATTEMPTS = 6;
+const RETRY_BASE_DELAY_MS = 1000;
+
 // How many chunks upload in parallel. High enough to use more of the
 // connection than one chunk at a time would, low enough not to overwhelm
 // the backend's thread pool (each in-flight chunk occupies one of its
@@ -31,6 +37,39 @@ interface CompleteResponse {
   pixel_height: number | null;
 }
 
+type RequestFailure = { code?: string; name?: string; response?: { status?: number } };
+
+const isCancelled = (err: RequestFailure) => err?.code === "ERR_CANCELED" || err?.name === "CanceledError";
+
+const isTransient = (err: RequestFailure) => {
+  if (isCancelled(err)) return false;
+  const status = err?.response?.status;
+  // No response at all means the connection dropped or the transfer stalled.
+  return status === undefined || status === 408 || status === 429 || status >= 500;
+};
+
+const waitFor = (ms: number, signal: AbortSignal) =>
+  new Promise<void>((resolve) => {
+    if (signal.aborted) return resolve();
+    const timer = setTimeout(resolve, ms);
+    signal.addEventListener("abort", () => {
+      clearTimeout(timer);
+      resolve();
+    }, { once: true });
+  });
+
+async function withRetries<T>(signal: AbortSignal, attempt: () => Promise<T>): Promise<T> {
+  for (let tries = 1; ; tries++) {
+    try {
+      return await attempt();
+    } catch (err) {
+      if (tries >= MAX_ATTEMPTS || signal.aborted || !isTransient(err as RequestFailure)) throw err;
+      await waitFor(RETRY_BASE_DELAY_MS * 2 ** (tries - 1), signal);
+      if (signal.aborted) throw err;
+    }
+  }
+}
+
 /**
  * Uploads a large file in fixed-size chunks instead of one request, so it
  * never hits Cloudflare's proxy body-size cap regardless of the file's
@@ -45,11 +84,20 @@ export async function uploadFileChunked(
 ): Promise<CompleteResponse> {
   const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
 
-  const { upload_id } = await apiService.post<InitResponse>("/files/upload/init", {
-    filename: file.name,
-    total_size: file.size,
-    total_chunks: totalChunks,
-  });
+  const { upload_id } = await withRetries(signal, () =>
+    apiService.post<InitResponse>("/files/upload/init", {
+      filename: file.name,
+      total_size: file.size,
+      total_chunks: totalChunks,
+    }),
+  );
+
+  // Once a chunk has failed for good there's no point sending the rest of the
+  // file: this stops the other workers and their in-flight requests.
+  const stopAll = new AbortController();
+  const forwardAbort = () => stopAll.abort();
+  signal.addEventListener("abort", forwardAbort, { once: true });
+  if (signal.aborted) stopAll.abort();
 
   // Bytes "loaded" per chunk (approximated from that chunk's own upload
   // percent - postWithProgress only reports percent, not raw bytes - close
@@ -71,15 +119,18 @@ export async function uploadFileChunked(
     form.append("chunk_index", String(chunkIndex));
     form.append("chunk", blob);
 
-    await apiService.postWithProgress(
-      "/files/upload/chunk",
-      form,
-      (percent) => {
-        loadedByChunk[chunkIndex] = (percent / 100) * chunkSize;
-        reportProgress();
-      },
-      signal,
-    );
+    await withRetries(stopAll.signal, () => {
+      loadedByChunk[chunkIndex] = 0;
+      return apiService.postWithProgress(
+        "/files/upload/chunk",
+        form,
+        (percent) => {
+          loadedByChunk[chunkIndex] = (percent / 100) * chunkSize;
+          reportProgress();
+        },
+        stopAll.signal,
+      );
+    });
     loadedByChunk[chunkIndex] = chunkSize;
     reportProgress();
   };
@@ -89,20 +140,33 @@ export async function uploadFileChunked(
   // requests are in flight regardless of how many chunks there are.
   let nextChunk = 0;
   const workerCount = Math.min(CHUNK_CONCURRENCY, totalChunks);
+  // The first failure is the one worth reporting - later ones are just the
+  // other workers being cancelled because of it.
+  let firstFailure: { error: unknown } | null = null;
   const workers = Array.from({ length: workerCount }, async () => {
-    while (nextChunk < totalChunks) {
+    while (nextChunk < totalChunks && !firstFailure) {
       const index = nextChunk++;
-      await uploadChunk(index);
+      try {
+        await uploadChunk(index);
+      } catch (error) {
+        firstFailure ??= { error };
+        stopAll.abort();
+      }
     }
   });
   await Promise.all(workers);
+  signal.removeEventListener("abort", forwardAbort);
+  if (firstFailure) throw (firstFailure as { error: unknown }).error;
 
-  return apiService.post<CompleteResponse>("/files/upload/complete", {
-    upload_id,
-    filename: file.name,
-    width: metadata.width,
-    height: metadata.height,
-    pixel_width: metadata.pixelWidth,
-    pixel_height: metadata.pixelHeight,
-  });
+  // Safe to repeat: the server answers a repeated complete with the same file.
+  return withRetries(signal, () =>
+    apiService.post<CompleteResponse>("/files/upload/complete", {
+      upload_id,
+      filename: file.name,
+      width: metadata.width,
+      height: metadata.height,
+      pixel_width: metadata.pixelWidth,
+      pixel_height: metadata.pixelHeight,
+    }),
+  );
 }

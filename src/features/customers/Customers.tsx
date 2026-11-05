@@ -1,7 +1,8 @@
 import type { GridColDef } from "@mui/x-data-grid";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Box } from "@mui/material";
+import { Box, Typography } from "@mui/material";
+import PeopleRoundedIcon from "@mui/icons-material/PeopleRounded";
 import CrudActions from "../../ui/Actions";
 import Button from "../../ui/Button";
 import Table from "../../ui/Table";
@@ -11,6 +12,7 @@ import AddCustomer from "./AddCustomer";
 import CustomerInvoicesDrawer from "../billing/CustomerInvoicesDrawer";
 import { useDialogStore } from "../../store/useDialogStore";
 import { useConfirmDialogStore } from "../../hooks/useconfirmDialogStore";
+import { useOnDialogClose } from "../../hooks/useOnDialogClose";
 import { apiService } from "../../api/service";
 import Chip from "../../ui/Chip";
 import { semanticChipSx } from "../../ui/chipStyles";
@@ -18,6 +20,11 @@ import { shareToWhatsAppAfter } from "../documents/shareToWhatsApp";
 import { getApiErrorMessage } from "../../utils/apiError";
 import { formatRupees } from "../../format/money";
 import { messages } from "../../messages";
+import EmptyState from "../../ui/EmptyState";
+import InitialsAvatar from "../../ui/InitialsAvatar";
+import PageHeader from "../../ui/PageHeader";
+import PageShell from "../../ui/PageShell";
+import TableCard from "../../ui/TableCard";
 
 interface Customer {
   id: number;
@@ -31,6 +38,7 @@ interface Customer {
   // owes money at a glance, without opening each customer's profile.
   payment_status?: "paid" | "pending" | "no_invoices" | null;
   outstanding_balance?: number | null;
+  invoice_count?: number | null;
 }
 
 interface CompanyOption {
@@ -57,26 +65,86 @@ interface CustomerListResponse {
 // default renderCell) depend on it. Factory rather than a plain constant
 // for the same reason buildBaseColumns already is one elsewhere in this
 // codebase - a module-level constant can't close over component state.
-const buildBaseColumns = (companies: CompanyOption[]): GridColDef[] => [
-  { field: "first_name", headerName: "First Name", flex: 1, editable: true },
-  { field: "last_name", headerName: "Last Name", flex: 1, editable: true },
-  { field: "contact_number", headerName: "Contact Number", flex: 1, editable: true },
-  { field: "email", headerName: "Email", flex: 1.5, editable: true },
+const secondaryCell = ({ value }: { value?: string | null }) => (
+  <Box component="span" sx={{ color: value ? "var(--slate-600)" : "var(--slate-400)" }}>{value || "—"}</Box>
+);
+
+const buildColumns = (companies: CompanyOption[], onOpenInvoices: (customer: Customer) => void): GridColDef[] => [
+  {
+    field: "first_name",
+    headerName: "First Name",
+    flex: 1,
+    minWidth: 160,
+    editable: true,
+    renderCell: ({ row, value }) => (
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, height: "100%", minWidth: 0 }}>
+        <InitialsAvatar name={`${row.first_name} ${row.last_name}`} />
+        <Box component="span" sx={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis" }}>
+          {value}
+        </Box>
+      </Box>
+    ),
+  },
+  {
+    field: "last_name",
+    headerName: "Last Name",
+    flex: 0.8,
+    minWidth: 110,
+    editable: true,
+    renderCell: ({ value }) => <Box component="span" sx={{ fontWeight: 600 }}>{value}</Box>,
+  },
+  { field: "contact_number", headerName: "Contact", width: 130, editable: true, renderCell: secondaryCell },
+  { field: "email", headerName: "Email", flex: 1.4, minWidth: 190, editable: true, renderCell: secondaryCell },
   {
     field: "company_id",
     headerName: "Company",
-    flex: 1.2,
+    flex: 1,
+    minWidth: 130,
     editable: true,
     type: "singleSelect",
     valueOptions: [
       { value: null, label: "No Company" },
       ...companies.map((c) => ({ value: c.id, label: c.name })),
     ],
+    renderCell: ({ value }) => secondaryCell({ value: companies.find((c) => c.id === value)?.name }),
+  },
+  {
+    field: "invoice_count",
+    headerName: "Invoices",
+    width: 110,
+    sortable: false,
+    editable: false,
+    renderCell: ({ row, value }) =>
+      value ? (
+        <Box
+          component="button"
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenInvoices(row);
+          }}
+          sx={{
+            p: 0,
+            border: "none",
+            background: "none",
+            cursor: "pointer",
+            font: "inherit",
+            fontWeight: 600,
+            color: "var(--blue-700)",
+            "&:hover": { textDecoration: "underline" },
+          }}
+        >
+          {value === 1 ? "1 invoice" : `${value} invoices`}
+        </Box>
+      ) : (
+        <Box component="span" sx={{ color: "var(--slate-400)" }}>None</Box>
+      ),
   },
   {
     field: "payment_status",
-    headerName: "Payment Status",
-    flex: 1.4,
+    headerName: "Payment",
+    width: 190,
+    sortable: false,
     editable: false,
     renderCell: ({ row }) => {
       const meta = PAYMENT_STATUS_META[row.payment_status ?? "no_invoices"] ?? PAYMENT_STATUS_META.no_invoices;
@@ -102,6 +170,8 @@ const Customers = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoadingState] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   // Fetched once, not paginated with the customer list itself - a print
   // shop's realistic B2B account count stays in the dozens/low hundreds,
   // so a single generous page covers the Company column's valueOptions
@@ -110,7 +180,9 @@ const Customers = () => {
   // Customer whose invoices are open in the right-side drawer - opened by
   // clicking a row (see Table's onRowSelect below), closed via the drawer's
   // own close button/backdrop.
-  const [drawerCustomer, setDrawerCustomer] = useState<Customer | null>(null);
+  const [drawerCustomerId, setDrawerCustomerId] = useState<number | null>(null);
+  const drawerCustomer = customers.find((c) => c.id === drawerCustomerId) ?? null;
+  const openInvoices = (customer: Customer) => setDrawerCustomerId(customer.id);
 
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -140,12 +212,21 @@ const Customers = () => {
           search: debouncedSearch || undefined,
         },
       });
+      // Deleting the last customer on a page shouldn't strand you on an empty one.
+      if (res.items.length === 0 && res.total > 0 && paginationModel.page > 0) {
+        const lastPage = Math.ceil(res.total / paginationModel.pageSize) - 1;
+        setPaginationModel((current) => ({ ...current, page: lastPage }));
+        return;
+      }
       setCustomers(res.items);
       setTotal(res.total);
+      setLoadFailed(false);
     } catch (err) {
       console.error("Error fetching customers", err);
+      setLoadFailed(true);
     } finally {
       setLoadingState(false);
+      setLoaded(true);
     }
   };
 
@@ -153,6 +234,9 @@ const Customers = () => {
     fetchCustomers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paginationModel, debouncedSearch]);
+
+  // Editing an invoice opened from the drawer can change what a customer owes.
+  useOnDialogClose(fetchCustomers);
 
   useEffect(() => {
     apiService
@@ -163,24 +247,7 @@ const Customers = () => {
 
   const rows = useMemo(() => customers.map((c) => ({ ...c, id: c.id })), [customers]);
 
-  const columns: GridColDef[] = useMemo(
-    () => [
-      {
-        field: "serialNo",
-        headerName: "SI.NO",
-        width: 90,
-        sortable: false,
-        filterable: false,
-        editable: false,
-        valueGetter: (_value, row) =>
-          paginationModel.page * paginationModel.pageSize +
-          rows.findIndex((r) => r.id === row.id) +
-          1,
-      },
-      ...buildBaseColumns(companies),
-    ],
-    [rows, paginationModel, companies],
-  );
+  const columns = useMemo(() => buildColumns(companies, openInvoices), [companies]);
 
   const processRowUpdate = async (newRow: Customer, oldRow: Customer) => {
     const payload: Partial<Customer> = {
@@ -191,8 +258,8 @@ const Customers = () => {
       company_id: newRow.company_id ?? null,
     };
 
-    const hasChanges = Object.keys(payload).some(
-      (key) => payload[key as keyof Customer] !== (oldRow as any)[key],
+    const hasChanges = (Object.keys(payload) as (keyof Customer)[]).some(
+      (key) => payload[key] !== (oldRow as Customer)[key],
     );
 
     if (!hasChanges) return oldRow;
@@ -204,7 +271,7 @@ const Customers = () => {
   const handleDelete = (id: number) => {
     showDialog({
       title: "Delete Customer?",
-      description: "This action cannot be undone.",
+      description: messages.bin.moveNotice,
       confirmText: "Delete",
       isDestructive: true,
       onConfirm: async () => {
@@ -247,52 +314,77 @@ const Customers = () => {
   };
 
   return (
-    <main className="h-full p-4 m-4 md:p-10 min-w-0 rounded-3xl bg-blue-50 shadow">
-      <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
-        <h1 className="text-4xl sm:text-5xl lg:text-4xl leading-tight sm:leading-snug lg:leading-snug bg-linear-to-br from-blue-900 via-blue-800 to-slate-900 bg-clip-text text-transparent">
-          Customer Details
-        </h1>
-        <div className="flex flex-wrap items-center gap-3">
-          <TableSearchBar
-            value={searchInput}
-            onChange={setSearchInput}
-            placeholder={messages.placeholders.searchCustomers}
-          />
-          <Button onClick={() => openDialog("customer")}>+ Add Customer</Button>
-        </div>
-      </div>
-      <Table<Customer>
-        rows={rows}
-        columns={columns}
-        processRowUpdate={processRowUpdate}
-        renderActions={(params, handlers) => [
-          <CrudActions
-            key="crud"
-            edit
-            delete
-            viewCustomer
-            sendPortalInvite
-            onEdit={handlers.edit}
-            onDelete={() => handleDelete(params.row.id)}
-            onViewCustomer={() => navigate(`/admin/customers/${params.row.id}`)}
-            onSendPortalInvite={() => handleSendPortalInvite(params.row)}
-          />,
-        ]}
-        onRowSelect={setDrawerCustomer}
-        paginationMode="server"
-        rowCount={total}
-        paginationModel={paginationModel}
-        onPaginationModelChange={setPaginationModel}
-        loading={loading}
+    <PageShell>
+      <PageHeader
+        title="Customers"
+        description="Everyone you bill, and who still owes money."
+        action={<Button onClick={() => openDialog("customer")}>+ Add Customer</Button>}
       />
-      <CustomerInvoicesDrawer customer={drawerCustomer} onClose={() => setDrawerCustomer(null)} />
+
+      <TableCard
+        toolbar={
+          <>
+            <Typography sx={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--slate-700)" }}>
+              {total} {total === 1 ? "customer" : "customers"}
+            </Typography>
+            <TableSearchBar
+              value={searchInput}
+              onChange={setSearchInput}
+              placeholder={messages.placeholders.searchCustomers}
+              sx={{ width: { xs: "100%", sm: 280 } }}
+            />
+          </>
+        }
+      >
+        {loaded && !loading && rows.length === 0 ? (
+          <EmptyState
+            icon={<PeopleRoundedIcon />}
+            title={loadFailed ? "Couldn't load your customers" : debouncedSearch ? "No customers match" : "No customers yet"}
+            description={
+              loadFailed
+                ? "Check your connection and refresh the page."
+                : debouncedSearch
+                  ? "Try a different name, phone number or email."
+                  : "Add your first customer to start billing."
+            }
+          />
+        ) : (
+          <Table<Customer>
+            bare
+            rows={rows}
+            columns={columns}
+            processRowUpdate={processRowUpdate}
+            renderActions={(params, handlers) => [
+              <CrudActions
+                key="crud"
+                edit
+                delete
+                viewCustomer
+                sendPortalInvite
+                onEdit={handlers.edit}
+                onDelete={() => handleDelete(params.row.id)}
+                onViewCustomer={() => navigate(`/admin/customers/${params.row.id}`)}
+                onSendPortalInvite={() => handleSendPortalInvite(params.row)}
+              />,
+            ]}
+            onRowSelect={openInvoices}
+            paginationMode="server"
+            rowCount={total}
+            paginationModel={paginationModel}
+            onPaginationModelChange={setPaginationModel}
+            loading={loading}
+          />
+        )}
+      </TableCard>
+
+      <CustomerInvoicesDrawer customer={drawerCustomer} onClose={() => setDrawerCustomerId(null)} onChanged={fetchCustomers} />
       <Dialog
         type="customer"
         title="Customer"
         children={<AddCustomer onSuccess={fetchCustomers} />}
         maxWidth="xs"
       />
-    </main>
+    </PageShell>
   );
 };
 

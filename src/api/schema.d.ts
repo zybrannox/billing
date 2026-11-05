@@ -123,6 +123,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/bin/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Bin */
+        get: operations["list_bin_bin__get"];
+        put?: never;
+        post?: never;
+        /** Empty Bin */
+        delete: operations["empty_bin_bin__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bin/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Erase Item */
+        delete: operations["erase_item_bin__item_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bin/{item_id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restore Item */
+        post: operations["restore_item_bin__item_id__restore_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/client-auth/activate": {
         parameters: {
             query?: never;
@@ -483,6 +535,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/files/download/progress/{progress_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Download Progress
+         * @description How far a large download has got (see download_progress.py).
+         */
+        get: operations["read_download_progress_files_download_progress__progress_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/files/download/project/{project_id}": {
         parameters: {
             query?: never;
@@ -500,6 +572,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/files/download/project/{project_id}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm Project Downloaded
+         * @description Same as confirm_file_downloaded, for a "download all" zip.
+         */
+        post: operations["confirm_project_downloaded_files_download_project__project_id__confirm_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/files/download/{filename}": {
         parameters: {
             query?: never;
@@ -511,6 +603,27 @@ export interface paths {
         get: operations["download_file_files_download__filename__get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/files/download/{filename}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm File Downloaded
+         * @description Called by the client once it holds the complete file and has handed it
+         *     to the browser to save - the only point a download is known to have worked.
+         */
+        post: operations["confirm_file_downloaded_files_download__filename__confirm_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -765,6 +878,23 @@ export interface paths {
         };
         /** Get Latest Invoice For Project */
         get: operations["get_latest_invoice_for_project_invoices_project__project_id__latest_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/invoices/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Summary */
+        get: operations["get_summary_invoices_summary_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1067,6 +1197,23 @@ export interface paths {
         patch: operations["deactivate_option_list_options__option_id__deactivate_patch"];
         trace?: never;
     };
+    "/list-options/{option_id}/pricing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Pricing */
+        patch: operations["update_pricing_list_options__option_id__pricing_patch"];
+        trace?: never;
+    };
     "/list-options/{option_id}/reactivate": {
         parameters: {
             query?: never;
@@ -1082,6 +1229,42 @@ export interface paths {
         head?: never;
         /** Reactivate Option */
         patch: operations["reactivate_option_list_options__option_id__reactivate_patch"];
+        trace?: never;
+    };
+    "/notes/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Notes */
+        get: operations["list_notes_notes__get"];
+        put?: never;
+        /** Create Note */
+        post: operations["create_note_notes__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notes/{note_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Note */
+        delete: operations["delete_note_notes__note_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Note */
+        patch: operations["update_note_notes__note_id__patch"];
         trace?: never;
     };
     "/portal/invoices": {
@@ -1534,6 +1717,23 @@ export interface paths {
         patch: operations["change_password_users__user_id__password_patch"];
         trace?: never;
     };
+    "/users/{user_id}/permissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update User Permissions */
+        put: operations["update_user_permissions_users__user_id__permissions_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/users/{user_id}/profile": {
         parameters: {
             query?: never;
@@ -1630,8 +1830,6 @@ export interface components {
             is_overdue: boolean;
             /** Print Status */
             print_status: string;
-            /** Priority */
-            priority: string;
             /** Project Type */
             project_type: string;
         };
@@ -1666,6 +1864,45 @@ export interface components {
             entity_type: string;
             /** Id */
             id: number;
+        };
+        /** BinItemRead */
+        BinItemRead: {
+            /** Deleted At */
+            deleted_at: string;
+            /** Deleted By */
+            deleted_by: string;
+            /** Detail */
+            detail: string | null;
+            /** Expires At */
+            expires_at: string;
+            /** Id */
+            id: number;
+            /** Item Type */
+            item_type: string;
+            /** Label */
+            label: string;
+            /** Size Bytes */
+            size_bytes: number;
+        };
+        /** BinListResponse */
+        BinListResponse: {
+            /** Counts */
+            counts: components["schemas"]["BinTypeCount"][];
+            /** Items */
+            items: components["schemas"]["BinItemRead"][];
+            /** Retention Days */
+            retention_days: number;
+            /** Total */
+            total: number;
+            /** Total Size Bytes */
+            total_size_bytes: number;
+        };
+        /** BinTypeCount */
+        BinTypeCount: {
+            /** Count */
+            count: number;
+            /** Item Type */
+            item_type: string;
         };
         /** Body_create_invoice_share_link_invoices__invoice_id__share_link_post */
         Body_create_invoice_share_link_invoices__invoice_id__share_link_post: {
@@ -1941,6 +2178,8 @@ export interface components {
             first_name: string;
             /** Id */
             id: number;
+            /** Invoice Count */
+            invoice_count?: number | null;
             /** Last Name */
             last_name: string;
             /** Outstanding Balance */
@@ -2001,8 +2240,6 @@ export interface components {
         DashboardSummary: {
             /** Attention Projects */
             attention_projects: components["schemas"]["AttentionProject"][];
-            /** Priority Breakdown */
-            priority_breakdown: components["schemas"]["StatusCount"][];
             /** Project Status Breakdown */
             project_status_breakdown: components["schemas"]["StatusCount"][];
             /** Recent Deliveries */
@@ -2145,6 +2382,12 @@ export interface components {
             original_name?: string | null;
             /** Path */
             path: string;
+            /** Pixel Height */
+            pixel_height?: number | null;
+            /** Pixel Width */
+            pixel_width?: number | null;
+            /** Size Bytes */
+            size_bytes?: number | null;
             /** Width */
             width?: number | null;
         };
@@ -2233,6 +2476,8 @@ export interface components {
             /** Items */
             items: components["schemas"]["InvoiceItemCreate"][];
             new_project?: components["schemas"]["InvoiceNewProject"] | null;
+            /** Note Id */
+            note_id?: number | null;
             /** Payment Method */
             payment_method?: ("Cash" | "UPI" | "Bank Transfer" | "Card" | "Cheque" | "Other") | null;
             /** Payment Reference */
@@ -2383,7 +2628,7 @@ export interface components {
             /** Customer Id */
             customer_id: number;
             /** Project Type */
-            project_type: string;
+            project_type?: string | null;
         };
         /** InvoicePaymentRead */
         InvoicePaymentRead: {
@@ -2443,6 +2688,18 @@ export interface components {
             /** Subtotal */
             subtotal: number;
         };
+        /** InvoiceSummary */
+        InvoiceSummary: {
+            counts: components["schemas"]["InvoiceViewCounts"];
+            /** Due Today */
+            due_today: number;
+            /** Due Within 30 Days */
+            due_within_30_days: number;
+            /** Overdue */
+            overdue: number;
+            /** Total Outstanding */
+            total_outstanding: number;
+        };
         /** InvoiceUpdate */
         InvoiceUpdate: {
             /** Advance Amount */
@@ -2465,6 +2722,19 @@ export interface components {
             status?: string | null;
             /** Subtotal */
             subtotal?: number | null;
+        };
+        /** InvoiceViewCounts */
+        InvoiceViewCounts: {
+            /** All */
+            all: number;
+            /** Cancelled */
+            cancelled: number;
+            /** Overdue */
+            overdue: number;
+            /** Paid */
+            paid: number;
+            /** Unpaid */
+            unpaid: number;
         };
         /** JobRequestCreate */
         JobRequestCreate: {
@@ -2556,6 +2826,16 @@ export interface components {
             /** Value */
             value: string;
         };
+        /** ListOptionPricingUpdate */
+        ListOptionPricingUpdate: {
+            /**
+             * Min Charges
+             * @default []
+             */
+            min_charges: components["schemas"]["MinCharge"][];
+            /** Rate */
+            rate?: number | null;
+        };
         /** ListOptionRead */
         ListOptionRead: {
             /** Category */
@@ -2569,6 +2849,8 @@ export interface components {
             id: number;
             /** Is Active */
             is_active: boolean;
+            /** Min Charges */
+            min_charges?: components["schemas"]["MinCharge"][] | null;
             /** Rate */
             rate?: number | null;
             /** Sort Order */
@@ -2618,6 +2900,65 @@ export interface components {
             payment_method: "Cash" | "UPI" | "Bank Transfer" | "Card" | "Cheque" | "Other";
             /** Payment Reference */
             payment_reference?: string | null;
+        };
+        /** MinCharge */
+        MinCharge: {
+            /** Amount */
+            amount: number;
+            /** Up To Sq Ft */
+            up_to_sq_ft: number;
+        };
+        /** NoteCreate */
+        NoteCreate: {
+            /** Customer Id */
+            customer_id?: number | null;
+            /** Text */
+            text: string;
+        };
+        /** NoteListResponse */
+        NoteListResponse: {
+            /** Done Count */
+            done_count: number;
+            /** Items */
+            items: components["schemas"]["NoteRead"][];
+            /** Open Count */
+            open_count: number;
+            /** Total */
+            total: number;
+        };
+        /** NoteRead */
+        NoteRead: {
+            /** Created At */
+            created_at: string;
+            /** Created By */
+            created_by: string;
+            /** Customer Id */
+            customer_id: number | null;
+            /** Customer Name */
+            customer_name: string | null;
+            /** Done At */
+            done_at: string | null;
+            /** Done By */
+            done_by: string | null;
+            /** Id */
+            id: number;
+            /** Invoice Id */
+            invoice_id: number | null;
+            /** Invoice Number */
+            invoice_number: string | null;
+            /** Is Done */
+            is_done: boolean;
+            /** Text */
+            text: string;
+        };
+        /** NoteUpdate */
+        NoteUpdate: {
+            /** Customer Id */
+            customer_id?: number | null;
+            /** Is Done */
+            is_done?: boolean | null;
+            /** Text */
+            text?: string | null;
         };
         /** OtherProcessRead */
         OtherProcessRead: {
@@ -2703,6 +3044,7 @@ export interface components {
             print_status: string;
             /**
              * Priority
+             * @default Normal
              * @enum {string}
              */
             priority: "Urgent" | "High" | "Normal";
@@ -2826,6 +3168,7 @@ export interface components {
             print_status: string;
             /**
              * Priority
+             * @default Normal
              * @enum {string}
              */
             priority: "Urgent" | "High" | "Normal";
@@ -2886,6 +3229,7 @@ export interface components {
             delivery_date: string;
             /**
              * Priority
+             * @default Normal
              * @enum {string}
              */
             priority: "Urgent" | "High" | "Normal";
@@ -3252,6 +3596,11 @@ export interface components {
             /** New Password */
             new_password: string;
         };
+        /** UserPermissionsUpdate */
+        UserPermissionsUpdate: {
+            /** Permissions */
+            permissions: ("invoice.create" | "invoice.edit" | "workspace.manage")[];
+        };
         /** UserRead */
         UserRead: {
             /**
@@ -3266,6 +3615,11 @@ export interface components {
              * @default true
              */
             is_active: boolean | null;
+            /**
+             * Permissions
+             * @default []
+             */
+            permissions: string[];
             /** Phone */
             phone: string;
             /** @default user */
@@ -3533,6 +3887,138 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_bin_bin__get: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+                item_type?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                access_token?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BinListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    empty_bin_bin__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                access_token?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    erase_item_bin__item_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: {
+                access_token?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    restore_item_bin__item_id__restore_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: {
+                access_token?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BinItemRead"];
                 };
             };
             /** @description Validation Error */
@@ -4509,7 +4995,76 @@ export interface operations {
             };
         };
     };
+    read_download_progress_files_download_progress__progress_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                progress_id: string;
+            };
+            cookie?: {
+                access_token?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     download_project_files_files_download_project__project_id__get: {
+        parameters: {
+            query?: {
+                direct?: boolean;
+                progress_id?: string | null;
+            };
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: {
+                access_token?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    confirm_project_downloaded_files_download_project__project_id__confirm_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -4543,6 +5098,42 @@ export interface operations {
         };
     };
     download_file_files_download__filename__get: {
+        parameters: {
+            query?: {
+                direct?: boolean;
+                progress_id?: string | null;
+            };
+            header?: never;
+            path: {
+                filename: string;
+            };
+            cookie?: {
+                access_token?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    confirm_file_downloaded_files_download__filename__confirm_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -4923,6 +5514,7 @@ export interface operations {
                 search?: string | null;
                 customer_id?: number | null;
                 company_id?: number | null;
+                view?: ("unpaid" | "overdue" | "paid" | "cancelled") | null;
             };
             header?: never;
             path?: never;
@@ -5073,6 +5665,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InvoiceDetailRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_summary_invoices_summary_get: {
+        parameters: {
+            query?: {
+                tz_offset_minutes?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                access_token?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceSummary"];
                 };
             };
             /** @description Validation Error */
@@ -5846,6 +6471,43 @@ export interface operations {
             };
         };
     };
+    update_pricing_list_options__option_id__pricing_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                option_id: number;
+            };
+            cookie?: {
+                access_token?: string;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ListOptionPricingUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListOptionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     reactivate_option_list_options__option_id__reactivate_patch: {
         parameters: {
             query?: never;
@@ -5866,6 +6528,146 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ListOptionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_notes_notes__get: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+                status?: ("open" | "done") | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                access_token?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_note_notes__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                access_token?: string;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NoteCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_note_notes__note_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                note_id: number;
+            };
+            cookie?: {
+                access_token?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_note_notes__note_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                note_id: number;
+            };
+            cookie?: {
+                access_token?: string;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NoteUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteRead"];
                 };
             };
             /** @description Validation Error */
@@ -6057,6 +6859,7 @@ export interface operations {
                 assigned_to?: string | null;
                 company_id?: number | null;
                 view?: string | null;
+                order?: "status_delivery" | null;
             };
             header?: never;
             path?: never;
@@ -7033,6 +7836,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_user_permissions_users__user_id__permissions_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: number;
+            };
+            cookie?: {
+                access_token?: string;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserPermissionsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserRead"];
                 };
             };
             /** @description Validation Error */

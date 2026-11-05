@@ -1,5 +1,10 @@
 import { create } from "zustand";
 import { apiService } from "../api/service";
+import { LARGE_DOWNLOAD_BYTES, saveBlob } from "../utils/fileDownload";
+import { runBrowserDownload } from "../utils/browserDownload";
+
+const fileObjects = (project?: Project | null) =>
+  (project?.file_paths ?? []).filter((f): f is FileObject => typeof f !== "string");
 
 export interface FileObject {
   path: string;
@@ -10,10 +15,15 @@ export interface FileObject {
   original_name?: string | null;
   width?: number | null;
   height?: number | null;
-  // Server-side source of truth - set by the /files/download endpoints, so
-  // every user sees the same "downloaded" state, not just the browser that
-  // downloaded it.
+  // The file's real pixel size; only known for images uploaded with it.
+  pixel_width?: number | null;
+  pixel_height?: number | null;
+  // Server-side source of truth - set via /files/download/.../confirm once
+  // the browser really has the file, so every user sees the same "downloaded"
+  // state, not just the browser that downloaded it.
   downloaded?: boolean | null;
+  // Size of the original on disk; null once it no longer exists.
+  size_bytes?: number | null;
   // Set once the weekly retention job has permanently deleted the
   // original from disk (completed/delivered/invoiced projects, 7+ days
   // old) - null means the original is still there. The thumbnail and
@@ -28,7 +38,6 @@ export interface Project {
   assigned_to: string;
   delivery_date: string;
   start_date: string;
-  priority: string;
   client_status: string;
   print_status: string;
   file_paths?: (string | FileObject)[];
@@ -60,12 +69,13 @@ export interface Project {
   pinned?: boolean;
 }
 
+export type ProjectOrder = "status_delivery";
+
 export interface ProjectListParams {
   page?: number;
   pageSize?: number;
   search?: string;
   printStatus?: string;
-  priority?: string;
   customerId?: string | number;
   // Jump straight to one known project (e.g. from a dashboard/notification
   // row) - an exact id match server-side, bypassing search/filters.
@@ -76,6 +86,9 @@ export interface ProjectListParams {
   // else (including the employee view and the new Project History page),
   // which keeps seeing every project, unfiltered.
   view?: "ongoing";
+  // Across all pages: In Progress, then Pending, then Completed, each with the
+  // latest delivery date first. Unset keeps the server's default order.
+  order?: ProjectOrder;
 }
 
 interface ProjectListResponse {
@@ -105,7 +118,7 @@ interface ProjectState {
       loaded: number;
       total: number | null;
     }) => void,
-  ) => Promise<boolean>;
+  ) => Promise<void>;
   setSelectedProject: (project: Project | null) => void;
   updateProject: (id: string, data: Partial<Project>) => Promise<void>;
   deleteProjects: (ids: string[]) => Promise<void>;
@@ -139,10 +152,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
           page_size: params.pageSize ?? 10,
           search: params.search || undefined,
           print_status: params.printStatus || undefined,
-          priority: params.priority || undefined,
           customer_id: params.customerId || undefined,
           project_id: params.projectId || undefined,
           view: params.view || undefined,
+          order: params.order || undefined,
         },
       });
       set({
@@ -194,35 +207,35 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   /** DOWNLOAD */
   downloadProject: async (id, onProgress) => {
-    try {
-      const data = await apiService.getWithProgress<Blob>(
-        `/files/download/project/${id}`,
+    const state = get();
+    const project =
+      state.projects.find((p) => String(p.id) === String(id)) ??
+      (String(state.selectedProject?.id) === String(id) ? state.selectedProject : null);
+    // The zip is stored uncompressed, so this is its size too.
+    const totalBytes = fileObjects(project).reduce((sum, f) => sum + (f.size_bytes ?? 0), 0);
+    if (totalBytes > LARGE_DOWNLOAD_BYTES) {
+      // Confirms the session is still valid first; see assertDownloadable for
+      // why, which itself isn't used here as it would build the whole zip.
+      await get().refreshProject(id);
+      await runBrowserDownload(
+        `${import.meta.env.VITE_API_URL}/files/download/project/${encodeURIComponent(id)}`,
         onProgress ?? (() => {}),
-        { responseType: "blob" },
       );
-
-      // 2. 'data' is now the Blob itself because apiService returns res.data
-      if (!(data instanceof Blob)) {
-        console.error("Downloaded data is not a blob", data);
-        return false;
-      }
-
-      // 3. Create download link
-      const url = window.URL.createObjectURL(data);
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", `project_${id}_files.zip`);
-      document.body.appendChild(link);
-      link.click();
-
-      // 4. Cleanup
-      link.remove();
-      window.URL.revokeObjectURL(url);
-      return true;
-    } catch (error) {
-      console.error("Download failed", error);
-      return false;
+      return;
     }
+
+    const data = await apiService.getWithProgress<Blob>(
+      `/files/download/project/${id}`,
+      onProgress ?? (() => {}),
+      { responseType: "blob" },
+    );
+    saveBlob(data, `project_${id}_files.zip`);
+
+    // Only now does anything turn green. The file is already saved, so failing
+    // to record that isn't a failed download.
+    await apiService
+      .post(`/files/download/project/${id}/confirm`)
+      .catch((err) => console.error("Could not record the download", err));
   },
 
   setSelectedProject: (project) => set({ selectedProject: project }),

@@ -44,8 +44,7 @@ export const DUE_TONE_STYLES: Record<"overdue" | "today" | "soon" | "credit", { 
 
 // ---------------------------------------------------------------------
 // Human-readable urgency label ("3d overdue", "Due today", "Due in 2d")
-// computed from the actual delivery date, instead of just the static
-// Overdue/Urgent badge - tells the user exactly how much runway is left
+// computed from the actual delivery date - tells the user exactly how much runway is left
 // at a glance, without opening the project. A credit-unpaid row bypasses
 // all of that: its delivery_date is no longer the relevant deadline once
 // the order is already gone, so it always reads as "Delivered on Credit"
@@ -57,7 +56,7 @@ export function getDueLabel(
   isCreditUnpaid: boolean,
 ): { text: string; tone: "overdue" | "today" | "soon" | "credit" } {
   if (isCreditUnpaid) return { text: "Delivered on Credit", tone: "credit" };
-  if (!deliveryDate) return isOverdue ? { text: "Overdue", tone: "overdue" } : { text: "Urgent", tone: "soon" };
+  if (!deliveryDate) return isOverdue ? { text: "Overdue", tone: "overdue" } : { text: "No delivery date", tone: "soon" };
 
   const due = new Date(deliveryDate);
   due.setHours(0, 0, 0, 0);

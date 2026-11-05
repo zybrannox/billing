@@ -1,13 +1,4 @@
-import { useState } from "react";
-import {
-  IconButton,
-  Tooltip,
-  Box,
-  Menu,
-  MenuItem,
-  ListItemIcon,
-  ListItemText,
-} from "@mui/material";
+import { Box, Tooltip } from "@mui/material";
 import {
   EditRounded,
   DeleteForeverRounded,
@@ -22,7 +13,6 @@ import {
   FileDownloadRounded,
   ThumbUpAltRounded,
   ThumbDownAltRounded,
-  MoreVertRounded,
   DownloadForOfflineRounded,
   InfoRounded,
   VisibilityRounded,
@@ -35,14 +25,11 @@ import {
   ApartmentRounded,
   PersonAddRounded,
 } from "@mui/icons-material";
-import { formatDateTime } from "../format/date";
 import { messages } from "../messages";
-import ProjectDetailsTooltip from "./ProjectDetailsTooltip";
-
-interface MilestoneMeta {
-  at: string;
-  by: string;
-}
+import ActionButton, { MilestoneButton } from "./actions/ActionButton";
+import { MILESTONE_TINTS, TINTS, milestoneTitle, type ActionSize, type MilestoneMeta } from "./actions/actionTints";
+import MoreActionsMenu, { type MenuAction } from "./actions/MoreActionsMenu";
+import ProjectDetailsTooltip, { type ProjectDetails } from "./ProjectDetailsTooltip";
 
 interface CrudActionsProps {
   edit?: boolean;
@@ -84,7 +71,7 @@ interface CrudActionsProps {
   // features/projects/notifyClientWhatsApp.ts) - lives in the orderMilestones "More
   // actions" menu alongside shareInvoice.
   notifyClient?: boolean;
-  data?: any;
+  data?: ProjectDetails;
 
   onEdit?: () => void;
   onDelete?: () => void;
@@ -114,7 +101,7 @@ interface CrudActionsProps {
 
   isActive?: boolean;
   isPinned?: boolean;
-  size?: "small" | "medium";
+  size?: ActionSize;
   designCompletedMeta?: MilestoneMeta | null;
   printCompletedMeta?: MilestoneMeta | null;
   deliveredMeta?: MilestoneMeta | null;
@@ -193,27 +180,13 @@ const CrudActions = ({
   // Completed until the design phase is.
   const canCompletePrint = isDesignCompleted && !isPrintCompleted;
 
-  const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
-  const menuOpen = Boolean(menuAnchor);
-  const closeMenu = () => setMenuAnchor(null);
-  const runAndClose = (fn?: () => void) => () => {
-    closeMenu();
-    fn?.();
-  };
+  // Pending is the only status these can act on - paid and cancelled are final
+  // (service_update enforces the same rule on the server).
+  const invoiceLocked = invoiceStatus !== "pending";
+  const quotationLocked = quotationStatus !== "pending";
 
-  const actionIconSx = {
-    p: size === "small" ? 0.625 : 0.75,
-    borderRadius: "8px",
-    transition: "all 0.15s ease-in-out",
-    "&:active": {
-      transform: "scale(0.95)",
-    },
-  };
-
-  // Renders ProjectDetailsTooltip as a light bordered card - matching every
-  // other floating panel in the app (FilterMenu's popover, the account
-  // Menu) - instead of MUI Tooltip's default small dark bubble, which is
-  // what the tooltip's own light-on-dark text colors used to assume.
+  // ProjectDetailsTooltip as a light bordered card, matching every other
+  // floating panel in the app, instead of MUI's small dark tooltip bubble.
   const detailsTooltipSlotProps = {
     tooltip: {
       sx: {
@@ -227,364 +200,109 @@ const CrudActions = ({
     },
   };
 
+  // Pinned = yellow. Unpinned uses the app's neutral resting tone rather than
+  // a disabled milestone's grey: pin is always clickable, a toggle.
   const pinButton = pin && (
-    <Tooltip title={isPinned ? "Unpin" : "Pin to top"}>
-      <IconButton
-        size={size}
-        onClick={onTogglePin}
-        sx={{
-          ...actionIconSx,
-          // Pinned = yellow. Unpinned deliberately uses a different
-          // neutral than the milestone buttons' "not yet actionable" gray
-          // (var(--slate-400) / rgba(148,163,184,...) - see the print/deliver
-          // buttons below) even though both read as "gray" - those two
-          // are genuinely different states (pin is always clickable, a
-          // toggle; a grayed-out milestone button is disabled). This
-          // borrows the app's other neutral resting tone (the "More
-          // actions" button's own default color) instead.
-          color: isPinned ? "var(--yellow-600)" : "var(--slate-500)",
-          backgroundColor: isPinned
-            ? "rgba(202, 138, 4, 0.12)"
-            : "rgba(100, 116, 139, 0.06)",
-          border: `1px solid ${
-            isPinned ? "rgba(202, 138, 4, 0.3)" : "rgba(100, 116, 139, 0.15)"
-          }`,
-          "&:hover": {
-            backgroundColor: isPinned
-              ? "rgba(202, 138, 4, 0.2)"
-              : "rgba(100, 116, 139, 0.12)",
-          },
-        }}
-      >
-        {isPinned ? (
-          <PushPinRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
-        ) : (
-          <PushPinOutlined sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
-        )}
-      </IconButton>
-    </Tooltip>
-  );
-
-  const milestoneButtons = orderMilestones && (
-    <>
-      <Tooltip
-        title={
-          isDesignCompleted
-            ? `Design completed on ${formatDateTime(designCompletedMeta!.at)} by ${designCompletedMeta!.by}`
-            : "Mark design as completed"
-        }
-      >
-        <span>
-          <IconButton
-            size={size}
-            onClick={onMarkDesignCompleted}
-            disabled={isDesignCompleted}
-            sx={{
-              ...actionIconSx,
-              color: isDesignCompleted ? "var(--emerald-600)" : "var(--indigo-600)",
-              backgroundColor: isDesignCompleted ? "rgba(16, 185, 129, 0.08)" : "rgba(79, 70, 229, 0.08)",
-              border: `1px solid ${isDesignCompleted ? "rgba(16, 185, 129, 0.2)" : "rgba(79, 70, 229, 0.2)"}`,
-              "&:hover": {
-                backgroundColor: isDesignCompleted ? "rgba(16, 185, 129, 0.15)" : "rgba(79, 70, 229, 0.15)",
-              },
-              "&.Mui-disabled": { opacity: 0.95 },
-            }}
-          >
-            {isDesignCompleted ? (
-              <CheckCircleRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
-            ) : (
-              <DesignServicesRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
-            )}
-          </IconButton>
-        </span>
-      </Tooltip>
-
-      <Tooltip
-        title={
-          isPrintCompleted && printCompletedMeta
-            ? `Print completed on ${formatDateTime(printCompletedMeta.at)} by ${printCompletedMeta.by}`
-            : isPrintCompleted
-              ? "Print marked as completed"
-              : !isDesignCompleted
-                ? "Complete the design first"
-                : "Mark print as completed"
-        }
-      >
-        <span>
-          <IconButton
-            size={size}
-            onClick={onMarkPrintCompleted}
-            disabled={isPrintCompleted || !canCompletePrint}
-            sx={{
-              ...actionIconSx,
-              // Print = orange when actionable, distinct from Pin's
-              // yellow even though both are warm hues - Design (indigo)
-              // and Deliver (blue) already each have their own color for
-              // this same "actionable" state, so print keeps its own too.
-              color: isPrintCompleted
-                ? "var(--emerald-600)"
-                : canCompletePrint
-                ? "var(--orange-600)"
-                : "var(--slate-400)",
-              backgroundColor: isPrintCompleted
-                ? "rgba(16, 185, 129, 0.08)"
-                : canCompletePrint
-                ? "rgba(234, 88, 12, 0.08)"
-                : "rgba(148, 163, 184, 0.08)",
-              border: `1px solid ${
-                isPrintCompleted
-                  ? "rgba(16, 185, 129, 0.2)"
-                  : canCompletePrint
-                  ? "rgba(234, 88, 12, 0.2)"
-                  : "rgba(148, 163, 184, 0.18)"
-              }`,
-              "&:hover": {
-                backgroundColor: isPrintCompleted
-                  ? "rgba(16, 185, 129, 0.15)"
-                  : "rgba(234, 88, 12, 0.15)",
-              },
-              "&.Mui-disabled": { opacity: isPrintCompleted ? 0.95 : 0.45 },
-            }}
-          >
-            {isPrintCompleted ? (
-              <CheckCircleRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
-            ) : (
-              <LocalPrintshopRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
-            )}
-          </IconButton>
-        </span>
-      </Tooltip>
-
-      <Tooltip
-        title={
-          isDelivered
-            ? `Delivered on ${formatDateTime(deliveredMeta!.at)} by ${deliveredMeta!.by}`
-            : !isDesignCompleted
-              ? "Complete the design first"
-              : !isPrintCompleted
-                ? "Mark print status as Completed first"
-                : "Mark order as delivered"
-        }
-      >
-        <span>
-          <IconButton
-            size={size}
-            onClick={onMarkDelivered}
-            disabled={isDelivered || !canDeliver}
-            sx={{
-              ...actionIconSx,
-              color: isDelivered
-                ? "var(--emerald-600)"
-                : canDeliver
-                ? "var(--sky-600)"
-                : "var(--slate-400)",
-              backgroundColor: isDelivered
-                ? "rgba(16, 185, 129, 0.08)"
-                : canDeliver
-                ? "rgba(2, 132, 199, 0.08)"
-                : "rgba(148, 163, 184, 0.08)",
-              border: `1px solid ${
-                isDelivered
-                  ? "rgba(16, 185, 129, 0.2)"
-                  : canDeliver
-                  ? "rgba(2, 132, 199, 0.2)"
-                  : "rgba(148, 163, 184, 0.18)"
-              }`,
-              "&:hover": {
-                backgroundColor: isDelivered
-                  ? "rgba(16, 185, 129, 0.15)"
-                  : "rgba(2, 132, 199, 0.15)",
-              },
-              "&.Mui-disabled": { opacity: isDelivered ? 0.95 : 0.45 },
-            }}
-          >
-            {isDelivered ? (
-              <CheckCircleRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
-            ) : (
-              <LocalShippingRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
-            )}
-          </IconButton>
-        </span>
-      </Tooltip>
-    </>
+    <ActionButton
+      title={isPinned ? "Unpin" : "Pin to top"}
+      icon={isPinned ? PushPinRounded : PushPinOutlined}
+      size={size}
+      onClick={onTogglePin}
+      tint={
+        isPinned
+          ? { color: "var(--yellow-600)", bg: "rgba(202, 138, 4, 0.12)", hover: "rgba(202, 138, 4, 0.2)", border: "rgba(202, 138, 4, 0.3)" }
+          : { ...TINTS.neutral, border: "rgba(100, 116, 139, 0.15)" }
+      }
+    />
   );
 
   if (orderMilestones) {
-    const hasMoreActions = download || preview || edit || del || info || toggle || viewInvoice || viewCustomer || shareInvoice || viewCompany || notifyClient;
+    const menuActions: (MenuAction | false)[] = [
+      viewInvoice && { key: "viewInvoice", label: messages.actions.invoice.view, icon: ReceiptLongRounded, iconColor: "var(--indigo-500)", onClick: onViewInvoice },
+      shareInvoice && { key: "shareInvoice", label: messages.actions.invoice.shareWhatsApp, icon: WhatsApp, iconColor: "var(--brand-whatsapp)", onClick: onShareInvoice },
+      viewCustomer && { key: "viewCustomer", label: messages.actions.customer.view, icon: PersonRounded, iconColor: "var(--cyan-600)", onClick: onViewCustomer },
+      viewCompany && { key: "viewCompany", label: messages.actions.company.view, icon: ApartmentRounded, iconColor: "var(--cyan-600)", onClick: onViewCompany },
+      notifyClient && {
+        key: "notifyClient",
+        label: "Notify Client",
+        icon: WhatsApp,
+        iconColor: "var(--brand-whatsapp)",
+        onClick: onNotifyClient,
+        disabled: !isPrintCompleted,
+        hint: !isPrintCompleted ? "Available once printing is completed" : undefined,
+      },
+      download && { key: "download", label: "Download All", icon: DownloadForOfflineRounded, iconColor: "var(--sky-600)", onClick: onDownload },
+      preview && { key: "preview", label: "Preview", icon: VisibilityRounded, iconColor: "var(--indigo-500)", onClick: onPreview },
+      edit && { key: "edit", label: "Edit", icon: EditRounded, iconColor: "var(--blue-600)", onClick: onEdit },
+      toggle && {
+        key: "toggle",
+        label: isActive ? "Deactivate" : "Activate",
+        icon: isActive ? ToggleOnRounded : ToggleOffRounded,
+        iconColor: isActive ? "var(--emerald-600)" : "var(--slate-500)",
+        onClick: onToggle,
+      },
+      info && !!data && {
+        key: "info",
+        label: "Details",
+        icon: InfoRounded,
+        iconColor: "var(--sky-600)",
+        hint: <ProjectDetailsTooltip data={data} />,
+        hintSlotProps: detailsTooltipSlotProps,
+      },
+      del && { key: "delete", label: "Delete", icon: DeleteForeverRounded, iconColor: "var(--rose-600)", onClick: onDelete, destructive: true },
+    ];
+    const visibleMenuActions = menuActions.filter((a): a is MenuAction => !!a);
 
     return (
       <Box sx={{ display: "inline-flex", gap: 0.75, alignItems: "center" }}>
         {pinButton}
-        {milestoneButtons}
-
-        {hasMoreActions && (
-          <>
-            <Tooltip title="More actions">
-              <IconButton
-                size={size}
-                onClick={(e) => setMenuAnchor(e.currentTarget)}
-                sx={{
-                  ...actionIconSx,
-                  color: "var(--slate-500)",
-                  backgroundColor: "rgba(100, 116, 139, 0.06)",
-                  border: "1px solid rgba(100, 116, 139, 0.15)",
-                  "&:hover": {
-                    backgroundColor: "rgba(100, 116, 139, 0.12)",
-                    color: "var(--slate-700)",
-                  },
-                }}
-              >
-                <MoreVertRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
-              </IconButton>
-            </Tooltip>
-            <Menu
-              anchorEl={menuAnchor}
-              open={menuOpen}
-              onClose={closeMenu}
-              slotProps={{
-                paper: {
-                  elevation: 2,
-                  sx: {
-                    mt: 0.75,
-                    minWidth: 160,
-                    borderRadius: "10px",
-                    border: "1px solid var(--slate-200)",
-                    boxShadow: "0px 8px 20px -4px rgba(15, 23, 42, 0.08)",
-                  },
-                },
-              }}
-            >
-              {viewInvoice && (
-                <MenuItem onClick={runAndClose(onViewInvoice)} sx={{ py: 0.875 }}>
-                  <ListItemIcon>
-                    <ReceiptLongRounded fontSize="small" sx={{ color: "var(--indigo-500)" }} />
-                  </ListItemIcon>
-                  <ListItemText primaryTypographyProps={{ fontSize: "var(--fs-sm)", fontWeight: 500 }}>
-                    {messages.actions.invoice.view}
-                  </ListItemText>
-                </MenuItem>
-              )}
-              {shareInvoice && (
-                <MenuItem onClick={runAndClose(onShareInvoice)} sx={{ py: 0.875 }}>
-                  <ListItemIcon>
-                    <WhatsApp fontSize="small" sx={{ color: "var(--brand-whatsapp)" }} />
-                  </ListItemIcon>
-                  <ListItemText primaryTypographyProps={{ fontSize: "var(--fs-sm)", fontWeight: 500 }}>
-                    {messages.actions.invoice.shareWhatsApp}
-                  </ListItemText>
-                </MenuItem>
-              )}
-              {viewCustomer && (
-                <MenuItem onClick={runAndClose(onViewCustomer)} sx={{ py: 0.875 }}>
-                  <ListItemIcon>
-                    <PersonRounded fontSize="small" sx={{ color: "var(--cyan-600)" }} />
-                  </ListItemIcon>
-                  <ListItemText primaryTypographyProps={{ fontSize: "var(--fs-sm)", fontWeight: 500 }}>
-                    {messages.actions.customer.view}
-                  </ListItemText>
-                </MenuItem>
-              )}
-              {viewCompany && (
-                <MenuItem onClick={runAndClose(onViewCompany)} sx={{ py: 0.875 }}>
-                  <ListItemIcon>
-                    <ApartmentRounded fontSize="small" sx={{ color: "var(--cyan-600)" }} />
-                  </ListItemIcon>
-                  <ListItemText primaryTypographyProps={{ fontSize: "var(--fs-sm)", fontWeight: 500 }}>
-                    {messages.actions.company.view}
-                  </ListItemText>
-                </MenuItem>
-              )}
-              {notifyClient && (
-                <Tooltip title={!isPrintCompleted ? "Available once printing is completed" : ""} placement="left">
-                  <span>
-                    <MenuItem
-                      onClick={runAndClose(onNotifyClient)}
-                      disabled={!isPrintCompleted}
-                      sx={{ py: 0.875 }}
-                    >
-                      <ListItemIcon>
-                        <WhatsApp fontSize="small" sx={{ color: "var(--brand-whatsapp)" }} />
-                      </ListItemIcon>
-                      <ListItemText primaryTypographyProps={{ fontSize: "var(--fs-sm)", fontWeight: 500 }}>
-                        Notify Client
-                      </ListItemText>
-                    </MenuItem>
-                  </span>
-                </Tooltip>
-              )}
-              {download && (
-                <MenuItem onClick={runAndClose(onDownload)} sx={{ py: 0.875 }}>
-                  <ListItemIcon>
-                    <DownloadForOfflineRounded fontSize="small" sx={{ color: "var(--sky-600)" }} />
-                  </ListItemIcon>
-                  <ListItemText primaryTypographyProps={{ fontSize: "var(--fs-sm)", fontWeight: 500 }}>
-                    Download All
-                  </ListItemText>
-                </MenuItem>
-              )}
-              {preview && (
-                <MenuItem onClick={runAndClose(onPreview)} sx={{ py: 0.875 }}>
-                  <ListItemIcon>
-                    <VisibilityRounded fontSize="small" sx={{ color: "var(--indigo-500)" }} />
-                  </ListItemIcon>
-                  <ListItemText primaryTypographyProps={{ fontSize: "var(--fs-sm)", fontWeight: 500 }}>
-                    Preview
-                  </ListItemText>
-                </MenuItem>
-              )}
-              {edit && (
-                <MenuItem onClick={runAndClose(onEdit)} sx={{ py: 0.875 }}>
-                  <ListItemIcon>
-                    <EditRounded fontSize="small" sx={{ color: "var(--blue-600)" }} />
-                  </ListItemIcon>
-                  <ListItemText primaryTypographyProps={{ fontSize: "var(--fs-sm)", fontWeight: 500 }}>
-                    Edit
-                  </ListItemText>
-                </MenuItem>
-              )}
-              {toggle && (
-                <MenuItem onClick={runAndClose(onToggle)} sx={{ py: 0.875 }}>
-                  <ListItemIcon>
-                    {isActive ? (
-                      <ToggleOnRounded fontSize="small" sx={{ color: "var(--emerald-600)" }} />
-                    ) : (
-                      <ToggleOffRounded fontSize="small" sx={{ color: "var(--slate-500)" }} />
-                    )}
-                  </ListItemIcon>
-                  <ListItemText primaryTypographyProps={{ fontSize: "var(--fs-sm)", fontWeight: 500 }}>
-                    {isActive ? "Deactivate" : "Activate"}
-                  </ListItemText>
-                </MenuItem>
-              )}
-              {info && data && (
-                <Tooltip
-                  title={<ProjectDetailsTooltip data={data} />}
-                  placement="left"
-                  slotProps={detailsTooltipSlotProps}
-                >
-                  <MenuItem onClick={closeMenu} sx={{ py: 0.875 }}>
-                    <ListItemIcon>
-                      <InfoRounded fontSize="small" sx={{ color: "var(--sky-600)" }} />
-                    </ListItemIcon>
-                    <ListItemText primaryTypographyProps={{ fontSize: "var(--fs-sm)", fontWeight: 500 }}>
-                      Details
-                    </ListItemText>
-                  </MenuItem>
-                </Tooltip>
-              )}
-              {del && (
-                <MenuItem onClick={runAndClose(onDelete)} sx={{ color: "var(--rose-600)", py: 0.875 }}>
-                  <ListItemIcon>
-                    <DeleteForeverRounded fontSize="small" sx={{ color: "var(--rose-600)" }} />
-                  </ListItemIcon>
-                  <ListItemText primaryTypographyProps={{ fontSize: "var(--fs-sm)", fontWeight: 500 }}>
-                    Delete
-                  </ListItemText>
-                </MenuItem>
-              )}
-            </Menu>
-          </>
-        )}
+        <MilestoneButton
+          title={isDesignCompleted ? milestoneTitle("Design completed", designCompletedMeta!) : "Mark design as completed"}
+          icon={DesignServicesRounded}
+          doneIcon={CheckCircleRounded}
+          tint={MILESTONE_TINTS.design}
+          done={isDesignCompleted}
+          ready
+          size={size}
+          onClick={onMarkDesignCompleted}
+        />
+        <MilestoneButton
+          title={
+            isPrintCompleted && printCompletedMeta
+              ? milestoneTitle("Print completed", printCompletedMeta)
+              : isPrintCompleted
+                ? "Print marked as completed"
+                : !isDesignCompleted
+                  ? "Complete the design first"
+                  : "Mark print as completed"
+          }
+          icon={LocalPrintshopRounded}
+          doneIcon={CheckCircleRounded}
+          tint={MILESTONE_TINTS.print}
+          done={isPrintCompleted}
+          ready={canCompletePrint}
+          size={size}
+          onClick={onMarkPrintCompleted}
+        />
+        <MilestoneButton
+          title={
+            isDelivered
+              ? milestoneTitle("Delivered", deliveredMeta!)
+              : !isDesignCompleted
+                ? "Complete the design first"
+                : !isPrintCompleted
+                  ? "Mark print status as Completed first"
+                  : "Mark order as delivered"
+          }
+          icon={LocalShippingRounded}
+          doneIcon={CheckCircleRounded}
+          tint={MILESTONE_TINTS.deliver}
+          done={isDelivered}
+          ready={canDeliver}
+          size={size}
+          onClick={onMarkDelivered}
+        />
+        {visibleMenuActions.length > 0 && <MoreActionsMenu size={size} actions={visibleMenuActions} />}
       </Box>
     );
   }
@@ -592,195 +310,55 @@ const CrudActions = ({
   return (
     <Box sx={{ display: "inline-flex", gap: 0.625, alignItems: "center" }}>
       {pinButton}
-
-      {download && (
-        <Tooltip title="Download">
-          <IconButton
-            size={size}
-            onClick={onDownload}
-            sx={{
-              ...actionIconSx,
-              color: "var(--sky-600)",
-              backgroundColor: "rgba(2, 132, 199, 0.06)",
-              "&:hover": { backgroundColor: "rgba(2, 132, 199, 0.12)" },
-            }}
-          >
-            <DownloadForOfflineRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
-          </IconButton>
-        </Tooltip>
-      )}
-
-      {preview && (
-        <Tooltip title="Preview">
-          <IconButton
-            size={size}
-            onClick={onPreview}
-            sx={{
-              ...actionIconSx,
-              color: "var(--indigo-500)",
-              backgroundColor: "rgba(99, 102, 241, 0.06)",
-              "&:hover": { backgroundColor: "rgba(99, 102, 241, 0.12)" },
-            }}
-          >
-            <VisibilityRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
-          </IconButton>
-        </Tooltip>
-      )}
-
-      {viewInvoice && (
-        <Tooltip title={messages.actions.invoice.view}>
-          <IconButton
-            size={size}
-            onClick={onViewInvoice}
-            sx={{
-              ...actionIconSx,
-              color: "var(--indigo-500)",
-              backgroundColor: "rgba(99, 102, 241, 0.06)",
-              "&:hover": { backgroundColor: "rgba(99, 102, 241, 0.12)" },
-            }}
-          >
-            <VisibilityRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
-          </IconButton>
-        </Tooltip>
-      )}
-
-      {shareInvoice && (
-        <Tooltip title={messages.actions.invoice.shareWhatsApp}>
-          <IconButton
-            size={size}
-            onClick={onShareInvoice}
-            sx={{
-              ...actionIconSx,
-              color: "var(--brand-whatsapp)",
-              backgroundColor: "var(--brand-whatsapp-soft)",
-              "&:hover": { backgroundColor: "var(--brand-whatsapp-soft-hover)" },
-            }}
-          >
-            <WhatsApp sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
-          </IconButton>
-        </Tooltip>
-      )}
-
-      {viewCustomer && (
-        <Tooltip title={messages.actions.customer.view}>
-          <IconButton
-            size={size}
-            onClick={onViewCustomer}
-            sx={{
-              ...actionIconSx,
-              color: "var(--cyan-600)",
-              backgroundColor: "rgba(8, 145, 178, 0.06)",
-              "&:hover": { backgroundColor: "rgba(8, 145, 178, 0.12)" },
-            }}
-          >
-            <PersonRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
-          </IconButton>
-        </Tooltip>
-      )}
-
-      {viewCompany && (
-        <Tooltip title={messages.actions.company.view}>
-          <IconButton
-            size={size}
-            onClick={onViewCompany}
-            sx={{
-              ...actionIconSx,
-              color: "var(--cyan-600)",
-              backgroundColor: "rgba(8, 145, 178, 0.06)",
-              "&:hover": { backgroundColor: "rgba(8, 145, 178, 0.12)" },
-            }}
-          >
-            <ApartmentRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
-          </IconButton>
-        </Tooltip>
-      )}
-
+      {download && <ActionButton title="Download" icon={DownloadForOfflineRounded} tint={TINTS.sky} size={size} onClick={onDownload} />}
+      {preview && <ActionButton title="Preview" icon={VisibilityRounded} tint={TINTS.indigo} size={size} onClick={onPreview} />}
+      {viewInvoice && <ActionButton title={messages.actions.invoice.view} icon={VisibilityRounded} tint={TINTS.indigo} size={size} onClick={onViewInvoice} />}
+      {shareInvoice && <ActionButton title={messages.actions.invoice.shareWhatsApp} icon={WhatsApp} tint={TINTS.whatsapp} size={size} onClick={onShareInvoice} />}
+      {viewCustomer && <ActionButton title={messages.actions.customer.view} icon={PersonRounded} tint={TINTS.cyan} size={size} onClick={onViewCustomer} />}
+      {viewCompany && <ActionButton title={messages.actions.company.view} icon={ApartmentRounded} tint={TINTS.cyan} size={size} onClick={onViewCompany} />}
       {downloadDocument && (
-        <Tooltip title={documentBusy ? messages.actions.document.preparing : messages.actions.document.download}>
-          <span>
-            <IconButton
-              size={size}
-              onClick={onDownloadDocument}
-              disabled={documentBusy}
-              sx={{
-                ...actionIconSx,
-                color: "var(--slate-600)",
-                backgroundColor: "rgba(100, 116, 139, 0.08)",
-                "&:hover": { backgroundColor: "rgba(100, 116, 139, 0.16)" },
-                "&.Mui-disabled": { opacity: 0.5 },
-              }}
-            >
-              <FileDownloadRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
-            </IconButton>
-          </span>
-        </Tooltip>
+        <ActionButton
+          title={documentBusy ? messages.actions.document.preparing : messages.actions.document.download}
+          icon={FileDownloadRounded}
+          tint={TINTS.document}
+          size={size}
+          onClick={onDownloadDocument}
+          disabled={documentBusy}
+          disabledOpacity={0.5}
+        />
       )}
-
       {acceptQuotation && (
-        <Tooltip title={quotationStatus !== "pending" ? messages.actions.quotation.onlyPendingAccept : messages.actions.quotation.accept}>
-          <span>
-            <IconButton
-              size={size}
-              onClick={onAcceptQuotation}
-              disabled={quotationStatus !== "pending"}
-              sx={{
-                ...actionIconSx,
-                color: "var(--emerald-600)",
-                backgroundColor: "rgba(5, 150, 105, 0.06)",
-                "&:hover": { backgroundColor: "rgba(5, 150, 105, 0.12)" },
-                "&.Mui-disabled": { opacity: 0.4 },
-              }}
-            >
-              <ThumbUpAltRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
-            </IconButton>
-          </span>
-        </Tooltip>
+        <ActionButton
+          title={quotationLocked ? messages.actions.quotation.onlyPendingAccept : messages.actions.quotation.accept}
+          icon={ThumbUpAltRounded}
+          tint={TINTS.emerald}
+          size={size}
+          onClick={onAcceptQuotation}
+          disabled={quotationLocked}
+        />
       )}
-
       {rejectQuotation && (
-        <Tooltip title={quotationStatus !== "pending" ? messages.actions.quotation.onlyPendingReject : messages.actions.quotation.reject}>
-          <span>
-            <IconButton
-              size={size}
-              onClick={onRejectQuotation}
-              disabled={quotationStatus !== "pending"}
-              sx={{
-                ...actionIconSx,
-                color: "var(--rose-600)",
-                backgroundColor: "rgba(225, 29, 72, 0.06)",
-                "&:hover": { backgroundColor: "rgba(225, 29, 72, 0.12)" },
-                "&.Mui-disabled": { opacity: 0.4 },
-              }}
-            >
-              <ThumbDownAltRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
-            </IconButton>
-          </span>
-        </Tooltip>
+        <ActionButton
+          title={quotationLocked ? messages.actions.quotation.onlyPendingReject : messages.actions.quotation.reject}
+          icon={ThumbDownAltRounded}
+          tint={TINTS.rose}
+          size={size}
+          onClick={onRejectQuotation}
+          disabled={quotationLocked}
+        />
       )}
-
       {recordPayment && (
-        <Tooltip title={invoiceStatus !== "pending" ? messages.actions.invoice.onlyPendingPayments : messages.actions.invoice.recordPayment}>
-          <span>
-            <IconButton
-              size={size}
-              onClick={onRecordPayment}
-              disabled={invoiceStatus !== "pending"}
-              sx={{
-                ...actionIconSx,
-                color: "var(--blue-600)",
-                backgroundColor: "rgba(37, 99, 235, 0.06)",
-                "&:hover": { backgroundColor: "rgba(37, 99, 235, 0.12)" },
-                "&.Mui-disabled": { opacity: 0.4 },
-              }}
-            >
-              <PaymentsRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
-            </IconButton>
-          </span>
-        </Tooltip>
+        <ActionButton
+          title={invoiceLocked ? messages.actions.invoice.onlyPendingPayments : messages.actions.invoice.recordPayment}
+          icon={PaymentsRounded}
+          tint={TINTS.blue}
+          size={size}
+          onClick={onRecordPayment}
+          disabled={invoiceLocked}
+        />
       )}
-
       {markPaid && (
-        <Tooltip
+        <ActionButton
           title={
             invoiceStatus === "paid"
               ? "Already paid"
@@ -788,164 +366,42 @@ const CrudActions = ({
                 ? "Cancelled invoices can't be marked paid"
                 : messages.actions.invoice.markPaid
           }
-        >
-          <span>
-            <IconButton
-              size={size}
-              onClick={onMarkPaid}
-              // Pending is the only status either action can act on - once
-              // an invoice is paid or cancelled, it's a terminal state (see
-              // service_update's own enforcement of the same rule server-
-              // side, so this isn't just a client-side nicety).
-              disabled={invoiceStatus !== "pending"}
-              sx={{
-                ...actionIconSx,
-                color: "var(--emerald-600)",
-                backgroundColor: "rgba(5, 150, 105, 0.06)",
-                "&:hover": { backgroundColor: "rgba(5, 150, 105, 0.12)" },
-                "&.Mui-disabled": { opacity: 0.4 },
-              }}
-            >
-              <CheckCircleRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
-            </IconButton>
-          </span>
-        </Tooltip>
+          icon={CheckCircleRounded}
+          tint={TINTS.emerald}
+          size={size}
+          onClick={onMarkPaid}
+          disabled={invoiceLocked}
+        />
       )}
-
       {cancelInvoice && (
-        <Tooltip title={invoiceStatus !== "pending" ? messages.actions.invoice.onlyPendingCancel : messages.actions.invoice.cancel}>
+        <ActionButton
+          title={invoiceLocked ? messages.actions.invoice.onlyPendingCancel : messages.actions.invoice.cancel}
+          icon={CancelRounded}
+          tint={TINTS.rose}
+          size={size}
+          onClick={onCancelInvoice}
+          disabled={invoiceLocked}
+        />
+      )}
+      {edit && <ActionButton title="Edit" icon={EditRounded} tint={TINTS.blue} size={size} onClick={onEdit} />}
+      {sendPortalInvite && <ActionButton title={messages.actions.customer.sendPortalInvite} icon={PersonAddRounded} tint={TINTS.deepIndigo} size={size} onClick={onSendPortalInvite} />}
+      {changePassword && <ActionButton title="Change Password" icon={VpnKeyRounded} tint={TINTS.violet} size={size} onClick={onChangePassword} />}
+      {del && <ActionButton title="Delete" icon={DeleteForeverRounded} tint={TINTS.rose} size={size} onClick={onDelete} />}
+      {info && data && (
+        <Tooltip title={<ProjectDetailsTooltip data={data} />} placement="top" slotProps={detailsTooltipSlotProps}>
           <span>
-            <IconButton
-              size={size}
-              onClick={onCancelInvoice}
-              disabled={invoiceStatus !== "pending"}
-              sx={{
-                ...actionIconSx,
-                color: "var(--rose-600)",
-                backgroundColor: "rgba(225, 29, 72, 0.06)",
-                "&:hover": { backgroundColor: "rgba(225, 29, 72, 0.12)" },
-                "&.Mui-disabled": { opacity: 0.4 },
-              }}
-            >
-              <CancelRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
-            </IconButton>
+            <ActionButton title="" icon={InfoRounded} tint={TINTS.sky} size={size} />
           </span>
         </Tooltip>
       )}
-
-      {edit && (
-        <Tooltip title="Edit">
-          <IconButton
-            size={size}
-            onClick={onEdit}
-            sx={{
-              ...actionIconSx,
-              color: "var(--blue-600)",
-              backgroundColor: "rgba(37, 99, 235, 0.06)",
-              "&:hover": { backgroundColor: "rgba(37, 99, 235, 0.12)" },
-            }}
-          >
-            <EditRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
-          </IconButton>
-        </Tooltip>
-      )}
-
-      {sendPortalInvite && (
-        <Tooltip title={messages.actions.customer.sendPortalInvite}>
-          <IconButton
-            size={size}
-            onClick={onSendPortalInvite}
-            sx={{
-              ...actionIconSx,
-              color: "var(--indigo-600)",
-              backgroundColor: "rgba(79, 70, 229, 0.06)",
-              "&:hover": { backgroundColor: "rgba(79, 70, 229, 0.12)" },
-            }}
-          >
-            <PersonAddRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
-          </IconButton>
-        </Tooltip>
-      )}
-
-      {changePassword && (
-        <Tooltip title="Change Password">
-          <IconButton
-            size={size}
-            onClick={onChangePassword}
-            sx={{
-              ...actionIconSx,
-              color: "var(--violet-600)",
-              backgroundColor: "rgba(124, 58, 237, 0.06)",
-              "&:hover": { backgroundColor: "rgba(124, 58, 237, 0.12)" },
-            }}
-          >
-            <VpnKeyRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
-          </IconButton>
-        </Tooltip>
-      )}
-
-      {del && (
-        <Tooltip title="Delete">
-          <IconButton
-            size={size}
-            onClick={onDelete}
-            sx={{
-              ...actionIconSx,
-              color: "var(--rose-600)",
-              backgroundColor: "rgba(225, 29, 72, 0.06)",
-              "&:hover": { backgroundColor: "rgba(225, 29, 72, 0.12)" },
-            }}
-          >
-            <DeleteForeverRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
-          </IconButton>
-        </Tooltip>
-      )}
-
-      {info && data && (
-        <Tooltip
-          title={<ProjectDetailsTooltip data={data} />}
-          placement="top"
-          slotProps={detailsTooltipSlotProps}
-        >
-          <IconButton
-            size={size}
-            sx={{
-              ...actionIconSx,
-              color: "var(--sky-600)",
-              backgroundColor: "rgba(2, 132, 199, 0.06)",
-              "&:hover": { backgroundColor: "rgba(2, 132, 199, 0.12)" },
-            }}
-          >
-            <InfoRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
-          </IconButton>
-        </Tooltip>
-      )}
-
       {toggle && (
-        <Tooltip title={isActive ? "Deactivate" : "Activate"}>
-          <IconButton
-            size={size}
-            onClick={onToggle}
-            sx={{
-              ...actionIconSx,
-              color: isActive ? "var(--emerald-600)" : "var(--slate-500)",
-              backgroundColor: isActive
-                ? "rgba(5, 150, 105, 0.06)"
-                : "rgba(100, 116, 139, 0.06)",
-              "&:hover": {
-                backgroundColor: isActive
-                  ? "rgba(5, 150, 105, 0.12)"
-                  : "rgba(100, 116, 139, 0.12)",
-              },
-            }}
-          >
-            {isActive ? (
-              <ToggleOnRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
-            ) : (
-              <ToggleOffRounded sx={{ fontSize: size === "small" ? "1.125rem" : "1.25rem" }} />
-            )}
-          </IconButton>
-        </Tooltip>
+        <ActionButton
+          title={isActive ? "Deactivate" : "Activate"}
+          icon={isActive ? ToggleOnRounded : ToggleOffRounded}
+          tint={isActive ? TINTS.emerald : TINTS.neutral}
+          size={size}
+          onClick={onToggle}
+        />
       )}
     </Box>
   );

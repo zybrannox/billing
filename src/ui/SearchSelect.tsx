@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { FocusEvent, KeyboardEvent, ReactNode } from "react";
 import { Autocomplete, InputAdornment, TextField, Typography } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
@@ -21,6 +21,9 @@ interface SearchSelectProps {
   helperText?: string;
   sx?: object;
   className?: string;
+  // Also accept text that isn't one of `options`: Enter or leaving the field
+  // commits whatever was typed, and onChange receives that text.
+  freeSolo?: boolean;
 }
 
 const normalize = (opt: SearchSelectOption): NormalizedOption =>
@@ -28,8 +31,8 @@ const normalize = (opt: SearchSelectOption): NormalizedOption =>
 
 /**
  * Single-select picker you search by typing - the same look as SearchInput
- * (search icon, clear button), but the result is always one of `options`,
- * never free text. Reach for this over Dropdown when the list is long
+ * (search icon, clear button), and the result is one of `options` unless
+ * `freeSolo` allows free text too. Reach for this over Dropdown when the list is long
  * enough that scrolling to find an entry is slower than typing it
  * (Dropdown's input is read-only, so it can't be searched).
  */
@@ -45,12 +48,21 @@ export default function SearchSelect({
   helperText,
   sx,
   className,
+  freeSolo = false,
 }: SearchSelectProps) {
   const normalized = (options ?? []).map(normalize);
   const selected =
     value !== undefined && value !== null && value !== ""
       ? (normalized.find((o) => o.value === value) ?? { label: String(value), value })
       : null;
+
+  // Free text arrives untrimmed, and leaving the field re-submits its current
+  // text - only a real change may reach the caller, which may well do
+  // something with it (the item grid re-syncs a row's rate on change).
+  const commit = (next?: string | number) => {
+    const clean = typeof next === "string" ? next.trim() || undefined : next;
+    if (clean !== (selected?.value ?? undefined) && clean !== selected?.label) onChange?.(clean);
+  };
 
   return (
     <div className={className} style={{ width: "100%" }}>
@@ -68,12 +80,14 @@ export default function SearchSelect({
         disabled={disabled}
         options={normalized}
         value={selected}
-        onChange={(_, next) => onChange?.(next?.value)}
-        getOptionLabel={(o) => o.label}
+        freeSolo={freeSolo}
+        onChange={(_, next) => commit(typeof next === "string" ? next : next?.value)}
+        getOptionLabel={(o) => (typeof o === "string" ? o : o.label)}
         isOptionEqualToValue={(o, v) => o.value === v.value}
         // Typing filters, and a matching entry is highlighted as you type -
         // Enter picks it, so a keyboard-only user never touches the mouse.
-        autoHighlight
+        // Not with free text: "Banner" would turn into "Banner Stand" on Enter.
+        autoHighlight={!freeSolo}
         openOnFocus
         noOptionsText={
           <Typography sx={{ fontSize: "var(--fs-sm)", color: "text.secondary" }}>{noOptionsText}</Typography>
@@ -123,7 +137,21 @@ export default function SearchSelect({
                   </InputAdornment>
                 ),
               },
-              htmlInput: params.inputProps,
+              htmlInput: freeSolo
+                ? {
+                    ...params.inputProps,
+                    onBlur: (e: FocusEvent<HTMLInputElement>) => {
+                      params.inputProps.onBlur?.(e);
+                      commit(e.target.value);
+                    },
+                    // Commits the text (handled by Autocomplete) without also
+                    // submitting a form this happens to be inside.
+                    onKeyDown: (e: KeyboardEvent<HTMLInputElement>) => {
+                      if (e.key === "Enter") e.preventDefault();
+                      params.inputProps.onKeyDown?.(e);
+                    },
+                  }
+                : params.inputProps,
             }}
             sx={{
               "& .MuiInputBase-input::placeholder": { color: "text.secondary", opacity: 0.7 },

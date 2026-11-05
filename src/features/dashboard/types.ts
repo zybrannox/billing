@@ -39,7 +39,6 @@ export interface AttentionProject {
   id: number;
   project_type: string;
   customer_name: string | null;
-  priority: string;
   print_status: string;
   delivery_date: string | null;
   is_overdue: boolean;
@@ -59,7 +58,6 @@ export interface TopCustomer {
 export interface DashboardSummary {
   stats: DashboardStats;
   project_status_breakdown: StatusCount[];
-  priority_breakdown: StatusCount[];
   revenue_trend: RevenuePoint[];
   recent_invoices: RecentInvoice[];
   attention_projects: AttentionProject[];

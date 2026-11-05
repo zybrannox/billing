@@ -8,6 +8,7 @@ import {
   Alert,
 } from "@mui/material";
 import { UploadFile, Close } from "@mui/icons-material";
+import { formatFileSize } from "../utils/appSupport";
 
 export interface FileUploadFieldProps {
   label?: React.ReactNode;
@@ -21,14 +22,6 @@ export interface FileUploadFieldProps {
   helperText?: string;
   disabled?: boolean;
 }
-
-const formatFileSize = (bytes: number) => {
-  if (bytes === 0) return "0 B";
-  const k = 1024;
-  const sizes = ["B", "KB", "MB", "GB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
-};
 
 const MAX_FILE_SIZE = 1024 * 1024 * 1024; // 1GB
 const MAX_TOTAL_SIZE = 2 * 1024 * 1024 * 1024; // 2GB

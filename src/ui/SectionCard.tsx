@@ -1,4 +1,5 @@
 import { Box, Paper, Typography } from "@mui/material";
+import { surfaceSx } from "./surface";
 
 // The one card shell used for every titled section (dashboard, profiles,
 // System Setup): a quiet white surface with a hairline border, a small tinted
@@ -26,10 +27,7 @@ export function SectionCard({
       elevation={0}
       sx={{
         p: 2,
-        borderRadius: "12px",
-        border: "1px solid var(--slate-200)",
-        bgcolor: "var(--white)",
-        boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
+        ...surfaceSx,
         display: "flex",
         flexDirection: "column",
         minWidth: 0,

@@ -1,3 +1,4 @@
+import { messages } from "../../messages";
 import type { GridColDef, GridRowId } from "@mui/x-data-grid";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -148,7 +149,7 @@ const Companies = () => {
   const handleDelete = (id: number) => {
     showDialog({
       title: "Delete Company?",
-      description: "Its contacts stay as ordinary customers - only the company record itself is removed. This action cannot be undone.",
+      description: `Its contacts stay as ordinary customers. ${messages.bin.moveNotice}`,
       confirmText: "Delete",
       isDestructive: true,
       onConfirm: async () => {

@@ -24,8 +24,8 @@ export const addProjectFields: FieldDefinition[] = [
     // alphabetical list. Opt-in on this field only - the backend defaults to
     // alphabetical ("name") for every other /customers caller.
     asyncExtraParams: { limit: 20, sort: "most_used" },
-    getOptionLabel: (c) => `${c.first_name} ${c.last_name}`,
-    getOptionValue: (c) => c.id,
+    getOptionLabel: (c: { first_name: string; last_name: string }) => `${c.first_name} ${c.last_name}`,
+    getOptionValue: (c: { id: number }) => c.id,
   },
   {
     name: "assigned_to",
@@ -37,8 +37,8 @@ export const addProjectFields: FieldDefinition[] = [
     asyncEndpoint: "/users",
     // Admins are excluded - this is for picking who a project is assigned to.
     asyncExtraParams: { role: "user", limit: 20 },
-    getOptionLabel: (u) => u.username,
-    getOptionValue: (u) => u.username,
+    getOptionLabel: (u: { username: string }) => u.username,
+    getOptionValue: (u: { username: string }) => u.username,
   },
   {
     name: "start_date",
@@ -54,31 +54,6 @@ export const addProjectFields: FieldDefinition[] = [
     type: "date_time",
     defaultValue: new Date().toISOString(),
     required: true,
-    row: 1,
-  },
-  {
-    name: "priority",
-    label: "Priority",
-    type: "radio",
-    required: true,
-    defaultValue: "Normal",
-    options: [
-      {
-        label: "Normal",
-        value: "Normal",
-        color: "var(--blue-600)", // Calm Blue (default / stable)
-      },
-      {
-        label: "High",
-        value: "High",
-        color: "var(--amber-500)", // Amber (attention)
-      },
-      {
-        label: "Urgent",
-        value: "Urgent",
-        color: "var(--red-600)", // Strong Red (critical)
-      },
-    ],
     row: 1,
   },
   {

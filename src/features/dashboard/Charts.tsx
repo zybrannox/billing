@@ -124,9 +124,7 @@ export function RevenueAreaChart({ data }: { data: RevenuePoint[] }) {
 
 // ---------------------------------------------------------------------
 // Status donut - a multi-segment ring (count-weighted arcs) with the
-// total in the hub and a legend beside it. Used for both Print Status
-// and Priority Mix so the two "how is the workload split up" cards read
-// as a matched pair rather than two different chart styles.
+// total in the hub and a legend beside it. Used for Print Status.
 // ---------------------------------------------------------------------
 export function StatusDonut({
   data,

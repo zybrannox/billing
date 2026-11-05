@@ -18,24 +18,18 @@ import Dropdown from "../../ui/Dropdown";
 import Button from "../../ui/Button";
 import AsyncSearchSelect from "../../ui/AsyncSearchSelect";
 import ItemLineEditor from "./ItemLineEditor";
-import { newRow, totalOf, toNumber, checkRow, invalidRowMessage, rowToItemPayload, type ItemRow, type ItemTypeOption } from "./itemLineUtils";
+import { newRow, toNumber, collectRows, subtotalOf, rowToItemPayload, type ItemRow, type ItemTypeOption } from "./itemLineUtils";
 import { useDialogStore } from "../../store/useDialogStore";
 import { useListOptionsStore } from "../../store/useListOptionsStore";
 import { InvoiceMetaPanel, InvoicePanelLabel, InvoiceTotalCard } from "../../ui/InvoiceDocument";
 import { messages } from "../../messages";
+import { getErrorMessage } from "../../utils/apiError";
 
 interface CustomerOption {
   id: number;
   first_name: string;
   last_name: string;
 }
-
-const extractErrorMessage = (err: any): string => {
-  const detail = err?.detail ?? err?.message;
-  if (typeof detail === "string") return detail;
-  if (Array.isArray(detail) && detail[0]?.msg) return detail[0].msg;
-  return "Something went wrong while generating the quotation. Please try again.";
-};
 
 const defaultValidUntil = () => {
   const d = new Date();
@@ -80,7 +74,7 @@ export default function GenerateQuotation() {
   }, []);
 
   const grandTotal = useMemo(
-    () => Math.round(items.reduce((sum, r) => sum + totalOf(r), 0) * 100) / 100,
+    () => subtotalOf(items),
     [items]
   );
 
@@ -95,23 +89,13 @@ export default function GenerateQuotation() {
       return;
     }
 
-    const usable: ItemRow[] = [];
-    for (const row of items) {
-      const check = checkRow(row);
-      if (check === "empty") continue;
-      if (check === "invalid") {
-        setRowError(invalidRowMessage(row));
-        return;
-      }
-      usable.push(row);
-    }
-
-    if (usable.length === 0) {
-      setRowError(messages.errors.addAtLeastOneItem);
+    const { rows: usable, error: rowProblem } = collectRows(items);
+    if (rowProblem) {
+      setRowError(rowProblem);
       return;
     }
 
-    const subtotal = Math.round(usable.reduce((sum, r) => sum + totalOf(r), 0) * 100) / 100;
+    const subtotal = subtotalOf(usable);
     const discount = toNumber(discountAmount);
     if (discountAmount.trim() !== "" && discount > subtotal) {
       setDiscountError("Discount can't be more than the quotation subtotal.");
@@ -130,9 +114,9 @@ export default function GenerateQuotation() {
 
       closeDialog();
       navigate(`/admin/quotations/${quotation.id}`);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error generating quotation", err);
-      setSubmitError(extractErrorMessage(err?.response?.data || err));
+      setSubmitError(getErrorMessage(err, "Something went wrong while generating the quotation. Please try again."));
     } finally {
       setSubmitting(false);
     }

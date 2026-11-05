@@ -141,7 +141,8 @@ export default function Dropdown({
         getOptionLabel={(option) =>
           typeof option === "string" ? option : option.label
         }
-        value={normalizedValue as any}
+        // MUI ties this type to `multiple` at compile time; here that is only known at run time.
+        value={normalizedValue as never}
         isOptionEqualToValue={(option, v) =>
           (typeof option === "string" ? option : option.value) ===
           (typeof v === "string" ? v : v?.value)

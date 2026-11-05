@@ -1,10 +1,12 @@
-import { Assignment, Badge, People, Settings, Dashboard, Business, Inbox, History } from "@mui/icons-material";
+import { Assignment, Badge, People, Settings, Dashboard, Business, Inbox, History, StickyNote2, ReceiptLong } from "@mui/icons-material";
 import type { NavItem } from "../types/adminTypes";
 
 export const adminNavigations: NavItem[] = [
   { name: "Dashboard", href: "/admin/dashboard", icon: Dashboard },
   { name: "Projects", href: "/admin/projects", icon: Assignment },
   { name: "Project History", href: "/admin/project-history", icon: History },
+  { name: "Invoices", href: "/admin/invoices", icon: ReceiptLong },
+  { name: "Notes", href: "/admin/notes", icon: StickyNote2 },
   { name: "Customers", href: "/admin/customers", icon: People },
   { name: "Companies", href: "/admin/companies", icon: Business },
   { name: "Job Requests", href: "/admin/job-requests", icon: Inbox },
@@ -12,6 +14,15 @@ export const adminNavigations: NavItem[] = [
   { name: "System Setup", href: "/admin/system-setup", icon: Settings },
 ];
 
-export const employeeNavigations: NavItem[] = [
+export const employeeNavigations = ({
+  canManageWorkspace,
+  canSeeInvoices,
+}: {
+  canManageWorkspace: boolean;
+  canSeeInvoices: boolean;
+}): NavItem[] => [
   { name: "Projects", href: "/", icon: Assignment },
+  ...(canSeeInvoices ? [{ name: "Invoices", href: "/invoices", icon: ReceiptLong }] : []),
+  { name: "Notes", href: "/notes", icon: StickyNote2 },
+  ...(canManageWorkspace ? [{ name: "System Setup", href: "/system-setup", icon: Settings }] : []),
 ];

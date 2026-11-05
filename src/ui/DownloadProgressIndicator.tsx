@@ -1,23 +1,48 @@
 import { useEffect } from "react";
-import { Paper, Typography, LinearProgress, Box, Stack } from "@mui/material";
-import { FileDownloadRounded, CheckCircleRounded } from "@mui/icons-material";
+import { Paper, Typography, LinearProgress, Box, Stack, IconButton } from "@mui/material";
+import { FileDownloadRounded, CheckCircleRounded, ErrorOutlineRounded, CloseRounded } from "@mui/icons-material";
 import {
   useDownloadProgressStore,
   type DownloadEntry,
 } from "../store/useDownloadProgressStore";
-import { formatFileSize } from "../utils/appSupport";
+import { formatTransferred } from "../utils/appSupport";
 
-function DownloadCard({ id, label, percent, loaded, total, fileCount, done }: DownloadEntry) {
+function DownloadCard({ id, label, percent, loaded, total, fileCount, done, error, note }: DownloadEntry) {
   useEffect(() => {
     if (!done) return;
     // Remove this card ~1.2s after it's marked done - long enough to
     // register as "finished", short enough not to linger and clutter the
-    // corner once several downloads have completed.
+    // corner once several downloads have completed. A note is there to be
+    // read, so it stays for longer.
     const timer = setTimeout(() => {
       useDownloadProgressStore.getState().remove(id);
-    }, 1200);
+    }, note ? 8000 : 1200);
     return () => clearTimeout(timer);
-  }, [done, id]);
+  }, [done, id, note]);
+
+  if (error) {
+    return (
+      <Paper elevation={4} role="alert" sx={{ width: 280, p: 2, borderRadius: 2 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+          <ErrorOutlineRounded fontSize="small" sx={{ color: "var(--red-500)" }} />
+          <Typography variant="body2" fontWeight={600} noWrap sx={{ flex: 1 }}>
+            {label}
+          </Typography>
+          <IconButton
+            size="small"
+            aria-label="Dismiss"
+            onClick={() => useDownloadProgressStore.getState().remove(id)}
+            sx={{ p: 0.25 }}
+          >
+            <CloseRounded sx={{ fontSize: 16 }} />
+          </IconButton>
+        </Box>
+        <Typography variant="caption" sx={{ color: "var(--red-500)" }}>
+          {error}
+        </Typography>
+      </Paper>
+    );
+  }
 
   return (
     <Paper
@@ -55,15 +80,18 @@ function DownloadCard({ id, label, percent, loaded, total, fileCount, done }: Do
 
       <Typography variant="caption" color="text.secondary">
         {done
-          ? fileCount
+          ? note
+            ? note
+            : fileCount
             ? `Done • ${fileCount} file${fileCount === 1 ? "" : "s"}`
             : "Done"
           : [
-              percent !== null && total !== null
-                ? `${percent}% • ${formatFileSize(loaded)} of ${formatFileSize(total)}`
+              // Nothing has moved yet, e.g. the server is still building a zip.
+              !loaded && !total
+                ? "Preparing download…"
                 : percent !== null
-                  ? `${percent}% • ${formatFileSize(loaded)}`
-                  : `${formatFileSize(loaded)} downloaded`,
+                  ? `${percent}% • ${formatTransferred(loaded, total)}`
+                  : `${formatTransferred(loaded, total)} downloaded`,
               fileCount ? `${fileCount} file${fileCount === 1 ? "" : "s"}` : null,
             ]
               .filter(Boolean)

@@ -60,12 +60,21 @@ export type EditingType =
 
 type DialogMode = "add" | "edit" | "view";
 
+// What the Add Invoice form starts from when it's opened from a note.
+export interface BillingNote {
+  id: number;
+  text: string;
+  customerId?: number;
+}
+
 interface UIState {
   isDialogOpen: boolean;
   editingId: number | string | null;
   editingType: EditingType;
   mode: DialogMode;
+  billingNote: BillingNote | null;
 
+  openInvoiceFromNote: (note: BillingNote) => void;
   openDialog: (
     type: EditingType,
     id?: UIState["editingId"],
@@ -79,6 +88,16 @@ export const useDialogStore = create<UIState>((set, get) => ({
   editingId: null,
   editingType: null,
   mode: "add",
+  billingNote: null,
+
+  openInvoiceFromNote: (note) =>
+    set({
+      isDialogOpen: true,
+      editingType: "invoiceDesignComplete",
+      editingId: null,
+      mode: "add",
+      billingNote: note,
+    }),
 
   openDialog: (type, id = null, mode = id ? "edit" : "add") =>
     set({
@@ -89,7 +108,7 @@ export const useDialogStore = create<UIState>((set, get) => ({
     }),
 
   closeDialog: () => {
-    set({ isDialogOpen: false });
+    set({ isDialogOpen: false, billingNote: null });
     // Delay resetting the state to allow the exit animation to complete -
     // but only if nothing else opened a *different* dialog in the
     // meantime (e.g. GenerateInvoice.tsx closing its own "add invoice"

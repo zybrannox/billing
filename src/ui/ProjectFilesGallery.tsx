@@ -12,6 +12,7 @@ import type { ProjectFile } from "../api/types";
 import { formatFileSize } from "../utils/appSupport";
 import EmptyState from "./EmptyState";
 import { GenericDialog } from "./Dialog";
+import FileSizeTooltip from "./FileSizeTooltip";
 import ListState from "./ListState";
 import { bestImageUrl, originalUrl, thumbnailUrl } from "./projectFileUrls";
 
@@ -126,49 +127,51 @@ export default function ProjectFilesGallery({
           {files.map((file) => {
             const imageIndex = images.indexOf(file);
             return (
-              <Box key={file.path}>
-                <Box
-                  component={file.is_image ? "button" : "div"}
-                  type={file.is_image ? "button" : undefined}
-                  onClick={file.is_image ? () => setSelected(imageIndex) : undefined}
-                  aria-label={file.is_image ? `View ${nameOf(file)}` : undefined}
-                  sx={{
-                    position: "relative",
-                    display: "block",
-                    width: "100%",
-                    aspectRatio: "1 / 1",
-                    p: 0,
-                    overflow: "hidden",
-                    borderRadius: "10px",
-                    border: "1px solid var(--slate-200)",
-                    bgcolor: "var(--slate-100)",
-                    cursor: file.is_image ? "pointer" : "default",
-                    "&:hover": file.is_image ? { borderColor: "var(--blue-400)" } : undefined,
-                  }}
-                >
-                  {file.is_image ? (
-                    <Picture file={file} preferOriginalUpTo={GRID_ORIGINAL_MAX_BYTES} fit="cover" alt={nameOf(file)} />
-                  ) : (
-                    <Box sx={{ height: "100%", display: "grid", placeItems: "center", color: "var(--slate-400)" }}>
-                      <InsertDriveFileRoundedIcon sx={{ fontSize: 36 }} />
-                    </Box>
-                  )}
-                  {file.is_image && (
-                    <Box
-                      sx={{
-                        position: "absolute", left: 6, bottom: 6, px: 0.75, py: 0.1, borderRadius: "6px",
-                        fontSize: "var(--fs-2xs)", fontWeight: 700, color: "var(--white)",
-                        bgcolor: bestImageUrl(file, GRID_ORIGINAL_MAX_BYTES) === thumbnailUrl(file.path) ? "rgba(15, 23, 42, 0.65)" : "rgba(5, 150, 105, 0.9)",
-                      }}
-                    >
-                      {bestImageUrl(file, GRID_ORIGINAL_MAX_BYTES) === thumbnailUrl(file.path) ? "Preview" : "Original"}
-                    </Box>
-                  )}
+              <FileSizeTooltip key={file.path} name={nameOf(file)} sizeBytes={file.size_bytes}>
+                <Box>
+                  <Box
+                    component={file.is_image ? "button" : "div"}
+                    type={file.is_image ? "button" : undefined}
+                    onClick={file.is_image ? () => setSelected(imageIndex) : undefined}
+                    aria-label={file.is_image ? `View ${nameOf(file)}` : undefined}
+                    sx={{
+                      position: "relative",
+                      display: "block",
+                      width: "100%",
+                      aspectRatio: "1 / 1",
+                      p: 0,
+                      overflow: "hidden",
+                      borderRadius: "10px",
+                      border: "1px solid var(--slate-200)",
+                      bgcolor: "var(--slate-100)",
+                      cursor: file.is_image ? "pointer" : "default",
+                      "&:hover": file.is_image ? { borderColor: "var(--blue-400)" } : undefined,
+                    }}
+                  >
+                    {file.is_image ? (
+                      <Picture file={file} preferOriginalUpTo={GRID_ORIGINAL_MAX_BYTES} fit="cover" alt={nameOf(file)} />
+                    ) : (
+                      <Box sx={{ height: "100%", display: "grid", placeItems: "center", color: "var(--slate-400)" }}>
+                        <InsertDriveFileRoundedIcon sx={{ fontSize: 36 }} />
+                      </Box>
+                    )}
+                    {file.is_image && (
+                      <Box
+                        sx={{
+                          position: "absolute", left: 6, bottom: 6, px: 0.75, py: 0.1, borderRadius: "6px",
+                          fontSize: "var(--fs-2xs)", fontWeight: 700, color: "var(--white)",
+                          bgcolor: bestImageUrl(file, GRID_ORIGINAL_MAX_BYTES) === thumbnailUrl(file.path) ? "rgba(15, 23, 42, 0.65)" : "rgba(5, 150, 105, 0.9)",
+                        }}
+                      >
+                        {bestImageUrl(file, GRID_ORIGINAL_MAX_BYTES) === thumbnailUrl(file.path) ? "Preview" : "Original"}
+                      </Box>
+                    )}
+                  </Box>
+                  <Typography noWrap sx={{ mt: 0.5, fontSize: "var(--fs-xs)", color: "var(--slate-600)" }}>
+                    {nameOf(file)}
+                  </Typography>
                 </Box>
-                <Typography noWrap title={nameOf(file)} sx={{ mt: 0.5, fontSize: "var(--fs-xs)", color: "var(--slate-600)" }}>
-                  {nameOf(file)}
-                </Typography>
-              </Box>
+              </FileSizeTooltip>
             );
           })}
         </Box>

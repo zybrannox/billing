@@ -2,7 +2,7 @@ import { Box } from "@mui/material";
 
 // Small pill-radio group - same visual language as the New Job/Existing
 // Project mode toggle in GenerateInvoice.tsx, used for small closed-set
-// fields (Priority, Client Status) without pulling in the full
+// fields (Client Status) without pulling in the full
 // CustomForm/react-hook-form machinery on a page that manages its own
 // state directly. Shared with GenerateQuotation.tsx / QuotationView.tsx's
 // convert-to-invoice step, which needs the exact same two fields.

@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiService } from "../../api/service";
-import type { InvoiceListResponse, QuotationListResponse } from "../../api/types";
+import type { InvoiceListResponse, InvoiceSummary, QuotationListResponse } from "../../api/types";
 
 // Server data for the billing lists goes through TanStack Query, not
 // component state: one cache, one key scheme, and "refresh after a change" is
@@ -9,13 +9,18 @@ import type { InvoiceListResponse, QuotationListResponse } from "../../api/types
 export const billingKeys = {
   invoices: ["invoices"] as const,
   invoiceList: (params: object) => ["invoices", "list", params] as const,
+  invoiceSummary: ["invoices", "summary"] as const,
   quotations: ["quotations"] as const,
   quotationList: (params: object) => ["quotations", "list", params] as const,
 };
 
+export type InvoiceViewName = "unpaid" | "overdue" | "paid" | "cancelled";
+
 export interface InvoiceListQuery {
   customer_id?: number;
   company_id?: number;
+  search?: string;
+  view?: InvoiceViewName;
   page: number;
   page_size: number;
 }
@@ -43,6 +48,17 @@ export function useInvoiceList(params: InvoiceListQuery) {
     queryKey: billingKeys.invoiceList(params),
     queryFn: () => apiService.get<InvoiceListResponse>("/invoices/", { params }),
     placeholderData: keepWithinSameList(params),
+  });
+}
+
+// "Due today" means today where the viewer is, so the browser says where that is.
+export function useInvoiceSummary() {
+  return useQuery({
+    queryKey: billingKeys.invoiceSummary,
+    queryFn: () =>
+      apiService.get<InvoiceSummary>("/invoices/summary", {
+        params: { tz_offset_minutes: -new Date().getTimezoneOffset() },
+      }),
   });
 }
 

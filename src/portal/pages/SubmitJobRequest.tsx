@@ -56,13 +56,17 @@ export default function SubmitJobRequest() {
     };
   }, []);
 
-  const handleSubmit = async (formData: any) => {
+  const handleSubmit = async (formData: { description: string; files?: UploadItem[] }) => {
     setErrorMessage(null);
     setSuccessMessage(null);
 
     const items: UploadItem[] = formData.files || [];
     if (items.some((item) => item.status === "uploading")) {
       alert(messages.errors.uploadsPending);
+      return;
+    }
+    if (items.some((item) => item.status === "error")) {
+      alert(messages.errors.uploadsFailed);
       return;
     }
 

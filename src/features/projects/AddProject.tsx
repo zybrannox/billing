@@ -1,3 +1,5 @@
+import { getErrorMessage } from "../../utils/apiError";
+import type { z } from "zod";
 import { useEffect, useMemo, useRef } from "react";
 import { addProjectFields } from "./fields";
 import { useApiRequest } from "../../hooks/useApiRequest";
@@ -72,7 +74,7 @@ export default function AddProject() {
     );
   }, [user, projectTypeOptions]);
 
-  const handleSubmit = async (formData: any) => {
+  const handleSubmit = async (formData: z.infer<typeof addProjectSchema> & { images?: UploadItem[] }) => {
     const { images, ...rest } = formData;
     const items: UploadItem[] = images || [];
 
@@ -81,6 +83,12 @@ export default function AddProject() {
     // if any are still in flight rather than silently dropping them.
     if (items.some((item) => item.status === "uploading")) {
       alert(messages.errors.uploadsPending);
+      return;
+    }
+    // A failed file used to be dropped without a word, leaving a project that
+    // looked fine but was missing its artwork.
+    if (items.some((item) => item.status === "error")) {
+      alert(messages.errors.uploadsFailed);
       return;
     }
 
@@ -102,20 +110,24 @@ export default function AddProject() {
         print_status: "In Progress",
       };
 
-      const project = await sendRequest({
+      const project = await sendRequest<{ id: number }>({
         endpoint: "/projects/",
         method: "post",
         data: projectPayload,
+        onError: (err) => alert(getErrorMessage(err, "Couldn't create the project. Please try again.")),
       });
+
+      // Keep the form and what was typed, rather than closing as if it worked.
+      if (!project) return;
 
       // The project now exists, so these uploads are its responsibility
       // (or, if attaching them below fails, the already-shown "edit the
       // project and re-add them" message covers that) - either way, they
       // are no longer orphaned uploads for the cancel-cleanup to delete.
-      if (project) submittedRef.current = true;
+      submittedRef.current = true;
 
       // 2️⃣ Link already-uploaded files to the new project (no re-upload)
-      if (attachedFiles.length > 0 && project?.id) {
+      if (attachedFiles.length > 0) {
         const attachResult = await sendRequest({
           endpoint: `/files/attach/${project.id}`,
           method: "post",

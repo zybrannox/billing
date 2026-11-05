@@ -10,11 +10,17 @@ import type { components } from "./schema";
 
 type Schemas = components["schemas"];
 
+export type BinItem = Schemas["BinItemRead"];
+export type Note = Schemas["NoteRead"];
+export type NoteListResponse = Schemas["NoteListResponse"];
+export type BinListResponse = Schemas["BinListResponse"];
+
 export type Invoice = Schemas["InvoiceRead"];
 export type InvoiceDetail = Schemas["InvoiceDetailRead"];
 export type InvoiceItem = Schemas["InvoiceItemRead"];
 export type InvoicePayment = Schemas["InvoicePaymentRead"];
 export type InvoiceListResponse = Schemas["InvoiceListResponse"];
+export type InvoiceSummary = Schemas["InvoiceSummary"];
 
 export type Quotation = Schemas["QuotationRead"];
 export type QuotationDetail = Schemas["QuotationDetailRead"];

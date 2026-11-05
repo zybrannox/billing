@@ -1,9 +1,13 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 
+export type Permission = "invoice.create" | "invoice.edit" | "workspace.manage";
+
 export type User = {
   username: string;
   role: "admin" | "moderator" | "user";
+  // Admins come back from the server with all of them.
+  permissions?: string[];
 };
 
 type AppState = {

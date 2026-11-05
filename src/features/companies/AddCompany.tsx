@@ -1,3 +1,4 @@
+import type { z } from "zod";
 import { useState } from "react";
 import Alert from "@mui/material/Alert";
 import CustomForm from "../../ui/CustomForm";
@@ -5,27 +6,18 @@ import { addCompanyFields } from "./fields";
 import { useApiRequest } from "../../hooks/useApiRequest";
 import { useDialogStore } from "../../store/useDialogStore";
 import { addCompanySchema } from "./addCompany.schema";
+import { getErrorMessage } from "../../utils/apiError";
 
 interface AddCompanyProps {
   onSuccess?: () => void;
 }
-
-// FastAPI error bodies are either {detail: string} (HTTPException) or
-// {detail: [{msg, loc, ...}]} (pydantic validation) - normalize both to
-// a single displayable line rather than showing "[object Object]".
-const extractErrorMessage = (err: any): string => {
-  const detail = err?.detail ?? err?.message;
-  if (typeof detail === "string") return detail;
-  if (Array.isArray(detail) && detail[0]?.msg) return detail[0].msg;
-  return "Something went wrong while adding the company. Please try again.";
-};
 
 export default function AddCompany({ onSuccess }: AddCompanyProps) {
   const { sendRequest, loading } = useApiRequest();
   const { closeDialog } = useDialogStore();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleSubmit = async (formData: any) => {
+  const handleSubmit = async (formData: z.infer<typeof addCompanySchema>) => {
     setErrorMessage(null);
     const result = await sendRequest({
       endpoint: "/companies/",
@@ -39,7 +31,7 @@ export default function AddCompany({ onSuccess }: AddCompanyProps) {
       },
       onError: (err) => {
         console.error("Error adding company", err);
-        setErrorMessage(extractErrorMessage(err));
+        setErrorMessage(getErrorMessage(err, "Something went wrong while adding the company. Please try again."));
       },
     });
 

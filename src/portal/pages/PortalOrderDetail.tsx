@@ -11,7 +11,6 @@ interface OrderDetail {
   project_type: string;
   description: string | null;
   print_status: string;
-  priority: string;
   client_status: string;
   start_date: string | null;
   delivery_date: string | null;

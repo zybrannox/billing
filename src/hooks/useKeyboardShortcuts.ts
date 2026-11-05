@@ -38,6 +38,8 @@ export function useKeyboardShortcuts(
       // Don't hijack typing in a text field elsewhere on the page.
       const target = e.target as HTMLElement | null;
       if (target && ["INPUT", "TEXTAREA"].includes(target.tagName)) return;
+      // Enter on a focused button or link means that button, not the shortcut.
+      if (e.key === "Enter" && target && ["BUTTON", "A"].includes(target.tagName)) return;
 
       const handler = handlersRef.current[e.key];
       if (!handler) return;

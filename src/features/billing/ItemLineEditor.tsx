@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import {
   Box,
   Typography,
@@ -13,14 +14,17 @@ import CalculateRoundedIcon from "@mui/icons-material/CalculateRounded";
 import ImageRoundedIcon from "@mui/icons-material/ImageRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 
+import CopyButton from "../../ui/CopyButton";
 import TextField from "../../ui/TextField";
 import SearchSelect from "../../ui/SearchSelect";
 import {
   newRow,
+  copyRow,
   toNumber,
   sqFtOf,
   piecesOf,
   totalDisplayOf,
+  minimumChargeOf,
   isMeasured,
   isOthersType,
   OTHERS_ITEM_TYPE,
@@ -45,24 +49,75 @@ const colHeaderSx = {
   userSelect: "none" as const,
 };
 
-// Precise grid layout preventing column drift and layout breaks. Every
-// fixed column is sized for its actual content at the larger 44px/0.9rem
-// field size below (not just squeezed to the minimum a bare number input
-// needs) - Width/Height also carry the unit toggle (ft/in) as an end
-// adornment, and Rate/Total need room for real rupee amounts (e.g.
-// "₹99,999.00"), not just single-digit examples.
-const ITEM_ROW_GRID = "28px 170px minmax(180px, 1fr) 130px 130px 100px 80px 130px 140px 36px";
+// The grid always fits its box, with no sideways scrolling (which used to hide
+// the copy and delete buttons on most screens). All the columns fit on one line
+// when there's room; below that a row wraps. It responds to the grid's own width
+// rather than the screen's, since the dialogs around it vary.
+//
+// Width/Height also carry the unit toggle (ft/in) as an end adornment, and
+// Rate/Total need room for real rupee amounts (e.g. "₹99,999.00").
+const ONE_LINE_COLUMNS =
+  "20px minmax(130px, 1.1fr) minmax(120px, 1.5fr) 96px 96px 86px 58px 96px 112px 60px";
+const TWO_LINES = "@container (max-width: 979px)";
+const STACKED = "@container (max-width: 559px)";
+
+const rowLayoutSx = {
+  display: "grid",
+  columnGap: 1,
+  rowGap: 1,
+  alignItems: "center",
+  gridTemplateColumns: ONE_LINE_COLUMNS,
+  gridTemplateAreas: `"num type desc width height area pieces rate total actions"`,
+  [TWO_LINES]: {
+    alignItems: "end",
+    gridTemplateColumns: "20px repeat(6, minmax(0, 1fr)) 60px",
+    gridTemplateAreas: `
+      "num type type desc desc desc desc actions"
+      ". width height area pieces rate total total"`,
+  },
+  [STACKED]: {
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gridTemplateAreas: `
+      "num num actions"
+      "type type type"
+      "desc desc desc"
+      "width height pieces"
+      "area rate rate"
+      "total total total"`,
+  },
+};
+
+// One field of a row. Its label only shows once the row has wrapped, when the
+// fields no longer sit under the one-line column headers.
+function Cell({ area, label, align, children }: { area: string; label: string; align?: "right"; children: ReactNode }) {
+  return (
+    <Box sx={{ gridArea: area, minWidth: 0 }}>
+      <Typography
+        sx={{
+          ...colHeaderSx,
+          display: "none",
+          mb: 0.5,
+          [TWO_LINES]: { display: "block" },
+          ...(align ? { textAlign: align } : {}),
+        }}
+      >
+        {label}
+      </Typography>
+      {children}
+    </Box>
+  );
+}
 
 // Numeric text input constraints preventing clipping and arrow overlapping
 const numberFieldSx = {
   "& .MuiInputBase-root": {
-    px: 1,
+    px: 0.75,
     height: 44,
-    fontSize: "var(--fs-lg)",
+    fontSize: "var(--fs-md)",
   },
   "& input": {
     textAlign: "right" as const,
-    px: 0.5,
+    px: 0.25,
     py: 0.75,
   },
   "& input[type=number]": {
@@ -84,9 +139,9 @@ const numberFieldSx = {
 
 const textFieldSx = {
   "& .MuiInputBase-root": {
-    px: 1.25,
+    px: 1,
     height: 44,
-    fontSize: "var(--fs-lg)",
+    fontSize: "var(--fs-md)",
   },
   "& input": {
     py: 0.75,
@@ -143,11 +198,18 @@ export default function ItemLineEditor({ items, onChange, itemTypeOptions }: Ite
   // description alone - the description is often already meaningful, and
   // silently clobbering it just because a type was picked afterward would
   // throw that away.
-  const handleItemTypeChange = (key: string, value: string) => {
-    const match = itemTypeOptions.find((o) => o.value === value);
+  //
+  // Custom text the catalog doesn't know keeps whatever rate is already there:
+  // there's no catalog price to re-sync to, and it may well have been typed
+  // first. Text that only differs in case is treated as the catalog entry.
+  const handleItemTypeChange = (key: string, typed: string) => {
+    const match = itemTypeOptions.find((o) => o.value.toLowerCase() === typed.toLowerCase());
+    const value = match?.value ?? typed;
+    const isCustom = value !== "" && !match;
     updateRow(key, {
       itemType: value,
-      rate: match?.rate != null ? String(match.rate) : "",
+      minCharges: match?.min_charges ?? null,
+      ...(isCustom ? {} : { rate: match?.rate != null ? String(match.rate) : "" }),
       total: "",
       // An "Others" line has no dimensions - drop whatever was typed so a
       // stale width/height can't come back (and silently start counting
@@ -186,6 +248,11 @@ export default function ItemLineEditor({ items, onChange, itemTypeOptions }: Ite
 
   const addRow = () => onChange([...items, newRow()]);
 
+  // Right below the original, where the small change usually made next is
+  // easiest to see.
+  const duplicateRow = (key: string) =>
+    onChange(items.flatMap((r) => (r.key === key ? [r, copyRow(r)] : [r])));
+
   const removeRow = (key: string) =>
     onChange(items.length > 1 ? items.filter((r) => r.key !== key) : items);
 
@@ -194,19 +261,20 @@ export default function ItemLineEditor({ items, onChange, itemTypeOptions }: Ite
   return (
     <>
       <Paper elevation={0} sx={{ border: "1px solid var(--slate-200)", borderRadius: 3, overflow: "hidden", mb: 2 }}>
-        <Box sx={{ overflowX: "auto" }}>
-          <Box sx={{ minWidth: 1220 }}>
+        <Box sx={{ containerType: "inline-size" }}>
+          <Box>
             {/* Table Header */}
             <Box
               sx={{
                 display: "grid",
-                gridTemplateColumns: ITEM_ROW_GRID,
-                gap: 1.25,
+                gridTemplateColumns: ONE_LINE_COLUMNS,
+                columnGap: 1,
                 bgcolor: "var(--slate-50)",
                 borderBottom: "1px solid var(--slate-200)",
-                px: 2,
+                px: 1.5,
                 py: 1.5,
                 alignItems: "center",
+                [TWO_LINES]: { display: "none" },
               }}
             >
               <Typography sx={colHeaderSx}>#</Typography>
@@ -227,188 +295,221 @@ export default function ItemLineEditor({ items, onChange, itemTypeOptions }: Ite
                 <Box
                   key={row.key}
                   sx={{
-                    display: "grid",
-                    gridTemplateColumns: ITEM_ROW_GRID,
-                    gap: 1.25,
-                    px: 2,
+                    ...rowLayoutSx,
+                    px: 1.5,
                     py: 1.25,
-                    alignItems: "center",
                     borderTop: idx === 0 ? "none" : "1px solid var(--slate-100)",
                     bgcolor: idx % 2 === 0 ? "var(--white)" : "var(--slate-50)",
                   }}
                 >
-                  <Typography variant="body2" sx={{ color: "var(--slate-400)", fontWeight: 600, fontSize: "var(--fs-sm)" }}>
+                  <Typography variant="body2" sx={{ gridArea: "num", alignSelf: "center", color: "var(--slate-400)", fontWeight: 600, fontSize: "var(--fs-sm)" }}>
                     {idx + 1}
                   </Typography>
 
-                  <SearchSelect
-                    placeholder="Search type"
-                    options={typeChoices}
-                    value={row.itemType || undefined}
-                    onChange={(v) => handleItemTypeChange(row.key, (v as string) || "")}
-                  />
+                  <Cell area="type" label="Item Type">
+                    <SearchSelect
+                      placeholder="Search or type"
+                      freeSolo
+                      options={typeChoices}
+                      value={row.itemType || undefined}
+                      onChange={(v) => handleItemTypeChange(row.key, (v as string) || "")}
+                      sx={{ minWidth: 0, "& .MuiInputBase-root.MuiOutlinedInput-root": { minHeight: 44 } }}
+                    />
+                  </Cell>
 
-                  <TextField
-                    placeholder="Item or Banner details"
-                    value={row.description}
-                    onChange={(e) => updateRow(row.key, { description: e.target.value })}
-                    sx={textFieldSx}
-                    fullWidth
-                    slotProps={
-                      row.pixelWidth && row.pixelHeight
-                        ? {
-                            input: {
-                              endAdornment: (
-                                <InputAdornment position="end">
-                                  <Tooltip title={`Source image is ${row.pixelWidth} × ${row.pixelHeight}px — enter the real print size in the fields to the right`}>
-                                    <ImageRoundedIcon sx={{ fontSize: 16, color: "var(--slate-400)" }} />
-                                  </Tooltip>
-                                </InputAdornment>
-                              ),
-                            },
-                          }
-                        : undefined
-                    }
-                  />
-                  <TextField
-                    type="number"
-                    placeholder={isMeasured(row) ? "0" : "—"}
-                    value={row.width}
-                    onChange={(e) => updateRow(row.key, { width: e.target.value, total: "" })}
-                    disabled={!isMeasured(row)}
-                    sx={numberFieldSx}
-                    slotProps={{
-                      input: {
-                        endAdornment: isMeasured(row) ? (
-                          <InputAdornment position="end">
-                            <UnitSelect value={row.unit} onChange={(unit) => updateRow(row.key, { unit, total: "" })} />
-                          </InputAdornment>
-                        ) : undefined,
-                      },
-                    }}
-                  />
-
-                  <TextField
-                    type="number"
-                    placeholder={isMeasured(row) ? "0" : "—"}
-                    value={row.height}
-                    onChange={(e) => updateRow(row.key, { height: e.target.value, total: "" })}
-                    disabled={!isMeasured(row)}
-                    sx={numberFieldSx}
-                    slotProps={{
-                      input: {
-                        endAdornment: isMeasured(row) ? (
-                          <InputAdornment position="end">
-                            <UnitSelect value={row.unit} onChange={(unit) => updateRow(row.key, { unit, total: "" })} />
-                          </InputAdornment>
-                        ) : undefined,
-                      },
-                    }}
-                  />
-
-                  <Typography variant="body2" sx={{ fontWeight: 600, color: "var(--slate-700)", textAlign: "right", pr: 0.5, fontSize: "var(--fs-md)" }}>
-                    {isMeasured(row) ? (
-                      <>
-                        {sqFtOf(row)}{" "}
-                        <Typography component="span" sx={{ fontSize: "var(--fs-xs)", color: "var(--slate-500)", fontWeight: 500 }}>
-                          sq ft
-                        </Typography>
-                      </>
-                    ) : (
-                      <Typography component="span" sx={{ color: "var(--slate-400)" }}>
-                        —
-                      </Typography>
-                    )}
-                  </Typography>
-
-                  <TextField
-                    type="number"
-                    placeholder="1"
-                    value={row.pieces}
-                    onChange={(e) => updateRow(row.key, { pieces: e.target.value, total: "" })}
-                    sx={numberFieldSx}
-                    slotProps={{ htmlInput: { min: 1, step: 1 } }}
-                  />
-
-                  {row.total !== "" ? (
-                    <Tooltip title="Rate is hidden because Total was entered directly for this item - click to enter a rate instead">
-                      <Box
-                        onClick={() => updateRow(row.key, { total: "" })}
-                        sx={{
-                          height: 40,
-                          px: 1,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "flex-end",
-                          gap: 0.5,
-                          borderRadius: "8px",
-                          border: "1px dashed var(--slate-300)",
-                          bgcolor: "var(--slate-50)",
-                          color: "var(--slate-400)",
-                          cursor: "pointer",
-                          "&:hover": { borderColor: "var(--slate-400)", color: "var(--slate-500)", bgcolor: "var(--slate-100)" },
-                        }}
-                      >
-                        <VisibilityOffRoundedIcon sx={{ fontSize: 15 }} />
-                        <Typography sx={{ fontSize: "var(--fs-xs)", fontWeight: 600, fontStyle: "italic" }}>
-                          Hidden
-                        </Typography>
-                      </Box>
-                    </Tooltip>
-                  ) : (
+                  <Cell area="desc" label="Item Description">
+                    <TextField
+                      placeholder="Item or Banner details"
+                      value={row.description}
+                      onChange={(e) => updateRow(row.key, { description: e.target.value })}
+                      sx={textFieldSx}
+                      fullWidth
+                      slotProps={
+                        row.pixelWidth && row.pixelHeight
+                          ? {
+                              input: {
+                                endAdornment: (
+                                  <InputAdornment position="end">
+                                    <Tooltip title={`Source image is ${row.pixelWidth} × ${row.pixelHeight}px — enter the real print size in the fields to the right`}>
+                                      <ImageRoundedIcon sx={{ fontSize: 16, color: "var(--slate-400)" }} />
+                                    </Tooltip>
+                                  </InputAdornment>
+                                ),
+                              },
+                            }
+                          : undefined
+                      }
+                    />
+                  </Cell>
+                  <Cell area="width" label="Width" align="right">
                     <TextField
                       type="number"
-                      placeholder="0.00"
-                      value={row.rate}
-                      onChange={(e) => updateRow(row.key, { rate: e.target.value, total: "" })}
+                      placeholder={isMeasured(row) ? "0" : "—"}
+                      value={row.width}
+                      onChange={(e) => updateRow(row.key, { width: e.target.value, total: "" })}
+                      disabled={!isMeasured(row)}
                       sx={numberFieldSx}
                       slotProps={{
                         input: {
-                          startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                          endAdornment: isMeasured(row) ? (
+                            <InputAdornment position="end">
+                              <UnitSelect value={row.unit} onChange={(unit) => updateRow(row.key, { unit, total: "" })} />
+                            </InputAdornment>
+                          ) : undefined,
                         },
                       }}
                     />
-                  )}
+                  </Cell>
 
-                  <Tooltip title={isMeasured(row) && sqFtOf(row) <= 0 ? "Enter Width and Height first" : ""}>
-                    <span>
+                  <Cell area="height" label="Height" align="right">
+                    <TextField
+                      type="number"
+                      placeholder={isMeasured(row) ? "0" : "—"}
+                      value={row.height}
+                      onChange={(e) => updateRow(row.key, { height: e.target.value, total: "" })}
+                      disabled={!isMeasured(row)}
+                      sx={numberFieldSx}
+                      slotProps={{
+                        input: {
+                          endAdornment: isMeasured(row) ? (
+                            <InputAdornment position="end">
+                              <UnitSelect value={row.unit} onChange={(unit) => updateRow(row.key, { unit, total: "" })} />
+                            </InputAdornment>
+                          ) : undefined,
+                        },
+                      }}
+                    />
+                  </Cell>
+
+                  <Cell area="area" label="Area" align="right">
+                    <Typography variant="body2" sx={{ fontWeight: 600, color: "var(--slate-700)", pr: 0.5, fontSize: "var(--fs-sm)", minHeight: 44, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 0.5, whiteSpace: "nowrap" }}>
+                      {isMeasured(row) ? (
+                        <>
+                          {sqFtOf(row)}{" "}
+                          <Typography component="span" sx={{ fontSize: "var(--fs-xs)", color: "var(--slate-500)", fontWeight: 500 }}>
+                            sq ft
+                          </Typography>
+                        </>
+                      ) : (
+                        <Typography component="span" sx={{ color: "var(--slate-400)" }}>
+                          —
+                        </Typography>
+                      )}
+                    </Typography>
+                  </Cell>
+
+                  <Cell area="pieces" label="Pieces" align="right">
+                    <TextField
+                      type="number"
+                      placeholder="1"
+                      value={row.pieces}
+                      onChange={(e) => updateRow(row.key, { pieces: e.target.value, total: "" })}
+                      sx={numberFieldSx}
+                      slotProps={{ htmlInput: { min: 1, step: 1 } }}
+                    />
+                  </Cell>
+
+                  <Cell area="rate" label="Rate" align="right">
+                    {row.total !== "" ? (
+                      <Tooltip title="Rate is hidden because Total was entered directly for this item - click to enter a rate instead">
+                        <Box
+                          onClick={() => updateRow(row.key, { total: "" })}
+                          sx={{
+                            height: 40,
+                            px: 1,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "flex-end",
+                            gap: 0.5,
+                            borderRadius: "8px",
+                            border: "1px dashed var(--slate-300)",
+                            bgcolor: "var(--slate-50)",
+                            color: "var(--slate-400)",
+                            cursor: "pointer",
+                            "&:hover": { borderColor: "var(--slate-400)", color: "var(--slate-500)", bgcolor: "var(--slate-100)" },
+                          }}
+                        >
+                          <VisibilityOffRoundedIcon sx={{ fontSize: 15 }} />
+                          <Typography sx={{ fontSize: "var(--fs-xs)", fontWeight: 600, fontStyle: "italic" }}>
+                            Hidden
+                          </Typography>
+                        </Box>
+                      </Tooltip>
+                    ) : (
                       <TextField
                         type="number"
                         placeholder="0.00"
-                        value={totalDisplayOf(row)}
-                        onChange={(e) => handleTotalChange(row.key, e.target.value)}
-                        disabled={isMeasured(row) && sqFtOf(row) <= 0}
-                        sx={{
-                          ...numberFieldSx,
-                          "& .MuiInputBase-input.Mui-disabled": {
-                            WebkitTextFillColor: "var(--slate-400)",
-                          },
-                        }}
+                        value={row.rate}
+                        onChange={(e) => updateRow(row.key, { rate: e.target.value, total: "" })}
+                        sx={numberFieldSx}
                         slotProps={{
                           input: {
                             startAdornment: <InputAdornment position="start">₹</InputAdornment>,
                           },
                         }}
                       />
-                    </span>
-                  </Tooltip>
+                    )}
+                  </Cell>
 
-                  <Tooltip title={items.length === 1 ? "Minimum 1 item required" : "Remove item"}>
-                    <span>
-                      <IconButton
-                        size="small"
-                        onClick={() => removeRow(row.key)}
-                        disabled={items.length === 1}
-                        sx={{
-                          color: "var(--slate-400)",
-                          "&:hover": { color: "var(--red-500)", bgcolor: "var(--red-50)" },
-                          "&.Mui-disabled": { opacity: 0.3 },
-                        }}
-                      >
-                        <DeleteRoundedIcon fontSize="small" />
-                      </IconButton>
-                    </span>
-                  </Tooltip>
+                  <Cell area="total" label="Total Amount" align="right">
+                    <Tooltip
+                      title={
+                        isMeasured(row) && sqFtOf(row) <= 0
+                          ? "Enter Width and Height first"
+                          : minimumChargeOf(row) !== null
+                            ? "Minimum charge for this size. Type a different total to change it."
+                            : ""
+                      }
+                    >
+                      <span>
+                        <TextField
+                          type="number"
+                          placeholder="0.00"
+                          value={totalDisplayOf(row)}
+                          onChange={(e) => handleTotalChange(row.key, e.target.value)}
+                          disabled={isMeasured(row) && sqFtOf(row) <= 0}
+                          sx={{
+                            ...numberFieldSx,
+                            "& .MuiInputBase-input.Mui-disabled": {
+                              WebkitTextFillColor: "var(--slate-400)",
+                            },
+                            ...(minimumChargeOf(row) !== null
+                              ? {
+                                  "& .MuiInputBase-root": { ...numberFieldSx["& .MuiInputBase-root"], bgcolor: "var(--blue-50)" },
+                                  "& .MuiInputAdornment-root .MuiTypography-root": { fontSize: "var(--fs-2xs)", fontWeight: 700, color: "var(--blue-700)" },
+                                }
+                              : {}),
+                          }}
+                          slotProps={{
+                            htmlInput: minimumChargeOf(row) !== null ? { "aria-label": "Total amount, minimum charge applied" } : undefined,
+                            input: {
+                              startAdornment: <InputAdornment position="start">{minimumChargeOf(row) !== null ? "MIN" : "₹"}</InputAdornment>,
+                            },
+                          }}
+                        />
+                      </span>
+                    </Tooltip>
+                  </Cell>
+
+                  <Box sx={{ gridArea: "actions", alignSelf: "center", display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
+                    <CopyButton label="Copy item" onClick={() => duplicateRow(row.key)} />
+                    <Tooltip title={items.length === 1 ? "Minimum 1 item required" : "Remove item"}>
+                      <span>
+                        <IconButton
+                          size="small"
+                          onClick={() => removeRow(row.key)}
+                          disabled={items.length === 1}
+                          sx={{
+                            color: "var(--slate-400)",
+                            "&:hover": { color: "var(--red-500)", bgcolor: "var(--red-50)" },
+                            "&.Mui-disabled": { opacity: 0.3 },
+                          }}
+                        >
+                          <DeleteRoundedIcon fontSize="small" />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                  </Box>
                 </Box>
               ))}
             </Box>
@@ -417,7 +518,7 @@ export default function ItemLineEditor({ items, onChange, itemTypeOptions }: Ite
       </Paper>
 
       {/* Row Control & Quick Calculations */}
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
+      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, justifyContent: "space-between", alignItems: "center", mb: 3 }}>
         <MuiButton
           size="medium"
           startIcon={<AddRoundedIcon />}

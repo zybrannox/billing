@@ -26,6 +26,11 @@ export function formatFileSize(bytes: number) {
   return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
 }
 
+// "12.4 MB of 1.0 GB", or just the amount when the total isn't known yet.
+export function formatTransferred(loaded: number, total: number | null) {
+  return total ? `${formatFileSize(loaded)} of ${formatFileSize(total)}` : formatFileSize(loaded);
+}
+
 export const getRowClassName = (params: GridRowClassNameParams) => {
   // Pinned takes precedence when both apply - it's a deliberate, less
   // common action, so it should stay visually obvious even on an

@@ -3,6 +3,7 @@ import Alert from "@mui/material/Alert";
 import CustomForm, { type FieldDefinition } from "../../ui/CustomForm";
 import { useListOptionsStore } from "../../store/useListOptionsStore";
 import { addListOptionSchema, addPricedListOptionSchema } from "./addListOption.schema";
+import { getErrorMessage } from "../../utils/apiError";
 
 interface AddListOptionProps {
   category: string;
@@ -12,17 +13,6 @@ interface AddListOptionProps {
   hasRate?: boolean;
   onSuccess?: () => void;
 }
-
-// FastAPI error bodies are either {detail: string} (HTTPException, e.g. the
-// duplicate-value 400) or {detail: [{msg, loc, ...}]} (pydantic validation)
-// - normalize both to a single displayable line rather than showing
-// "[object Object]" (same helper as AddCustomer.tsx).
-const extractErrorMessage = (err: any): string => {
-  const detail = err?.detail ?? err?.message;
-  if (typeof detail === "string") return detail;
-  if (Array.isArray(detail) && detail[0]?.msg) return detail[0].msg;
-  return "Something went wrong while adding this option. Please try again.";
-};
 
 export default function AddListOption({ category, label, hasRate = false, onSuccess }: AddListOptionProps) {
   const addOption = useListOptionsStore((s) => s.addOption);
@@ -53,15 +43,15 @@ export default function AddListOption({ category, label, hasRate = false, onSucc
       : []),
   ];
 
-  const handleSubmit = async (formData: any) => {
+  const handleSubmit = async (formData: { value: string; rate?: number }) => {
     setErrorMessage(null);
     setLoading(true);
     try {
       await addOption(category, formData.value, hasRate ? Number(formData.rate) : undefined);
       onSuccess?.();
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error adding option", err);
-      setErrorMessage(extractErrorMessage(err?.response?.data || err));
+      setErrorMessage(getErrorMessage(err, "Something went wrong while adding this option. Please try again."));
     } finally {
       setLoading(false);
     }

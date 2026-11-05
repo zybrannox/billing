@@ -7,30 +7,23 @@ import {
   Alert,
   Paper,
   Divider,
-  InputAdornment,
 } from "@mui/material";
 import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
-import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
 import FolderOpenRoundedIcon from "@mui/icons-material/FolderOpenRounded";
 import EventRoundedIcon from "@mui/icons-material/EventRounded";
-import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
-import DiscountRoundedIcon from "@mui/icons-material/DiscountRounded";
 
 import { apiService } from "../../api/service";
 import { formatDate } from "../../format/date";
-import TextField from "../../ui/TextField";
 import DateTimePicker from "../../ui/DateTimePicker";
-import Dropdown from "../../ui/Dropdown";
 import SearchSelect from "../../ui/SearchSelect";
 import Button from "../../ui/Button";
-import AsyncSearchSelect from "../../ui/AsyncSearchSelect";
 import ItemLineEditor from "./ItemLineEditor";
+import { noteToLines } from "../notes/noteLines";
 import {
   newRow,
-  totalOf,
   toNumber,
-  checkRow,
-  invalidRowMessage,
+  collectRows,
+  subtotalOf,
   rowToItemPayload,
   type ItemRow,
   type ItemTypeOption,
@@ -43,9 +36,15 @@ import {
   InvoicePanelLabel,
   InvoiceTotalCard,
 } from "../../ui/InvoiceDocument";
-import { PAYMENT_METHODS } from "../../domain/paymentMethods";
 import { messages } from "../../messages";
 import type { InvoicePreview, InvoiceProject as ProjectSummary, InvoiceProjectFile as ProjectFileSummary } from "../../api/types";
+import { getErrorMessage } from "../../utils/apiError";
+import AdvancePaymentFields from "./generateInvoice/AdvancePaymentFields";
+import { BilledToPicker, BilledToSummary } from "./generateInvoice/BilledTo";
+import DiscountField from "./generateInvoice/DiscountField";
+import ExistingProjectPicker from "./generateInvoice/ExistingProjectPicker";
+import InvoiceModeToggle, { type InvoiceMode } from "./generateInvoice/InvoiceModeToggle";
+import { checkInvoiceAmounts } from "./generateInvoice/invoiceAmounts";
 
 const stripExtension = (name: string) => name.replace(/\.[^./\\]+$/, "");
 
@@ -64,67 +63,11 @@ const buildInitialRows = (project: ProjectSummary): ItemRow[] => {
   );
 };
 
-const extractErrorMessage = (err: any): string => {
-  const detail = err?.detail ?? err?.message;
-  if (typeof detail === "string") return detail;
-  if (Array.isArray(detail) && detail[0]?.msg) return detail[0].msg;
-  return "Something went wrong while generating the invoice. Please try again.";
-};
-
-const numberFieldSx = {
-  "& .MuiInputBase-root": {
-    px: 1,
-    height: 40,
-    fontSize: "var(--fs-md)",
-  },
-  "& input": {
-    textAlign: "right" as const,
-    px: 0.5,
-    py: 0.75,
-  },
-  "& input[type=number]": {
-    MozAppearance: "textfield" as const,
-  },
-  "& input[type=number]::-webkit-outer-spin-button, & input[type=number]::-webkit-inner-spin-button": {
-    WebkitAppearance: "none",
-    margin: 0,
-  },
-  "& .MuiInputAdornment-root": {
-    m: 0,
-    "& .MuiTypography-root": {
-      fontSize: "var(--fs-xs)",
-      color: "var(--slate-500)",
-      fontWeight: 600,
-    },
-  },
-};
-
-const textFieldSx = {
-  "& .MuiInputBase-root": {
-    px: 1.25,
-    height: 40,
-    fontSize: "var(--fs-md)",
-  },
-  "& input": {
-    py: 0.75,
-  },
-};
-
-interface ProjectOption {
-  id: number;
-  project_type: string;
-  customer_name: string | null;
-  assigned_to: string;
-}
-
-interface CustomerOption {
-  id: number;
-  first_name: string;
-  last_name: string;
-}
-
 export default function GenerateInvoice() {
   const { editingId, closeDialog, openDialog } = useDialogStore();
+  // Read once: the store clears it as this dialog closes, while a slow submit may
+  // still need it.
+  const [billingNote] = useState(() => useDialogStore.getState().billingNote);
   const markDesignCompleted = useProjectStore((s) => s.markDesignCompleted);
   const fetchActiveOptions = useListOptionsStore((s) => s.fetchActiveOptions);
   const projectTypeOptions = useListOptionsStore((s) => s.activeByCategory["project_type"]);
@@ -143,7 +86,7 @@ export default function GenerateInvoice() {
   //    fields below). The project and invoice are created together,
   //    server-side, in one request (see app/invoices/repository.py's
   //    create_invoice handling `new_project`).
-  const [mode, setMode] = useState<"new" | "existing">("new");
+  const [mode, setMode] = useState<InvoiceMode>("new");
   const [resolvedProjectId, setResolvedProjectId] = useState<number | null>(null);
   const projectId = editingId ?? resolvedProjectId;
   const isNewJob = !projectId && mode === "new";
@@ -156,7 +99,10 @@ export default function GenerateInvoice() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [rowError, setRowError] = useState<string | null>(null);
   const [dueDate, setDueDate] = useState<string | null>(null);
-  const [items, setItems] = useState<ItemRow[]>([newRow()]);
+  const [items, setItems] = useState<ItemRow[]>(() => {
+    const lines = billingNote ? noteToLines(billingNote.text) : [];
+    return lines.length > 0 ? lines.map((line) => newRow(line)) : [newRow()];
+  });
   const [advanceAmount, setAdvanceAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
   const [paymentReference, setPaymentReference] = useState("");
@@ -164,7 +110,6 @@ export default function GenerateInvoice() {
   const [discountAmount, setDiscountAmount] = useState("");
   const [discountError, setDiscountError] = useState<string | null>(null);
   const [itemTypeOptions, setItemTypeOptions] = useState<ItemTypeOption[]>([]);
-  const [selectedExistingId, setSelectedExistingId] = useState<number | undefined>(undefined);
 
   // New Job fields - only read/used while isNewJob. Just who it's billed
   // to and what it's for, like a real invoice - no work-tracking fields
@@ -174,7 +119,7 @@ export default function GenerateInvoice() {
   // app/invoices/repository.py's create_invoice) since this project exists
   // only to hang the invoice off of.
   const [newProjectType, setNewProjectType] = useState("");
-  const [newCustomerId, setNewCustomerId] = useState<number | undefined>(undefined);
+  const [newCustomerId, setNewCustomerId] = useState<number | undefined>(billingNote?.customerId);
   const [newJobError, setNewJobError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -218,7 +163,7 @@ export default function GenerateInvoice() {
   }, [projectId]);
 
   const grandTotal = useMemo(
-    () => Math.round(items.reduce((sum, r) => sum + totalOf(r), 0) * 100) / 100,
+    () => subtotalOf(items),
     [items]
   );
 
@@ -229,47 +174,25 @@ export default function GenerateInvoice() {
     setDiscountError(null);
     setNewJobError(null);
 
-    if (isNewJob && (!newProjectType || !newCustomerId)) {
-      setNewJobError("Pick a job type and a customer before generating.");
+    if (isNewJob && !newCustomerId) {
+      setNewJobError("Pick a customer before generating.");
       return;
     }
 
-    const usable: ItemRow[] = [];
-    for (const row of items) {
-      const check = checkRow(row);
-      if (check === "empty") continue;
-      if (check === "invalid") {
-        setRowError(invalidRowMessage(row));
-        return;
-      }
-      usable.push(row);
-    }
-
-    if (usable.length === 0) {
-      setRowError(messages.errors.addAtLeastOneItem);
+    const { rows: usable, error: rowProblem } = collectRows(items);
+    if (rowProblem) {
+      setRowError(rowProblem);
       return;
     }
 
-    const subtotal = Math.round(usable.reduce((sum, r) => sum + totalOf(r), 0) * 100) / 100;
-
+    const amountProblems = checkInvoiceAmounts({ subtotal: subtotalOf(usable), discountAmount, advanceAmount, paymentMethod });
+    if (amountProblems.discountError || amountProblems.advanceError) {
+      setDiscountError(amountProblems.discountError ?? null);
+      setAdvanceError(amountProblems.advanceError ?? null);
+      return;
+    }
     const discount = toNumber(discountAmount);
-    if (discountAmount.trim() !== "" && discount > subtotal) {
-      setDiscountError("Discount can't be more than the invoice subtotal.");
-      return;
-    }
-    const totalAfterDiscount = Math.round((subtotal - discount) * 100) / 100;
-
     const advance = toNumber(advanceAmount);
-    if (advanceAmount.trim() !== "" && advance > 0) {
-      if (!paymentMethod) {
-        setAdvanceError("Pick a payment method for the advance received.");
-        return;
-      }
-      if (advance > totalAfterDiscount) {
-        setAdvanceError("Advance received can't be more than the invoice total.");
-        return;
-      }
-    }
 
     setSubmitting(true);
     try {
@@ -277,11 +200,12 @@ export default function GenerateInvoice() {
         ...(isNewJob
           ? {
               new_project: {
-                project_type: newProjectType,
+                project_type: newProjectType || undefined,
                 customer_id: newCustomerId,
               },
             }
           : { project_id: Number(projectId) }),
+        note_id: billingNote?.id,
         due_date: dueDate || undefined,
         discount_amount: discount > 0 ? discount : undefined,
         advance_amount: advance > 0 ? advance : undefined,
@@ -316,9 +240,9 @@ export default function GenerateInvoice() {
 
       closeDialog();
       openDialog("viewInvoice", invoice.id, "view");
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error generating invoice", err);
-      setSubmitError(extractErrorMessage(err?.response?.data || err));
+      setSubmitError(getErrorMessage(err, "Something went wrong while generating the invoice. Please try again."));
     } finally {
       setSubmitting(false);
     }
@@ -328,88 +252,10 @@ export default function GenerateInvoice() {
   // project is settled on yet (not reachable at all once opened via a
   // specific project's own row action, since editingId already answers
   // this question).
-  const modeToggle = !editingId && (
-    <Box sx={{ display: "flex", bgcolor: "var(--slate-100)", borderRadius: 999, p: 0.5, gap: 0.5, flexShrink: 0 }}>
-      {(["new", "existing"] as const).map((m) => {
-        const active = m === mode;
-        return (
-          <Box
-            key={m}
-            component="button"
-            type="button"
-            onClick={() => setMode(m)}
-            sx={{
-              border: "none",
-              px: 2,
-              py: 0.75,
-              borderRadius: 999,
-              cursor: "pointer",
-              fontSize: "var(--fs-sm)",
-              fontWeight: 700,
-              fontFamily: "inherit",
-              color: active ? "var(--white)" : "var(--slate-500)",
-              bgcolor: active ? "var(--slate-900)" : "transparent",
-              transition: "all 0.15s ease",
-              "&:hover": { color: active ? "var(--white)" : "var(--slate-900)" },
-            }}
-          >
-            {m === "new" ? "New Job" : "Existing Project"}
-          </Box>
-        );
-      })}
-    </Box>
-  );
+  const modeToggle = !editingId && <InvoiceModeToggle mode={mode} onChange={setMode} />;
 
   if (showExistingPicker) {
-    return (
-      <Box sx={{ maxWidth: 480, mx: "auto", p: { xs: 2, sm: 3 } }}>
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1.5, mb: 3, flexWrap: "wrap" }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-            <Box sx={{ p: 1, bgcolor: "var(--blue-50)", borderRadius: 2, color: "var(--blue-600)", display: "flex" }}>
-              <ReceiptLongRoundedIcon fontSize="small" />
-            </Box>
-            <Box>
-              <Typography sx={{ fontWeight: 700, color: "var(--slate-800)" }}>
-                Create an Invoice
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Search for the project you want to invoice
-              </Typography>
-            </Box>
-          </Box>
-          {modeToggle}
-        </Box>
-
-        <AsyncSearchSelect
-          label="Project"
-          placeholder="Search by project type, customer, assignee..."
-          endpoint="/projects"
-          extraParams={{ page_size: 20 }}
-          getOptionLabel={(p: ProjectOption) =>
-            `${p.project_type}${p.customer_name ? ` — ${p.customer_name}` : ""} (${p.assigned_to})`
-          }
-          getOptionValue={(p: ProjectOption) => p.id}
-          value={selectedExistingId}
-          onChange={(v) => setSelectedExistingId(v as number | undefined)}
-        />
-
-        <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mt: 3, pt: 2, borderTop: "1px solid var(--slate-200)" }}>
-          <MuiButton
-            onClick={closeDialog}
-            sx={{ color: "var(--slate-500)", textTransform: "none", fontWeight: 600, px: 3, "&:hover": { bgcolor: "var(--slate-100)" } }}
-          >
-            Cancel
-          </MuiButton>
-          <Button
-            onClick={() => selectedExistingId && setResolvedProjectId(selectedExistingId)}
-            disabled={!selectedExistingId}
-            variant="contained"
-          >
-            Continue
-          </Button>
-        </Box>
-      </Box>
-    );
+    return <ExistingProjectPicker modeToggle={modeToggle} onCancel={closeDialog} onContinue={setResolvedProjectId} />;
   }
 
   if (projectId && loading) {
@@ -438,9 +284,6 @@ export default function GenerateInvoice() {
 
   const project = preview?.project;
   const customer = preview?.customer;
-  const customerName = customer
-    ? `${customer.first_name} ${customer.last_name}`
-    : "Unassigned Customer";
 
   return (
     // width: "100%" + minWidth: 0 - this is a flex item of the
@@ -448,10 +291,8 @@ export default function GenerateInvoice() {
     // and a flex item with auto horizontal margins (the centering trick
     // below) opts out of the default cross-axis stretch - without an
     // explicit width it shrink-to-fits its own content instead of
-    // filling the dialog, so the line-item table's minWidth: 960 (see
-    // ItemLineEditor.tsx) forces this box - and the dialog around it -
-    // wider than the viewport instead of ever reaching ItemLineEditor's
-    // own horizontal scrollbar.
+    // filling the dialog, and ItemLineEditor's layout responds to the width
+    // it's given (see its container queries).
     <Box sx={{ width: "100%", maxWidth: 1280, minWidth: 0, margin: "0 auto", p: { xs: 1.5, sm: 2.5 } }}>
       {/* Header Banner */}
       <Paper
@@ -502,47 +343,9 @@ export default function GenerateInvoice() {
       >
         <InvoiceMetaPanel>
           {isNewJob ? (
-            <Box sx={{ display: "flex", gap: 1.5, alignItems: "flex-start" }}>
-              <Box sx={{ p: 1, bgcolor: "var(--slate-100)", borderRadius: 1.5, color: "var(--slate-600)", mt: 0.5 }}>
-                <PersonRoundedIcon fontSize="small" />
-              </Box>
-              <Box sx={{ flex: 1 }}>
-                <InvoicePanelLabel>{messages.fields.billedTo}</InvoicePanelLabel>
-                <Box sx={{ mt: 0.75 }}>
-                  <AsyncSearchSelect
-                    placeholder={messages.placeholders.searchCustomers}
-                    endpoint="/customers"
-                    extraParams={{ limit: 20, sort: "most_used" }}
-                    getOptionLabel={(c: CustomerOption) => `${c.first_name} ${c.last_name}`}
-                    getOptionValue={(c: CustomerOption) => c.id}
-                    value={newCustomerId}
-                    onChange={(v) => setNewCustomerId(v as number | undefined)}
-                  />
-                </Box>
-              </Box>
-            </Box>
+            <BilledToPicker value={newCustomerId} onChange={setNewCustomerId} />
           ) : (
-            <Box sx={{ display: "flex", gap: 1.5, alignItems: "flex-start" }}>
-              <Box sx={{ p: 1, bgcolor: "var(--slate-100)", borderRadius: 1.5, color: "var(--slate-600)", mt: 0.5 }}>
-                <PersonRoundedIcon fontSize="small" />
-              </Box>
-              <Box>
-                <InvoicePanelLabel>{messages.fields.billedTo}</InvoicePanelLabel>
-                <Typography sx={{ fontWeight: 700, color: "var(--slate-900)", fontSize: "var(--fs-xl)" }}>
-                  {customerName}
-                </Typography>
-                {customer && (
-                  <Box sx={{ mt: 0.25 }}>
-                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: "var(--fs-md)", lineHeight: 1.4 }}>
-                      {customer.email}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: "var(--fs-md)", lineHeight: 1.4 }}>
-                      {customer.contact_number}
-                    </Typography>
-                  </Box>
-                )}
-              </Box>
-            </Box>
+            <BilledToSummary customer={customer} />
           )}
 
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, alignItems: { xs: "flex-start", sm: "flex-end" } }}>
@@ -565,7 +368,7 @@ export default function GenerateInvoice() {
         {isNewJob ? (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <Box sx={{ maxWidth: 320 }}>
-              <InvoicePanelLabel>Job Type</InvoicePanelLabel>
+              <InvoicePanelLabel>Job Type (optional)</InvoicePanelLabel>
               <Box sx={{ mt: 0.5 }}>
                 <SearchSelect
                   placeholder="Search job type, e.g. Flex, Name Board..."
@@ -604,49 +407,21 @@ export default function GenerateInvoice() {
         <Divider sx={{ my: 2, borderColor: "var(--slate-100)" }} />
 
         {/* Advance Payment Controls */}
-        <Box sx={{ display: "flex", gap: 1.5, alignItems: "flex-start" }}>
-          <Box sx={{ p: 1, bgcolor: "var(--slate-100)", borderRadius: 1.5, color: "var(--slate-600)", mt: 0.5 }}>
-            <PaymentsRoundedIcon fontSize="small" />
-          </Box>
-          <Box sx={{ flex: 1 }}>
-            <InvoicePanelLabel>Advance Payment (optional)</InvoicePanelLabel>
-            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5, mt: 1 }}>
-              <Box sx={{ width: 140 }}>
-                <TextField
-                  type="number"
-                  placeholder="0.00"
-                  value={advanceAmount}
-                  onChange={(e) => setAdvanceAmount(e.target.value)}
-                  sx={numberFieldSx}
-                  slotProps={{
-                    input: {
-                      startAdornment: (
-                        <InputAdornment position="start">₹</InputAdornment>
-                      ),
-                    },
-                  }}
-                />
-              </Box>
-              <Box sx={{ width: 180 }}>
-                <Dropdown
-                  placeholder="Payment method"
-                  options={PAYMENT_METHODS}
-                  value={paymentMethod || undefined}
-                  onChange={(v) => setPaymentMethod((v as string) || "")}
-                />
-              </Box>
-              <Box sx={{ flex: 1, minWidth: 200 }}>
-                <TextField
-                  placeholder="Reference / note (optional)"
-                  value={paymentReference}
-                  onChange={(e) => setPaymentReference(e.target.value)}
-                  sx={textFieldSx}
-                />
-              </Box>
-            </Box>
-          </Box>
-        </Box>
+        <AdvancePaymentFields
+          amount={advanceAmount}
+          method={paymentMethod}
+          reference={paymentReference}
+          onAmountChange={setAdvanceAmount}
+          onMethodChange={setPaymentMethod}
+          onReferenceChange={setPaymentReference}
+        />
       </Paper>
+
+      {billingNote && (
+        <Alert severity="info" sx={{ mb: 2, borderRadius: 2 }}>
+          Started from your note: each line of it is a row below. Add the sizes and rates, then create the invoice.
+        </Alert>
+      )}
 
       {/* Dynamic Line Items Section - shared with GenerateQuotation.tsx,
           see features/billing/ItemLineEditor.tsx */}
@@ -678,43 +453,7 @@ export default function GenerateInvoice() {
       )}
 
       {/* Discount Sub-Panel */}
-      <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
-        <Paper
-          elevation={0}
-          sx={{
-            p: 1.5,
-            borderRadius: 2,
-            bgcolor: "var(--slate-50)",
-            border: "1px solid var(--slate-200)",
-            display: "flex",
-            alignItems: "center",
-            gap: 2,
-          }}
-        >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1, color: "var(--slate-600)" }}>
-            <DiscountRoundedIcon fontSize="small" />
-            <Typography variant="body2" sx={{ fontWeight: 600 }}>
-              {messages.fields.discountAmount}
-            </Typography>
-          </Box>
-          <Box sx={{ width: 140 }}>
-            <TextField
-              type="number"
-              placeholder="0.00"
-              value={discountAmount}
-              onChange={(e) => setDiscountAmount(e.target.value)}
-              sx={numberFieldSx}
-              slotProps={{
-                input: {
-                  startAdornment: (
-                    <InputAdornment position="start">₹</InputAdornment>
-                  ),
-                },
-              }}
-            />
-          </Box>
-        </Paper>
-      </Box>
+      <DiscountField value={discountAmount} onChange={setDiscountAmount} />
 
       {/* Invoice Grand Total Summary Card */}
       <Box sx={{ mb: 4 }}>

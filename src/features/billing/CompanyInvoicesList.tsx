@@ -8,17 +8,16 @@ import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 
-import { apiService } from "../../api/service";
 import { formatDateTime } from "../../format/date";
 import { getSemanticColor } from "../../utils/colors";
 import { useDialogStore } from "../../store/useDialogStore";
 import { useConfirmDialogStore } from "../../hooks/useconfirmDialogStore";
-import { useInvoiceStore } from "./useInvoiceStore";
+import { useInvoiceActions } from "./useInvoiceActions";
 import { shareInvoiceToWhatsApp } from "./shareInvoiceToWhatsApp";
 import Chip from "../../ui/Chip";
 import { semanticChipSx } from "../../ui/chipStyles";
 import CrudActions from "../../ui/Actions";
-import RecordPaymentDialog, { type RecordPaymentTarget } from "./RecordPaymentDialog";
+import RecordPaymentDialog from "./RecordPaymentDialog";
 import { formatRupeesWhole as money } from "../../format/money";
 import { messages } from "../../messages";
 import ListState from "../../ui/ListState";
@@ -43,9 +42,7 @@ export default function CompanyInvoicesList({
   const navigate = useNavigate();
   const { openDialog } = useDialogStore();
   const { showDialog } = useConfirmDialogStore();
-  const { updateInvoice } = useInvoiceStore();
   const pageSize = mode === "peek" ? 10 : 20;
-  const [paymentTarget, setPaymentTarget] = useState<RecordPaymentTarget | null>(null);
   const [page, setPage] = useState(1);
 
   const query = useInvoiceList({ company_id: companyId, page, page_size: pageSize });
@@ -55,42 +52,7 @@ export default function CompanyInvoicesList({
   // After an action on a row: refetch (see queries.ts) instead of patching local state.
   const load = useInvalidateBilling();
 
-  // Same dedicated PATCH /invoices/{id}/mark-paid flow as
-  // CustomerInvoicesList.tsx/CustomerProfile.tsx - see those files' own
-  // comments for why this can't be the generic updateInvoice({status:
-  // "paid"}) call. Company-linked invoices had no way to be marked paid or
-  // cancelled from any UI surface until this fix.
-  const handleMarkPaid = (invoiceId: number) => {
-    showDialog({
-      title: "Mark Invoice as Paid",
-      description: "This records the invoice as paid in full. How was it paid?",
-      confirmText: messages.actions.invoice.markPaid,
-      paymentMethodRequired: true,
-      onConfirm: async (paymentMethod) => {
-        await apiService.patch(`/invoices/${invoiceId}/mark-paid`, {
-          payment_method: paymentMethod,
-        });
-        load();
-      },
-    });
-  };
-
-  // Cancelling is final (an invoice can't leave "cancelled"), so it's
-  // confirmed first. A failure shows inside the dialog (see
-  // useConfirmDialogStore) and leaves it open to retry.
-  const handleCancel = (invoiceId: number, invoiceNumber: string) => {
-    showDialog({
-      title: "Cancel this invoice?",
-      description: `${invoiceNumber} will be marked as cancelled. This can't be undone.`,
-      confirmText: messages.actions.invoice.cancel,
-      cancelText: "Keep Invoice",
-      isDestructive: true,
-      onConfirm: async () => {
-        await updateInvoice(invoiceId, { status: "cancelled" });
-        load();
-      },
-    });
-  };
+  const { markPaid: handleMarkPaid, cancel: handleCancel, paymentTarget, setPaymentTarget } = useInvoiceActions(load);
 
   const handleShareFailed = () => {
     showDialog({

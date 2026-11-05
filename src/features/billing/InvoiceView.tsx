@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Box,
   Typography,
@@ -24,7 +24,7 @@ import { saveAs } from "file-saver";
 
 import { apiService } from "../../api/service";
 import { useDialogStore } from "../../store/useDialogStore";
-import { useAppStore } from "../../store/useAppStore";
+import { usePermission } from "../../hooks/usePermission";
 import { generateInvoicePdf } from "../documents/generateInvoicePdf";
 import { shareToWhatsAppAfter } from "../documents/shareToWhatsApp";
 import InvoiceSheet from "./InvoiceSheet";
@@ -44,16 +44,27 @@ import { messages } from "../../messages";
 // straight from the row without opening this dialog at all (see
 // shareInvoiceToWhatsApp.ts, which renders the same InvoiceSheet
 // off-screen instead).
-export default function InvoiceView() {
+//
+// The Invoices page also shows it in place, passing the invoice to show and any
+// extra toolbar actions.
+export default function InvoiceView({
+  invoiceId,
+  reloadKey = 0,
+  onClose,
+  renderActions,
+}: {
+  invoiceId?: number;
+  reloadKey?: number;
+  onClose?: () => void;
+  renderActions?: (invoice: InvoiceDetail) => ReactNode;
+} = {}) {
   const { editingId, closeDialog, openDialog } = useDialogStore();
-  const id = editingId;
-  // Editing (line items, due date, discount) is an admin-only, financial-
-  // oversight action, same reasoning as the discount editor already gated
-  // this way in DeliveryCheck.tsx - and only offered while still pending,
-  // matching what the backend actually allows (service_update rejects an
-  // items/discount edit on anything else).
-  const { user } = useAppStore();
-  const isAdmin = user?.role === "admin";
+  const id = invoiceId ?? editingId;
+  // Editing (line items, due date, discount) is for admins and anyone they've
+  // given access to, and only offered while still pending, matching what the
+  // backend actually allows (service_update rejects an items/discount edit on
+  // anything else).
+  const canEditInvoice = usePermission("invoice.edit");
   const [invoice, setInvoice] = useState<InvoiceDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -206,7 +217,7 @@ export default function InvoiceView() {
       active = false;
       setInvoice(null);
     };
-  }, [id]);
+  }, [id, reloadKey]);
 
   if (loading) {
     return (
@@ -232,7 +243,7 @@ export default function InvoiceView() {
         <Button
           variant="contained"
           disableElevation
-          onClick={closeDialog}
+          onClick={onClose ?? closeDialog}
           sx={{ textTransform: "none", fontWeight: 600, borderRadius: 2 }}
         >
           Close
@@ -255,7 +266,8 @@ export default function InvoiceView() {
           mb: 1.5,
         }}
       >
-        <Stack direction="row" spacing={1}>
+        <Stack direction="row" useFlexGap sx={{ flexWrap: "wrap", justifyContent: "flex-end", gap: 1 }}>
+          {renderActions?.(invoice)}
           <Tooltip title={fit ? "Showing the whole invoice - click for actual size" : "Fit to screen"}>
             <IconButton
               onClick={() => setFit((f) => !f)}
@@ -271,7 +283,7 @@ export default function InvoiceView() {
               <FitScreenRoundedIcon fontSize="small" />
             </IconButton>
           </Tooltip>
-          {isAdmin && invoice.status === "pending" && (
+          {canEditInvoice && invoice.status === "pending" && (
             <Tooltip title="Edit Invoice">
               <IconButton
                 onClick={() => openDialog("editInvoice", invoice.id, "edit")}

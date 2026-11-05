@@ -1,3 +1,4 @@
+import { usePermission } from "../../hooks/usePermission";
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -40,7 +41,7 @@ import { shareToWhatsAppAfter } from "../documents/shareToWhatsApp";
 import AsyncSearchSelect from "../../ui/AsyncSearchSelect";
 import DateTimePicker from "../../ui/DateTimePicker";
 import PillRadioGroup from "../../ui/PillRadioGroup";
-import { PRIORITY_OPTIONS, CLIENT_STATUS_OPTIONS } from "../../ui/pillRadioOptions";
+import { CLIENT_STATUS_OPTIONS } from "../../ui/pillRadioOptions";
 import { formatRupeesFixed as formatCurrency } from "../../format/money";
 import { messages } from "../../messages";
 
@@ -87,11 +88,11 @@ export default function QuotationView({
   // job type, line items, discount) already lives on the quotation and
   // carries straight over server-side (see
   // app/quotations/repository.py's convert_quotation_to_invoice).
+  const canConvert = usePermission("invoice.create");
   const [convertOpen, setConvertOpen] = useState(false);
   const [convertAssignedTo, setConvertAssignedTo] = useState<string | undefined>(undefined);
   const [convertStartDate, setConvertStartDate] = useState<string | null>(new Date().toISOString());
   const [convertDeliveryDate, setConvertDeliveryDate] = useState<string | null>(new Date().toISOString());
-  const [convertPriority, setConvertPriority] = useState<"Normal" | "High" | "Urgent">("Normal");
   const [convertClientStatus, setConvertClientStatus] = useState<"Confirmed" | "Correction">("Confirmed");
   const [convertError, setConvertError] = useState<string | null>(null);
   const [converting, setConverting] = useState(false);
@@ -233,7 +234,6 @@ export default function QuotationView({
     try {
       const invoice = await apiService.post<{ id: number }>(`/quotations/${id}/convert`, {
         assigned_to: convertAssignedTo,
-        priority: convertPriority,
         client_status: convertClientStatus,
         start_date: convertStartDate,
         delivery_date: convertDeliveryDate,
@@ -456,6 +456,7 @@ export default function QuotationView({
         )}
         {quotation.status === "accepted" && (
           <Stack direction="row" justifyContent="flex-end">
+            {canConvert && (
             <Button
               variant="contained"
               disableElevation
@@ -465,6 +466,7 @@ export default function QuotationView({
             >
               Convert to Invoice
             </Button>
+            )}
           </Stack>
         )}
         {quotation.status === "converted" && quotation.converted_invoice_id && (
@@ -516,12 +518,6 @@ export default function QuotationView({
             </Box>
             <Box sx={{ flex: 1 }}>
               <DateTimePicker label="Delivery Date" value={convertDeliveryDate} onChange={setConvertDeliveryDate} />
-            </Box>
-          </Box>
-          <Box>
-            <Typography variant="caption" sx={{ fontWeight: 700, color: "var(--slate-500)", textTransform: "uppercase" }}>Priority</Typography>
-            <Box sx={{ mt: 0.75 }}>
-              <PillRadioGroup options={PRIORITY_OPTIONS} value={convertPriority} onChange={setConvertPriority} />
             </Box>
           </Box>
           <Box>

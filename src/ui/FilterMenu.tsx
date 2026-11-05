@@ -19,8 +19,9 @@ type AsyncFilterField = {
   endpoint: string;
   searchParam?: string;
   extraParams?: Record<string, string | number>;
-  getOptionLabel: (item: any) => string;
-  getOptionValue: (item: any) => string | number;
+  // Each field takes whatever its own endpoint returns.
+  getOptionLabel: (item: never) => string;
+  getOptionValue: (item: never) => string | number;
   placeholder?: string;
 };
 
@@ -167,8 +168,8 @@ export default function FilterMenu({
                 endpoint={field.endpoint}
                 searchParam={field.searchParam}
                 extraParams={field.extraParams}
-                getOptionLabel={field.getOptionLabel}
-                getOptionValue={field.getOptionValue}
+                getOptionLabel={field.getOptionLabel as (item: unknown) => string}
+                getOptionValue={field.getOptionValue as (item: unknown) => string | number}
                 value={values[field.key]}
                 onChange={(v) => onChange(field.key, v)}
               />

@@ -1,5 +1,7 @@
 import type { GridColDef, GridRowId } from "@mui/x-data-grid";
 import { useNavigate } from "react-router-dom";
+import { Box, Tooltip } from "@mui/material";
+import BadgeRoundedIcon from "@mui/icons-material/BadgeRounded";
 import { useApiRequest } from "../../hooks/useApiRequest";
 import { API } from "../../api/endpoints";
 import { apiService } from "../../api/service";
@@ -17,6 +19,13 @@ import Dialog from "../../ui/Dialog";
 import Table from "../../ui/Table";
 import TableSearchBar from "../../ui/TableSearchBar";
 import { useTableSearch } from "../../hooks/useTableSearch";
+import EmptyState from "../../ui/EmptyState";
+import FilterPill from "../../ui/FilterPill";
+import InitialsAvatar from "../../ui/InitialsAvatar";
+import PageHeader from "../../ui/PageHeader";
+import PageShell from "../../ui/PageShell";
+import TableCard from "../../ui/TableCard";
+import { accessNames, accessSummary } from "./accessOptions";
 
 interface Employee {
   id: number;
@@ -25,7 +34,10 @@ interface Employee {
   phone: string;
   role: string;
   is_active: boolean;
+  permissions?: string[];
 }
+
+type StatusFilter = "all" | "Active" | "InActive";
 
 // The grid row carries a plain "status" string field (mirroring the pattern
 // used for print_status/priority elsewhere) instead of running is_active's
@@ -35,37 +47,73 @@ interface Employee {
 // other field (and the id) from processRowUpdate's newRow.
 type EmployeeRow = Employee & { status: "Active" | "InActive" };
 
-const baseColumns: GridColDef[] = [
+const columns: GridColDef[] = [
   {
     field: "username",
-    headerName: "User Name",
-    flex: 2,
+    headerName: "Name",
+    flex: 1.5,
+    minWidth: 180,
     editable: true,
+    renderCell: ({ value }) => (
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, height: "100%", minWidth: 0 }}>
+        <InitialsAvatar name={value} />
+        <Box component="span" sx={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis" }}>
+          {value}
+        </Box>
+      </Box>
+    ),
   },
-  { field: "email", headerName: "Email", flex: 2, editable: true },
+  {
+    field: "email",
+    headerName: "Email",
+    flex: 1.8,
+    minWidth: 200,
+    editable: true,
+    renderCell: ({ value }) => <Box component="span" sx={{ color: "var(--slate-600)" }}>{value}</Box>,
+  },
   {
     field: "phone",
     headerName: "Phone",
-    flex: 1,
+    width: 130,
     editable: true,
+    renderCell: ({ value }) => <Box component="span" sx={{ color: "var(--slate-600)" }}>{value}</Box>,
   },
   {
     field: "role",
     headerName: "Role",
-    flex: 1,
+    width: 110,
     editable: true,
+    renderCell: ({ value }) => (
+      <Box component="span" sx={{ color: "var(--slate-600)", textTransform: "capitalize" }}>{value}</Box>
+    ),
+  },
+  {
+    field: "permissions",
+    headerName: "Access",
+    width: 120,
+    sortable: false,
+    renderCell: ({ value }) => {
+      const summary = accessSummary(value);
+      return (
+        <Tooltip title={accessNames(value)}>
+          <Box component="span" sx={{ fontWeight: 500, color: summary === "None" ? "var(--slate-400)" : "var(--slate-700)" }}>
+            {summary}
+          </Box>
+        </Tooltip>
+      );
+    },
   },
   {
     field: "status",
     headerName: "Status",
-    flex: 1,
+    width: 120,
     editable: true,
     type: "singleSelect",
     valueOptions: ["Active", "InActive"],
 
     renderCell: ({ value }) => (
       <Chip
-        label={value}
+        label={value === "InActive" ? "Inactive" : value}
         sx={semanticChipSx(getSemanticColor("status", value))}
       />
     ),
@@ -79,8 +127,11 @@ const baseColumns: GridColDef[] = [
 const Employee = () => {
   const navigate = useNavigate();
   const { openDialog } = useDialogStore();
-  const { sendRequest } = useApiRequest();
+  const { sendRequest, loading } = useApiRequest();
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
   const fetchEmployees = async () => {
     await sendRequest({
@@ -88,11 +139,14 @@ const Employee = () => {
       method: "get",
       onSuccess: (res: Employee[]) => {
         setEmployees(res);
+        setLoadFailed(false);
       },
       onError: (err) => {
         console.error("Error fetching employees", err);
+        setLoadFailed(true);
       },
     });
+    setLoaded(true);
   };
 
   // Once on mount - sendRequest (useApiRequest) isn't memoized, so listing
@@ -111,28 +165,15 @@ const Employee = () => {
     [employees],
   );
 
-  const { query, setQuery, filteredRows } = useTableSearch(
-    nonAdminEmployees,
-    ["username", "email", "phone", "role"],
+  const activeCount = nonAdminEmployees.filter((e) => e.status === "Active").length;
+  const visibleEmployees = useMemo(
+    () => (statusFilter === "all" ? nonAdminEmployees : nonAdminEmployees.filter((e) => e.status === statusFilter)),
+    [nonAdminEmployees, statusFilter],
   );
 
-  // Database ids have gaps (deletions, admin rows filtered out), so the
-  // displayed SI.NO is a synthetic 1-to-n position within the current
-  // filtered/search result, independent of the underlying id.
-  const columns: GridColDef[] = useMemo(
-    () => [
-      {
-        field: "serialNo",
-        headerName: "SI.NO",
-        width: 100,
-        sortable: false,
-        filterable: false,
-        valueGetter: (_value, row) =>
-          filteredRows.findIndex((r) => r.id === row.id) + 1,
-      },
-      ...baseColumns,
-    ],
-    [filteredRows],
+  const { query, setQuery, filteredRows } = useTableSearch(
+    visibleEmployees,
+    ["username", "email", "phone", "role"],
   );
 
   const handleDeleteEmployee = async (id: GridRowId) => {
@@ -158,8 +199,8 @@ const Employee = () => {
       is_active,
     };
 
-    const hasChanges = Object.keys(payload).some(
-      (key) => payload[key as keyof Employee] !== (oldRow as any)[key],
+    const hasChanges = (Object.keys(payload) as (keyof Employee)[]).some(
+      (key) => payload[key] !== (oldRow as Employee)[key],
     );
 
     if (!hasChanges) return oldRow;
@@ -184,38 +225,72 @@ const Employee = () => {
   };
 
   return (
-    <main className="h-full p-4 m-4 md:p-10 min-w-0 rounded-3xl bg-blue-50 shadow">
-      <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
-        <h1 className="text-4xl sm:text-5xl lg:text-4xl leading-tight sm:leading-snug lg:leading-snug bg-linear-to-br from-blue-900 via-blue-800 to-slate-900 bg-clip-text text-transparent">
-          Employee Details
-        </h1>
-        <div className="flex flex-wrap items-center gap-3">
-          <TableSearchBar
-            value={query}
-            onChange={setQuery}
-            placeholder="Search employees..."
-          />
-          <Button onClick={() => openDialog("user")}>+ Add Employee</Button>
-        </div>
-      </div>
-      <Table<EmployeeRow>
-        rows={filteredRows}
-        columns={columns}
-        processRowUpdate={processRowUpdate}
-        onDelete={handleDeleteEmployee}
-        onRowSelect={(row) => navigate(`/admin/employees/${row.id}`)}
-        renderActions={(params, handlers) => [
-          <CrudActions
-            key="crud"
-            edit
-            delete
-            changePassword
-            onEdit={handlers.edit}
-            onDelete={handlers.delete}
-            onChangePassword={() => handleChangePassword(params.id)}
-          />,
-        ]}
+    <PageShell>
+      <PageHeader
+        title="Employees"
+        description="Your team, and what each person can do."
+        action={<Button onClick={() => openDialog("user")}>+ Add Employee</Button>}
       />
+
+      <TableCard
+        toolbar={
+          <>
+          <Box sx={{ display: "flex", gap: 0.75, overflowX: "auto" }}>
+            <FilterPill label="All" count={nonAdminEmployees.length} active={statusFilter === "all"} onClick={() => setStatusFilter("all")} />
+            <FilterPill label="Active" count={activeCount} active={statusFilter === "Active"} onClick={() => setStatusFilter("Active")} />
+            <FilterPill
+              label="Inactive"
+              count={nonAdminEmployees.length - activeCount}
+              active={statusFilter === "InActive"}
+              onClick={() => setStatusFilter("InActive")}
+            />
+          </Box>
+          <TableSearchBar value={query} onChange={setQuery} placeholder="Search employees..." sx={{ width: { xs: "100%", sm: 260 } }} />
+          </>
+        }
+      >
+        {loaded && filteredRows.length === 0 ? (
+          <EmptyState
+            icon={<BadgeRoundedIcon />}
+            title={
+              loadFailed
+                ? "Couldn't load your employees"
+                : nonAdminEmployees.length === 0
+                  ? "No employees yet"
+                  : "No employees match"
+            }
+            description={
+              loadFailed
+                ? "Check your connection and refresh the page."
+                : nonAdminEmployees.length === 0
+                  ? "Add your first employee to assign work and give them access."
+                  : "Try a different search or filter."
+            }
+          />
+        ) : (
+          <Table<EmployeeRow>
+            bare
+            rows={filteredRows}
+            columns={columns}
+            loading={loading}
+            processRowUpdate={processRowUpdate}
+            onDelete={handleDeleteEmployee}
+            onRowSelect={(row) => navigate(`/admin/employees/${row.id}`)}
+            renderActions={(params, handlers) => [
+              <CrudActions
+                key="crud"
+                edit
+                delete
+                changePassword
+                onEdit={handlers.edit}
+                onDelete={handlers.delete}
+                onChangePassword={() => handleChangePassword(params.id)}
+              />,
+            ]}
+          />
+        )}
+      </TableCard>
+
       <Dialog
         type="user"
         title="Employee"
@@ -232,7 +307,7 @@ const Employee = () => {
           ) : null
         }
       />
-    </main>
+    </PageShell>
   );
 };
 

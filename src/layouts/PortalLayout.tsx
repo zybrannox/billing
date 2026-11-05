@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet } from "react-router-dom";
 import { useClientAppStore } from "../store/useClientAppStore";
 import { portalApiService } from "../api/portalService";
 import { Suspense } from "react";
@@ -17,14 +17,15 @@ const navItems = [
 
 export default function PortalLayout() {
   const { clientUser, clearClientUser } = useClientAppStore();
-  const navigate = useNavigate();
 
   const handleLogout = async () => {
     try {
       await portalApiService.post("/client-auth/logout");
     } finally {
       clearClientUser();
-      navigate("/portal/login");
+      // A full page load, so this client's data doesn't stay in memory for
+      // whoever signs in next (see ui/Menu.tsx).
+      window.location.assign("/portal/login");
     }
   };
 

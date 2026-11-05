@@ -1,3 +1,4 @@
+import { getErrorDetail } from "../../utils/apiError";
 import { useState } from "react";
 import { useApiRequest } from "../../hooks/useApiRequest";
 import { Link, Navigate, useNavigate } from "react-router-dom";
@@ -23,7 +24,7 @@ function Login() {
     e.preventDefault();
     setErrorMessage(null);
 
-    let loginError: any = null;
+    let loginError: unknown = null;
     const loginResult = await sendRequest({
       endpoint: API.auth.login,
       method: "post",
@@ -34,11 +35,11 @@ function Login() {
     });
 
     if (!loginResult) {
-      setErrorMessage(loginError?.detail || "Invalid email or password.");
+      setErrorMessage(getErrorDetail(loginError) ?? "Invalid email or password.");
       return;
     }
 
-    let meError: any = null;
+    let meError: unknown = null;
     const me = await sendRequest<User>({
       endpoint: API.auth.me,
       method: "get",
@@ -49,7 +50,7 @@ function Login() {
 
     if (!me) {
       setErrorMessage(
-        meError?.detail || "Could not load your account. Please try again.",
+        getErrorDetail(meError) ?? "Could not load your account. Please try again.",
       );
       return;
     }

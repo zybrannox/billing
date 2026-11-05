@@ -11,7 +11,6 @@ import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 import LocalShippingRoundedIcon from "@mui/icons-material/LocalShippingRounded";
 import EmojiEventsRoundedIcon from "@mui/icons-material/EmojiEventsRounded";
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
-import DonutSmallRoundedIcon from "@mui/icons-material/DonutSmallRounded";
 import { apiService } from "../../api/service";
 import { getSemanticColor } from "../../utils/colors";
 import { useAppStore } from "../../store/useAppStore";
@@ -109,12 +108,10 @@ export default function Dashboard() {
   const PERIOD_NOUN: Record<Granularity, string> = { day: "today", week: "this week", month: "this month", year: "this year" };
 
   // Partitioned the same way getDueLabel prioritizes them (credit-unpaid
-  // first, then overdue, everything else urgent) so these counts always
-  // add up to exactly attention_projects.length - a row that's both
-  // overdue and credit-unpaid displays and counts as the latter, not both.
+  // first, then overdue) - a row that's both overdue and credit-unpaid
+  // displays and counts as the former, not both.
   const creditUnpaidCount = data.attention_projects.filter((p) => p.is_credit_unpaid).length;
   const overdueCount = data.attention_projects.filter((p) => !p.is_credit_unpaid && p.is_overdue).length;
-  const urgentCount = data.attention_projects.length - overdueCount - creditUnpaidCount;
   const maxCustomerSpend = Math.max(1, ...data.top_customers.map((c) => c.total_spent));
 
   const revenueUp = (deltaPct ?? 0) >= 0;
@@ -249,14 +246,13 @@ export default function Dashboard() {
         />
       </Box>
 
-      {/* Lower dashboard: three rows of two cards on one grid, so every card
-          has a neighbour of the same height. How the workload is split comes
-          first (print status, priority), then trend + leaderboard, then the
+      {/* Lower dashboard: how the workload is split comes first (print
+          status), then trend + leaderboard, then the
           two things to act on (lists capped and scrolling inside the card
           rather than stretching the page). */}
       <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5, minWidth: 0 }}>
         {/* Row 1: how the workload is split */}
-        <Box sx={{ display: "grid", gap: 2.5, gridTemplateColumns: { xs: "1fr", lg: "repeat(2, 1fr)" }, alignItems: "stretch" }}>
+        <Box sx={{ display: "grid", gap: 2.5, gridTemplateColumns: "1fr", alignItems: "stretch" }}>
           <SectionCard
             icon={<LocalShippingRoundedIcon fontSize="small" />}
             iconColor="var(--indigo-600)"
@@ -270,18 +266,6 @@ export default function Dashboard() {
             />
           </SectionCard>
 
-          <SectionCard
-            icon={<DonutSmallRoundedIcon fontSize="small" />}
-            iconColor="var(--red-600)"
-            iconBg="var(--red-50)"
-            title="Priority Mix"
-          >
-            <StatusDonut
-              data={data.priority_breakdown}
-              colorFor={(label) => getSemanticColor("priority", label)}
-              centerLabel="projects"
-            />
-          </SectionCard>
 
         </Box>
 
@@ -343,11 +327,6 @@ export default function Dashboard() {
                       {overdueCount} overdue
                     </Box>
                   )}
-                  {urgentCount > 0 && (
-                    <Box sx={{ px: 1.1, py: 0.35, borderRadius: 999, bgcolor: "var(--amber-50)", color: "var(--amber-600)", fontSize: "var(--fs-2xs)", fontWeight: 800 }}>
-                      {urgentCount} urgent
-                    </Box>
-                  )}
                 </Box>
               ) : undefined
             }
@@ -355,7 +334,7 @@ export default function Dashboard() {
             {data.attention_projects.length === 0 ? (
               <Box sx={{ py: 3, textAlign: "center" }}>
                 <Typography variant="body2" color="text.secondary">
-                  No overdue or urgent items pending.
+                  Nothing overdue or waiting on payment.
                 </Typography>
               </Box>
             ) : (

@@ -11,6 +11,8 @@ export interface ListOption {
   // Only set for pricing categories ("item_type" - the invoice line-item
   // catalog, see GenerateInvoice.tsx). Null everywhere else.
   rate: number | null;
+  // The least a small job of this item costs, by size (item types only).
+  min_charges?: { up_to_sq_ft: number; amount: number }[] | null;
 }
 
 interface ListOptionsState {
@@ -32,6 +34,11 @@ interface ListOptionsState {
   fetchAllOptions: (category: string, force?: boolean) => Promise<ListOption[]>;
   addOption: (category: string, value: string, rate?: number) => Promise<ListOption>;
   setOptionActive: (id: number, category: string, isActive: boolean) => Promise<void>;
+  updatePricing: (
+    id: number,
+    category: string,
+    pricing: { rate: number | null; min_charges: { up_to_sq_ft: number; amount: number }[] },
+  ) => Promise<void>;
 }
 
 export const useListOptionsStore = create<ListOptionsState>((set, get) => ({
@@ -86,6 +93,14 @@ export const useListOptionsStore = create<ListOptionsState>((set, get) => ({
       get().fetchAllOptions(category, true),
     ]);
     return created;
+  },
+
+  updatePricing: async (id, category, pricing) => {
+    await apiService.patch<ListOption>(`/list-options/${id}/pricing`, pricing);
+    await Promise.all([
+      get().fetchActiveOptions(category, true),
+      get().fetchAllOptions(category, true),
+    ]);
   },
 
   setOptionActive: async (id, category, isActive) => {

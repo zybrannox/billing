@@ -9,14 +9,12 @@ import {
 } from "@mui/material";
 import { useUiStore } from "../store/useUiStore";
 import { useAppStore } from "../store/useAppStore";
-import { useNavigate } from "react-router-dom";
 import { LogoutOutlined } from "@mui/icons-material";
 import { apiService } from "../api/service";
 
 const Menu = React.memo(() => {
   const { menuAnchorEl, closeMenu } = useUiStore();
   const { user, clearUser } = useAppStore();
-  const navigate = useNavigate();
 
   const open = Boolean(menuAnchorEl);
 
@@ -32,7 +30,10 @@ const Menu = React.memo(() => {
     }
     clearUser();
     closeMenu();
-    navigate("/login");
+    // A full page load, not an in-app navigation: this account's projects and
+    // other data are still in memory, and the next person to sign in here
+    // shouldn't start out looking at them.
+    window.location.assign("/login");
   };
 
   return (

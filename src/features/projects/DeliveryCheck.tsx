@@ -1,3 +1,4 @@
+import { getApiErrorMessage } from "../../utils/apiError";
 import { useEffect, useState } from "react";
 import { Box, Typography, Button as MuiButton, CircularProgress, Alert } from "@mui/material";
 import LocalShippingRoundedIcon from "@mui/icons-material/LocalShippingRounded";
@@ -92,9 +93,9 @@ export default function DeliveryCheck() {
         discount_amount: value,
       });
       setInvoice((prev) => (prev ? { ...prev, ...updated } : prev));
-    } catch (err: any) {
+    } catch (err) {
       setDiscountError(
-        err?.response?.data?.detail || "Couldn't apply that discount. Please try again.",
+        getApiErrorMessage(err, "Couldn't apply that discount. Please try again."),
       );
     } finally {
       setApplyingDiscount(false);
@@ -119,9 +120,9 @@ export default function DeliveryCheck() {
         },
       );
       setInvoice((prev) => (prev ? { ...prev, ...updated } : prev));
-    } catch (err: any) {
+    } catch (err) {
       setPaymentError(
-        err?.response?.data?.detail || "Couldn't mark this invoice as paid. Please try again.",
+        getApiErrorMessage(err, "Couldn't mark this invoice as paid. Please try again."),
       );
     } finally {
       setMarkingPaid(false);

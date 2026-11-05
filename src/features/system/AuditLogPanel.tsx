@@ -1,56 +1,34 @@
 import { useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Box, Typography } from "@mui/material";
+import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
 import { apiService } from "../../api/service";
 import type { AuditLogListResponse } from "../../api/types";
 import { formatDateTime } from "../../format/date";
-import { formatRupees } from "../../format/money";
-import ListPager from "../../ui/ListPager";
 import EmptyState from "../../ui/EmptyState";
+import FilterPill from "../../ui/FilterPill";
+import ListPager from "../../ui/ListPager";
 import ListState from "../../ui/ListState";
 import Panel from "../../ui/Panel";
-import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
+import { actionLabel, actionTone, actorLabel, changesOf, summaryOf, viewOfChange, type AuditChange } from "./auditFormat";
 
 const PAGE_SIZE = 20;
-const COLUMNS = { xs: "1fr", md: "1.1fr 0.8fr 1.1fr 1.6fr" };
+const COLUMNS = { xs: "1fr", md: "150px 130px 170px minmax(0, 1fr)" };
+// An entry for something new can list a dozen fields; the first few are usually enough.
+const CHANGES_SHOWN = 4;
 
-// "invoice.cancel" -> "Invoice cancelled" style labels for the actions the
-// server records; anything unknown falls back to the raw action string.
-const ACTION_LABELS: Record<string, string> = {
-  "invoice.payment": "Payment recorded",
-  "invoice.mark_paid": "Marked paid",
-  "invoice.cancel": "Invoice cancelled",
-  "invoice.update": "Invoice edited",
-  "invoice.delete": "Invoice deleted",
-  "quotation.accepted": "Quotation accepted",
-  "quotation.rejected": "Quotation rejected",
-  "quotation.delete": "Quotation deleted",
-  "project.delete": "Project deleted",
-  "project.bulk_delete": "Projects deleted",
-  "customer.delete": "Customer deleted",
-  "company.delete": "Company deleted",
-  "user.delete": "Employee deleted",
-  "user.revoke_sessions": "Signed out everywhere",
-  "auth.lockout": "Account locked (failed sign-ins)",
-};
-
-// Money in is green, anything removed is red, the rest is neutral blue - so a
-// scan down the Action column shows what kind of event each row is.
-const toneOf = (action: string) =>
-  action.endsWith("delete") || action.includes("cancel") || action.includes("lockout") || action.includes("reject")
-    ? { fg: "var(--red-700)", bg: "var(--red-50)" }
-    : action.includes("payment") || action.includes("paid") || action.includes("accepted")
-      ? { fg: "var(--emerald-700)", bg: "var(--emerald-50)" }
-      : { fg: "var(--blue-700)", bg: "var(--blue-50)" };
-
-const describe = (detail: Record<string, unknown> | null): string => {
-  if (!detail) return "";
-  const parts: string[] = [];
-  if (detail.label) parts.push(String(detail.label));
-  if (typeof detail.amount === "number") parts.push(formatRupees(detail.amount));
-  if (detail.payment_method) parts.push(String(detail.payment_method));
-  return parts.join(" · ");
-};
+const FILTERS: { label: string; entityType: string | null }[] = [
+  { label: "All", entityType: null },
+  { label: "Projects", entityType: "project" },
+  { label: "Files", entityType: "file" },
+  { label: "Notes", entityType: "note" },
+  { label: "Invoices", entityType: "invoice" },
+  { label: "Quotations", entityType: "quotation" },
+  { label: "Customers", entityType: "customer" },
+  { label: "Companies", entityType: "company" },
+  { label: "Employees", entityType: "user" },
+  { label: "Dropdowns", entityType: "list_option" },
+];
 
 const headCell = {
   fontSize: "var(--fs-xs)",
@@ -60,13 +38,96 @@ const headCell = {
   color: "var(--slate-400)",
 } as const;
 
-// Read-only history of money and destructive actions (the server only ever
-// appends to it). Admin-only endpoint.
+const valueSx = {
+  display: "inline",
+  px: 0.625,
+  py: 0.125,
+  borderRadius: "5px",
+  fontSize: "var(--fs-xs)",
+  fontWeight: 600,
+  wordBreak: "break-word",
+  boxDecorationBreak: "clone",
+  WebkitBoxDecorationBreak: "clone",
+} as const;
+
+// "Print status: [Pending] → [In Progress]", with the old value struck through
+// so the direction of the change can't be misread at a glance.
+function ChangeLine({ change, isNew }: { change: AuditChange; isNew: boolean }) {
+  const view = viewOfChange(change, isNew);
+  const lineSx = { fontSize: "var(--fs-xs)", color: "var(--slate-600)", lineHeight: 1.9, wordBreak: "break-word" } as const;
+  if (view.kind === "note") return <Typography sx={lineSx}>{view.text}</Typography>;
+  if (view.kind === "value") {
+    return (
+      <Typography sx={lineSx}>
+        {view.label}: <Box component="span" sx={{ fontWeight: 600, color: "var(--slate-800)" }}>{view.value}</Box>
+      </Typography>
+    );
+  }
+  return (
+    <Typography sx={lineSx}>
+      {view.label}:{" "}
+      <Box component="span" sx={{ ...valueSx, color: "var(--red-700)", bgcolor: "var(--red-50)", textDecoration: "line-through" }}>
+        {view.from}
+      </Box>
+      {" → "}
+      <Box component="span" sx={{ ...valueSx, color: "var(--emerald-700)", bgcolor: "var(--emerald-50)" }}>
+        {view.to}
+      </Box>
+    </Typography>
+  );
+}
+
+function EntryDetails({ entry }: { entry: AuditLogListResponse["items"][number] }) {
+  const [expanded, setExpanded] = useState(false);
+  const changes = changesOf(entry.detail);
+  const shown = expanded ? changes : changes.slice(0, CHANGES_SHOWN);
+  const note = entry.detail?.note ? String(entry.detail.note) : null;
+
+  return (
+    <Box sx={{ minWidth: 0 }}>
+      <Typography sx={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--slate-800)", wordBreak: "break-word" }}>
+        {summaryOf(entry.detail) || `${entry.entity_type} #${entry.entity_id ?? "—"}`}
+      </Typography>
+      {note && <Typography sx={{ fontSize: "var(--fs-xs)", color: "var(--slate-500)" }}>{note}</Typography>}
+      {shown.map((change) => (
+        <ChangeLine key={change.field} change={change} isNew={entry.action.endsWith(".create")} />
+      ))}
+      {changes.length > CHANGES_SHOWN && (
+        <Box
+          component="button"
+          type="button"
+          onClick={() => setExpanded(!expanded)}
+          sx={{
+            p: 0,
+            mt: 0.25,
+            border: 0,
+            bgcolor: "transparent",
+            fontFamily: "inherit",
+            fontSize: "var(--fs-xs)",
+            fontWeight: 600,
+            color: "var(--blue-600)",
+            cursor: "pointer",
+            "&:hover": { textDecoration: "underline" },
+          }}
+        >
+          {expanded ? "Show less" : `Show ${changes.length - CHANGES_SHOWN} more`}
+        </Box>
+      )}
+    </Box>
+  );
+}
+
+// Everything that was added, edited or deleted: what, when and by whom. Entries
+// are written by the server as changes are saved, and only ever appended to.
 export default function AuditLogPanel() {
   const [page, setPage] = useState(1);
+  const [entityType, setEntityType] = useState<string | null>(null);
   const query = useQuery({
-    queryKey: ["audit-log", page],
-    queryFn: () => apiService.get<AuditLogListResponse>("/audit-log/", { params: { page, page_size: PAGE_SIZE } }),
+    queryKey: ["audit-log", entityType, page],
+    queryFn: () =>
+      apiService.get<AuditLogListResponse>("/audit-log/", {
+        params: { page, page_size: PAGE_SIZE, entity_type: entityType ?? undefined },
+      }),
     placeholderData: keepPreviousData,
   });
   const rows = query.data?.items ?? [];
@@ -74,10 +135,24 @@ export default function AuditLogPanel() {
   return (
     <Panel
       flush
-      title="Audit Log"
-      description="Payments, cancellations and deletions. Entries can't be edited or removed."
+      title="Activity log"
+      description="Everything added, edited or deleted, with the old and new values. Entries can't be edited or removed."
       action={<ListPager page={page} pageSize={PAGE_SIZE} total={query.data?.total ?? 0} onPageChange={setPage} />}
     >
+      <Box sx={{ display: "flex", gap: 0.75, px: 2, py: 1.25, overflowX: "auto", borderBottom: "1px solid var(--slate-100)" }}>
+        {FILTERS.map((filter) => (
+          <FilterPill
+            key={filter.label}
+            label={filter.label}
+            active={entityType === filter.entityType}
+            onClick={() => {
+              setEntityType(filter.entityType);
+              setPage(1);
+            }}
+          />
+        ))}
+      </Box>
+
       {rows.length === 0 ? (
         query.isPending || query.isError ? (
           <Box sx={{ p: 2.5 }}>
@@ -85,7 +160,7 @@ export default function AuditLogPanel() {
               loading={query.isPending}
               error={query.isError}
               empty={false}
-              errorText="Couldn't load the audit log."
+              errorText="Couldn't load the activity."
               emptyText=""
             />
           </Box>
@@ -93,7 +168,7 @@ export default function AuditLogPanel() {
           <EmptyState
             icon={<HistoryRoundedIcon />}
             title="Nothing recorded yet"
-            description="Payments, cancellations and deletions will appear here as they happen."
+            description="Everything added, edited or deleted will appear here as it happens."
           />
         )
       ) : (
@@ -102,37 +177,40 @@ export default function AuditLogPanel() {
             <Typography sx={headCell}>When</Typography>
             <Typography sx={headCell}>Who</Typography>
             <Typography sx={headCell}>Action</Typography>
-            <Typography sx={headCell}>Details</Typography>
+            <Typography sx={headCell}>What changed</Typography>
           </Box>
-          {rows.map((entry) => (
-            <Box
-              key={entry.id}
-              sx={{
-                display: "grid",
-                gridTemplateColumns: COLUMNS,
-                gap: { xs: 0.25, md: 2 },
-                px: 2,
-                py: 0.9,
-                alignItems: "center",
-                borderTop: "1px solid var(--slate-100)",
-                "&:hover": { bgcolor: "var(--slate-50)" },
-              }}
-            >
-              <Typography sx={{ fontSize: "var(--fs-xs)", color: "var(--slate-500)" }}>{formatDateTime(entry.at)}</Typography>
-              <Typography sx={{ fontSize: "var(--fs-sm)", color: "var(--slate-700)" }}>{entry.actor}</Typography>
-              <Box>
-                <Box
-                  component="span"
-                  sx={{ display: "inline-block", px: 1, py: 0.2, borderRadius: "999px", fontSize: "var(--fs-2xs)", fontWeight: 700, color: toneOf(entry.action).fg, bgcolor: toneOf(entry.action).bg }}
-                >
-                  {ACTION_LABELS[entry.action] ?? entry.action}
+          {rows.map((entry) => {
+            const tone = actionTone(entry.action);
+            return (
+              <Box
+                key={entry.id}
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: COLUMNS,
+                  gap: { xs: 0.25, md: 2 },
+                  px: 2,
+                  py: 1,
+                  alignItems: "start",
+                  borderTop: "1px solid var(--slate-100)",
+                  "&:hover": { bgcolor: "var(--slate-50)" },
+                }}
+              >
+                <Typography sx={{ fontSize: "var(--fs-xs)", color: "var(--slate-500)" }}>{formatDateTime(entry.at)}</Typography>
+                <Typography sx={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--slate-700)", wordBreak: "break-word" }}>
+                  {actorLabel(entry.actor)}
+                </Typography>
+                <Box>
+                  <Box
+                    component="span"
+                    sx={{ display: "inline-block", px: 1, py: 0.2, borderRadius: "999px", fontSize: "var(--fs-2xs)", fontWeight: 700, color: tone.fg, bgcolor: tone.bg }}
+                  >
+                    {actionLabel(entry.action)}
+                  </Box>
                 </Box>
+                <EntryDetails entry={entry} />
               </Box>
-              <Typography sx={{ fontSize: "var(--fs-sm)", color: "var(--slate-600)", wordBreak: "break-word" }}>
-                {describe(entry.detail) || `${entry.entity_type} #${entry.entity_id ?? "—"}`}
-              </Typography>
-            </Box>
-          ))}
+            );
+          })}
         </Box>
       )}
     </Panel>

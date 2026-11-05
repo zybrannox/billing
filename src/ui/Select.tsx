@@ -1,5 +1,5 @@
 import { type GridRenderEditCellParams, type GridColDef } from "@mui/x-data-grid";
-import { MenuItem, Select } from "@mui/material";
+import { MenuItem, Select, type SelectChangeEvent } from "@mui/material";
 import { getSemanticColor } from "../utils/colors";
 
 type SemanticSelectEditProps = GridRenderEditCellParams & {
@@ -22,7 +22,7 @@ export const SemanticSelectEditCell = (props: SemanticSelectEditProps) => {
   const { id, field, value, api, semantic, colDef } = props;
   const color = getSemanticColor(semantic, value as string);
 
-  const handleChange = (e: any) => {
+  const handleChange = (e: SelectChangeEvent<unknown>) => {
     api.setEditCellValue({ id, field, value: e.target.value });
   };
 

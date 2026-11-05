@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
-import { useForm, useWatch, Controller, type SubmitHandler } from "react-hook-form";
-import { z, ZodType, ZodObject, ZodString } from "zod";
+import { useForm, useWatch, Controller, type Control, type FieldError, type FieldErrors, type FieldValues, type Resolver } from "react-hook-form";
+import { z, ZodType, ZodObject, ZodString, type ZodRawShape } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Button from "./Button";
 import TextField from "./TextField";
@@ -59,11 +59,12 @@ export type FieldDefinition = {
   asyncEndpoint?: string;
   asyncSearchParam?: string;
   asyncExtraParams?: Record<string, string | number>;
-  getOptionLabel?: (item: any) => string;
-  getOptionValue?: (item: any) => string | number;
+  // Each field takes whatever its own endpoint returns.
+  getOptionLabel?: (item: never) => string;
+  getOptionValue?: (item: never) => string | number;
   // See AsyncSearchSelect's `initialOption` - lets a caller pre-resolve
   // `defaultValue` to a visible label without a server round-trip.
-  initialOption?: any;
+  initialOption?: unknown;
   // For type: "file_upload" - see GmailFileUploader.tsx. Lets a caller
   // outside the staff app (e.g. the client portal, which authenticates
   // against a different cookie/axios instance) upload through its own
@@ -80,12 +81,12 @@ export type ExternalLink = {
   destination?: "above" | "below";
 };
 
-export type CustomFormProps = {
+export type CustomFormProps<T extends FieldValues = FieldValues> = {
   title?: string;
   fields: FieldDefinition[];
-  onSubmit: (data: any) => Promise<void> | void;
+  onSubmit: (data: T) => Promise<void> | void;
   buttonName?: string;
-  zodSchema?: ZodObject<any> | null;
+  zodSchema?: ZodObject<ZodRawShape> | null;
   externalLink?: ExternalLink[] | [];
   buttonSx?: SxProps<Theme>;
   loading?: boolean;
@@ -93,7 +94,7 @@ export type CustomFormProps = {
   // values - lets a parent track in-progress state (e.g. files already
   // uploaded to storage) that it needs to act on before submit happens,
   // such as cleaning up orphaned uploads if the form is cancelled.
-  onValuesChange?: (values: any) => void;
+  onValuesChange?: (values: FieldValues) => void;
 };
 
 // -----------------------------
@@ -189,10 +190,10 @@ const buildZodSchema = (fields: FieldDefinition[]) => {
     if (required) {
       // ensure empty strings are caught
       if (schema instanceof ZodString) {
-        schema = (schema as any).min(1, `${f.label || name} is required`);
+        schema = schema.min(1, `${f.label || name} is required`);
       }
       schema = schema.refine(
-        (val: any) => val !== undefined && val !== null && val !== "",
+        (val: unknown) => val !== undefined && val !== null && val !== "",
         {
           message: `${f.label || name} is required`,
         },
@@ -219,13 +220,13 @@ const FormField = React.memo(
     handleEnterFocus,
   }: {
     field: FieldDefinition;
-    control: any;
-    errors: any;
+    control: Control<FieldValues>;
+    errors: FieldErrors<FieldValues>;
     inputRefs: React.MutableRefObject<Record<string, HTMLElement | null>>;
     handleEnterFocus: (e: React.KeyboardEvent, name: string) => void;
   }) => {
     const name = field.name;
-    const error = errors?.[name];
+    const error = errors?.[name] as FieldError | undefined;
 
     const setRef = (el: HTMLElement | null) => {
       // A ref object is mutable by design (it's how React hands back DOM
@@ -375,7 +376,7 @@ const FormField = React.memo(
                 value={ctrl.value}
                 label={renderLabel(field)}
                 options={field.options as Option[]}
-                error={errors?.[name]?.message}
+                error={error?.message}
                 onChange={ctrl.onChange}
               />
             )}
@@ -387,13 +388,13 @@ const FormField = React.memo(
           <Controller
             name={name}
             control={control}
-            defaultValue={(field.options as any)?.[0]?.value || ""}
+            defaultValue={(field.options as Option[] | undefined)?.[0]?.value || ""}
             render={({ field: ctrl }) => (
               <RadioField
                 value={ctrl.value}
                 label={renderLabel(field)}
                 options={field.options as Option[]}
-                error={errors?.[name]?.message}
+                error={error?.message}
                 onChange={ctrl.onChange}
               />
             )}
@@ -437,8 +438,8 @@ const FormField = React.memo(
                 endpoint={field.asyncEndpoint!}
                 searchParam={field.asyncSearchParam}
                 extraParams={field.asyncExtraParams}
-                getOptionLabel={field.getOptionLabel!}
-                getOptionValue={field.getOptionValue!}
+                getOptionLabel={field.getOptionLabel! as (item: unknown) => string}
+                getOptionValue={field.getOptionValue! as (item: unknown) => string | number}
                 value={ctrl.value}
                 onChange={ctrl.onChange}
                 disabled={field.disabled}
@@ -467,7 +468,7 @@ const renderLabel = (field: FieldDefinition): React.ReactNode => {
   );
 };
 
-export default function CustomForm({
+export default function CustomForm<T extends FieldValues = FieldValues>({
   fields,
   onSubmit,
   buttonName = "Submit",
@@ -476,7 +477,7 @@ export default function CustomForm({
   zodSchema = null,
   loading,
   onValuesChange,
-}: CustomFormProps) {
+}: CustomFormProps<T>) {
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const renderLinks = useCallback(
@@ -525,27 +526,19 @@ export default function CustomForm({
     [fields, zodSchema],
   );
 
-  type SchemaType = z.infer<typeof schema>;
-
-  const { control, handleSubmit, formState } = useForm<SchemaType>({
-    resolver: zodResolver(schema as any),
+  const { control, handleSubmit, formState } = useForm<FieldValues>({
+    resolver: zodResolver(schema as never) as unknown as Resolver<FieldValues>,
     defaultValues: useMemo(
       () =>
         fields.reduce(
           (acc, f) => ({ ...acc, [f.name]: f.defaultValue ?? undefined }),
-          {} as Record<string, any>,
+          {} as FieldValues,
         ),
       [fields],
     ),
   });
 
   const { errors, isSubmitting } = formState;
-
-  React.useEffect(() => {
-    if (Object.keys(errors).length > 0) {
-      console.log("Form Validation Errors:", errors);
-    }
-  }, [errors]);
 
   const watchedValues = useWatch({ control });
   useEffect(() => {
@@ -569,10 +562,10 @@ export default function CustomForm({
     if (next) inputRefs.current[next]?.focus();
   };
 
-  const submitHandler: SubmitHandler<SchemaType> = useCallback(
-    async (data) => {
-      console.log("Final form data:", data);
-      await onSubmit(data);
+  const submitHandler = useCallback(
+    async (data: FieldValues) => {
+      // The schema validated this into the shape the caller declared.
+      await onSubmit(data as T);
     },
     [onSubmit],
   );

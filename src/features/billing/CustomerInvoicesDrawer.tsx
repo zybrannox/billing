@@ -11,17 +11,20 @@ export type { DrawerCustomer };
 export default function CustomerInvoicesDrawer({
   customer,
   onClose,
+  onChanged,
   showCustomerLink = true,
 }: {
   customer: DrawerCustomer | null;
   onClose: () => void;
+  // A payment or cancel inside the drawer changes what the screen behind shows.
+  onChanged?: () => void;
   // The "View Customer" link goes to the customer's profile page -
   // pointless to offer from the profile itself.
   showCustomerLink?: boolean;
 }) {
   return (
-    <CustomerDrawerShell customer={customer} title="INVOICES" onClose={onClose}>
-      {customer && <CustomerInvoicesList key={customer.id} customerId={customer.id} showCustomerLink={showCustomerLink} />}
+    <CustomerDrawerShell customer={customer} title="Invoices" onClose={onClose}>
+      {customer && <CustomerInvoicesList key={customer.id} customerId={customer.id} showCustomerLink={showCustomerLink} onChanged={onChanged} />}
     </CustomerDrawerShell>
   );
 }

@@ -9,6 +9,9 @@
 // inside a single screen can stay next to the code that shows it.
 
 export const messages = {
+  bin: {
+    moveNotice: "It will move to the Bin in System setup, where an admin can restore it for 14 days.",
+  },
   common: {
     previousPage: "Previous page",
     nextPage: "Next page",
@@ -21,6 +24,7 @@ export const messages = {
     generic: "Something went wrong. Please try again.",
     passwordsDontMatch: "Passwords don't match.",
     uploadsPending: "Please wait for all files to finish uploading before submitting.",
+    uploadsFailed: "Some files failed to upload. Please retry or remove them before submitting.",
     itemCatalogLoad: "Failed to load item type catalog",
     addAtLeastOneItem: "Add at least one item with standard dimensions and a rate.",
   },

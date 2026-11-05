@@ -1,3 +1,5 @@
+import type { FieldValues } from "react-hook-form";
+import { getErrorMessage } from "../../utils/apiError";
 import CustomForm from "../../ui/CustomForm";
 import { changePasswordFields } from "./fields";
 import { useApiRequest } from "../../hooks/useApiRequest";
@@ -13,14 +15,13 @@ export default function ChangePassword({ userId, onSuccess }: ChangePasswordProp
   const { sendRequest, loading } = useApiRequest();
   const { closeDialog } = useDialogStore();
 
-  const handleSubmit = async (formData: any) => {
+  const handleSubmit = async (formData: FieldValues) => {
     const result = await sendRequest({
       endpoint: API.users.password(String(userId)),
       method: "patch",
       data: formData,
       onError: (err) => {
-        console.error("Error changing password", err);
-        alert(err?.detail || "Failed to change password");
+        alert(getErrorMessage(err, "Failed to change password"));
       },
     });
 

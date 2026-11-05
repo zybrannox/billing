@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
  * substring match across the given keys (or every key on the row if
  * none are given).
  */
-export function useTableSearch<T extends Record<string, any>>(
+export function useTableSearch<T extends object>(
   rows: T[],
   keys?: (keyof T)[],
 ) {

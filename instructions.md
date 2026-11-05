@@ -56,7 +56,7 @@ Work through this top to bottom the first time you ship this version, and re-che
 5. **Admin account.** Production never uses the development default password. Either set `DEFAULT_ADMIN_PASSWORD` (10+ characters, not a dictionary word) in `.env` *before the first start of a fresh database*, or create the first admin by hand. Make sure no leftover test accounts exist (dev admin `zybrannox@gmail.com` with a weak password, any `load@example.com`, sample customers) - log in and check Employees and Customers.
 6. **Tune for the 8 GB iMac** (see "Operations" below): set `DB_POOL_SIZE=5` and `DB_MAX_OVERFLOW=5` in `.env`; keep Postgres `shared_buffers` around 256 MB and `max_connections` modest (50 is plenty); run a **single** uvicorn worker (request timings and the System Health numbers are per process). Exclude `billing_server/uploads` and the backup folder from Spotlight (System Settings > Siri & Spotlight > Search Privacy) and from Time Machine.
 7. **Disk space.** Check `df -h` - you need room for uploads, thumbnails, the database and at least two weeks of backups. System Health warns below 10% free; do not deploy below that.
-8. **Backups on a schedule.** Add `scripts/backup_db.sh` to a daily cron/launchd job (e.g. 02:00) and `scripts/verify_restore.sh` monthly. Decide where copies go besides this Mac.
+8. **Backups on a schedule.** Add `scripts/backup_db.sh` and `scripts/backup_uploads.sh` to a daily cron/launchd job (e.g. 02:00; the database dump does not include uploaded files) and `scripts/verify_restore.sh` monthly. Decide where copies go besides this Mac.
 
 ### B. Frontend build (on the machine that builds it)
 

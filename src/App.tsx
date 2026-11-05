@@ -8,6 +8,7 @@ import DownloadProgressIndicator from "./ui/DownloadProgressIndicator";
 import { useConfirmDialogStore } from "./hooks/useconfirmDialogStore";
 import { useAppStore, type User } from "./store/useAppStore";
 import { useClientAppStore, type ClientUser } from "./store/useClientAppStore";
+import SessionWatcher from "./features/auth/SessionWatcher";
 import { apiService } from "./api/service";
 import { portalApiService } from "./api/portalService";
 import { API } from "./api/endpoints";
@@ -37,6 +38,8 @@ const EditInvoice = lazy(() => import("./features/billing/EditInvoice"));
 const GenerateInvoice = lazy(() => import("./features/billing/GenerateInvoice"));
 const GenerateQuotation = lazy(() => import("./features/billing/GenerateQuotation"));
 const SystemSetup = lazy(() => import("./features/system/SystemSetup"));
+const Notes = lazy(() => import("./features/notes/Notes"));
+const InvoicesPage = lazy(() => import("./features/billing/InvoicesPage"));
 const Dashboard = lazy(() => import("./features/dashboard/Dashboard"));
 const Login = lazy(() => import("./features/auth/Login"));
 const ForgotPassword = lazy(() => import("./features/auth/ForgotPassword"));
@@ -79,6 +82,9 @@ function App() {
   const setClientUser = useClientAppStore((s) => s.setClientUser);
   const clearClientUser = useClientAppStore((s) => s.clearClientUser);
   const [clientSessionChecked, setClientSessionChecked] = useState(false);
+
+  const user = useAppStore((s) => s.user);
+  const clientUser = useClientAppStore((s) => s.clientUser);
 
   useEffect(() => {
     let cancelled = false;
@@ -163,10 +169,10 @@ function App() {
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<Dashboard />} />
                 <Route path="dashboard" element={<Dashboard />} />
-                <Route path="projects" element={<Projects filterOngoing />} />
+                <Route path="projects" element={<Projects filterOngoing order="status_delivery" />} />
                 <Route
                   path="project-history"
-                  element={<Projects title="Project History" hideCreateActions />}
+                  element={<Projects title="Project History" hideCreateActions order="status_delivery" />}
                 />
                 <Route path="customers" element={<Customers />} />
                 <Route path="customers/:id" element={<CustomerProfile />} />
@@ -177,6 +183,9 @@ function App() {
                 <Route path="employees/new" element={<AddEmployee />} />
                 <Route path="employees/:id" element={<EmployeeProfile />} />
                 <Route path="system-setup" element={<SystemSetup />} />
+                <Route path="notes" element={<Notes />} />
+                <Route path="invoices" element={<InvoicesPage />} />
+                <Route path="invoices/:id" element={<InvoicesPage />} />
               </Route>
             </Route>
 
@@ -194,6 +203,10 @@ function App() {
             <Route element={<ProtectedRoute allowedRoles={["user", "moderator"]} />}>
               <Route path="/" element={<EmployeeLayout />}>
                 <Route index element={<Projects />} />
+                <Route path="notes" element={<Notes />} />
+                <Route path="invoices" element={<InvoicesPage />} />
+                <Route path="invoices/:id" element={<InvoicesPage />} />
+                <Route path="system-setup" element={<SystemSetup />} />
               </Route>
             </Route>
 
@@ -227,6 +240,29 @@ function App() {
               the new quotation on success), and a crash inside one should
               be caught by ErrorBoundary instead of blanking the whole app -
               neither was true when they lived outside it. */}
+
+          <SessionWatcher
+            current={user ? { id: user.username, label: user.username } : null}
+            appliesHere={() => !window.location.pathname.startsWith("/portal")}
+            fetchIdentity={async () => {
+              const me = await apiService.get<User>(API.auth.me);
+              return { id: me.username, label: me.username };
+            }}
+            logout={() => apiService.post("/auth/logout")}
+            homePath="/"
+            loginPath="/login"
+          />
+          <SessionWatcher
+            current={clientUser ? { id: String(clientUser.customerId), label: clientUser.email ?? clientUser.firstName } : null}
+            appliesHere={() => window.location.pathname.startsWith("/portal")}
+            fetchIdentity={async () => {
+              const me = await portalApiService.get<{ customer_id: number; email: string | null; first_name: string }>("/client-auth/me");
+              return { id: String(me.customer_id), label: me.email ?? me.first_name };
+            }}
+            logout={() => portalApiService.post("/client-auth/logout")}
+            homePath="/portal"
+            loginPath="/portal/login"
+          />
 
           {/* Global Confirm Dialog */}
           <ConfirmDialog
@@ -262,7 +298,7 @@ function App() {
               this is opened from) - reuses the same xl width as
               invoiceDesignComplete below since it hosts the same line-item
               table. */}
-          <Dialog type="editInvoice" title="Edit Invoice" children={<Suspense fallback={<PageSpinner />}><EditInvoice /></Suspense>} maxWidth="xl" />
+          <Dialog type="editInvoice" title="Invoice" children={<Suspense fallback={<PageSpinner />}><EditInvoice /></Suspense>} maxWidth="xl" fullWidth />
 
           {/* Same reasoning as viewInvoice above, moved here from
               layouts/AdminLayout.tsx - a project's own "Mark design as completed"
@@ -276,8 +312,8 @@ function App() {
               full line-item table (see features/billing/ItemLineEditor.tsx)
               that wants up to ~1280px to avoid its own internal horizontal
               scrollbar. */}
-          <Dialog type="invoiceDesignComplete" title="Invoice" children={<Suspense fallback={<PageSpinner />}><GenerateInvoice /></Suspense>} maxWidth="xl" />
-          <Dialog type="quotation" title="Quotation" children={<Suspense fallback={<PageSpinner />}><GenerateQuotation /></Suspense>} maxWidth="xl" />
+          <Dialog type="invoiceDesignComplete" title="Invoice" children={<Suspense fallback={<PageSpinner />}><GenerateInvoice /></Suspense>} maxWidth="xl" fullWidth />
+          <Dialog type="quotation" title="Quotation" children={<Suspense fallback={<PageSpinner />}><GenerateQuotation /></Suspense>} maxWidth="xl" fullWidth />
 
           <DownloadProgressIndicator />
         </ErrorBoundary>

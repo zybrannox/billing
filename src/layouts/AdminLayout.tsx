@@ -17,6 +17,7 @@ import { useOnDialogClose } from "../hooks/useOnDialogClose";
 import { useInvalidateBilling } from "../features/billing/queries";
 import { Suspense } from "react";
 import PageSpinner from "../ui/PageSpinner";
+import InvoiceQuickSearch from "../features/billing/InvoiceQuickSearch";
 
 
 export default function AdminLayout() {
@@ -66,6 +67,7 @@ export default function AdminLayout() {
               </IconButton>
 
               <Box sx={{ display: "flex", alignItems: "center" }}>
+                <InvoiceQuickSearch />
                 {/* Reachable from every admin page, not just Projects' own
                     per-row action - opens the same GenerateInvoice dialog
                     with no project pre-selected, so it defaults to its own

@@ -1,69 +1,13 @@
 import React, { useState } from "react";
-import {
-  Box,
-  Typography,
-  Paper,
-  Stack,
-  IconButton,
-  LinearProgress,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-} from "@mui/material";
-import {
-  UploadFile,
-  Close,
-  CheckCircle,
-  ErrorOutline,
-  Replay,
-  FolderZipOutlined,
-} from "@mui/icons-material";
+import { Box, Paper, Typography } from "@mui/material";
+import { FolderZipOutlined, UploadFile } from "@mui/icons-material";
 import { apiService } from "../api/service";
-import { getImageDimensions } from "../utils/appSupport";
-import { uploadFileChunked, CHUNK_UPLOAD_THRESHOLD } from "../utils/chunkedUpload";
+import { formatFileSize } from "../utils/appSupport";
+import AttachmentsDialog from "./uploader/AttachmentsDialog";
+import { useUploadQueue } from "./uploader/useUploadQueue";
+import type { UploadApiClient, UploadItem } from "./uploader/uploadTypes";
 
-export interface UploadItem {
-  id: string;
-  file: File;
-  name: string;
-  size: number;
-  status: "uploading" | "done" | "error";
-  progress: number;
-  path?: string;
-  width?: number | null;
-  height?: number | null;
-  pixelWidth?: number | null;
-  pixelHeight?: number | null;
-  errorMessage?: string;
-}
-
-interface UploadResponse {
-  files: Array<{
-    path: string;
-    original_name: string;
-    width: number | null;
-    height: number | null;
-    pixel_width: number | null;
-    pixel_height: number | null;
-  }>;
-}
-
-// The subset of apiService this component actually calls - lets a caller
-// (e.g. the client portal's SubmitJobRequest.tsx, which has no staff
-// session and must authenticate against a *different* cookie/axios
-// instance - see api/portalService.ts) swap in its own client instead of
-// this always hitting the staff-only apiService/axiosClient underneath.
-interface UploadApiClient {
-  postWithProgress: <T>(
-    url: string,
-    data: FormData,
-    onProgress: (percent: number) => void,
-    signal?: AbortSignal,
-  ) => Promise<T>;
-  delete: <T>(url: string) => Promise<T>;
-}
+export type { UploadItem };
 
 interface GmailFileUploaderProps {
   label?: React.ReactNode;
@@ -89,128 +33,7 @@ interface GmailFileUploaderProps {
   maxFileSize?: number;
 }
 
-const formatFileSize = (bytes: number) => {
-  if (bytes === 0) return "0 B";
-  const k = 1024;
-  const sizes = ["B", "KB", "MB", "GB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
-};
-
 const MAX_FILE_SIZE = 1024 * 1024 * 1024; // 1GB
-
-// Memoized and given only stable props (see patchItem/removeItem/retryItem's
-// useCallback wrapping above) so that during an active upload, a progress
-// tick on one file only re-renders that file's row - not the whole list.
-// Without this, every row re-rendered on every tick regardless of whether
-// its own data changed, which is what made the list unscrollable once
-// several files were uploading at once.
-const FileRow = React.memo(function FileRow({
-  item,
-  onRemove,
-  onRetry,
-}: {
-  item: UploadItem;
-  onRemove: (id: string) => void;
-  onRetry: (id: string) => void;
-}) {
-  return (
-    <Box
-      sx={{
-        px: 2,
-        py: 1.25,
-        display: "flex",
-        alignItems: "center",
-        gap: 1.5,
-        "&:hover": { backgroundColor: "var(--slate-50)" },
-        "&:not(:last-child)": { borderBottom: "1px solid var(--slate-100)" },
-      }}
-    >
-      {item.status === "done" && (
-        <CheckCircle sx={{ fontSize: 18, color: "var(--emerald-500)", flexShrink: 0 }} />
-      )}
-      {item.status === "error" && (
-        <ErrorOutline sx={{ fontSize: 18, color: "var(--red-500)", flexShrink: 0 }} />
-      )}
-      {item.status === "uploading" && (
-        <UploadFile sx={{ fontSize: 18, color: "var(--slate-500)", flexShrink: 0 }} />
-      )}
-
-      <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Typography
-          variant="body2"
-          sx={{
-            color: "var(--slate-900)",
-            fontWeight: 500,
-            fontSize: "var(--fs-sm)",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
-        >
-          {item.name}
-        </Typography>
-
-        {item.status === "uploading" && (
-          <>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 0.5 }}>
-              <LinearProgress
-                variant="determinate"
-                value={item.progress}
-                sx={{
-                  flex: 1,
-                  height: 3,
-                  borderRadius: 2,
-                  backgroundColor: "var(--slate-200)",
-                  "& .MuiLinearProgress-bar": { backgroundColor: "var(--slate-700)" },
-                }}
-              />
-              <Typography variant="caption" sx={{ color: "var(--slate-500)", minWidth: 28, fontSize: "var(--fs-2xs)" }}>
-                {Math.round(item.progress)}%
-              </Typography>
-            </Box>
-            <Typography variant="caption" sx={{ color: "var(--slate-400)", fontSize: "var(--fs-2xs)" }}>
-              {formatFileSize((item.progress / 100) * item.size)} of {formatFileSize(item.size)}
-            </Typography>
-          </>
-        )}
-
-        {item.status === "done" && (
-          <Typography variant="caption" sx={{ color: "var(--slate-500)", fontSize: "var(--fs-xs)" }}>
-            {formatFileSize(item.size)} · Uploaded
-          </Typography>
-        )}
-
-        {item.status === "error" && (
-          <Typography variant="caption" sx={{ color: "var(--red-500)", fontSize: "var(--fs-xs)" }}>
-            {item.errorMessage || "Upload failed"}
-          </Typography>
-        )}
-      </Box>
-
-      {item.status === "error" && (
-        <IconButton
-          size="small"
-          onClick={() => onRetry(item.id)}
-          sx={{ color: "var(--slate-500)", "&:hover": { color: "var(--slate-900)" } }}
-        >
-          <Replay sx={{ fontSize: 16 }} />
-        </IconButton>
-      )}
-
-      <IconButton
-        size="small"
-        onClick={() => onRemove(item.id)}
-        sx={{
-          color: "var(--slate-400)",
-          "&:hover": { color: "var(--red-500)", backgroundColor: "rgba(239, 68, 68, 0.06)" },
-        }}
-      >
-        <Close sx={{ fontSize: 16 }} />
-      </IconButton>
-    </Box>
-  );
-});
 
 const GmailFileUploader = ({
   label = "Attachments",
@@ -229,146 +52,7 @@ const GmailFileUploader = ({
   const [modalOpen, setModalOpen] = useState(false);
   const items = React.useMemo(() => (Array.isArray(value) ? value : []), [value]);
 
-  const itemsRef = React.useRef(items);
-  React.useEffect(() => {
-    itemsRef.current = items;
-  }, [items]);
-
-  const controllersRef = React.useRef<Record<string, AbortController>>({});
-
-  // Progress fires many times a second per file, and several files can be
-  // uploading at once (e.g. a 1GB file alongside others) - each one
-  // independently calling patchItem, even throttled per-file, doesn't bound
-  // the *combined* rate: 5 files each capped at ~10 updates/sec is still up
-  // to 50 re-renders/sec of the whole list. This batches every patch from
-  // every concurrently-uploading file into one flush at most every 100ms,
-  // so the total re-render rate stays bounded no matter how many files (or
-  // how many chunks of one large file) are in flight together - that
-  // combined rate, not any single file's, is what made the list unscrollable.
-  const pendingPatchesRef = React.useRef<Record<string, Partial<UploadItem>>>({});
-  const flushScheduledRef = React.useRef(false);
-
-  const flushPatches = React.useCallback(() => {
-    flushScheduledRef.current = false;
-    const patches = pendingPatchesRef.current;
-    pendingPatchesRef.current = {};
-    if (Object.keys(patches).length === 0) return;
-
-    const next = itemsRef.current.map((it) =>
-      patches[it.id] ? { ...it, ...patches[it.id] } : it,
-    );
-    itemsRef.current = next;
-    onChange?.(next);
-  }, [onChange]);
-
-  // Stable across renders (only depends on `onChange`, which react-hook-form
-  // keeps referentially stable per field) so FileRow below can be memoized -
-  // an inline closure here would give every row a "new" prop every render,
-  // which defeats React.memo regardless of whether the row's own data changed.
-  const patchItem = React.useCallback(
-    (id: string, patch: Partial<UploadItem>) => {
-      pendingPatchesRef.current[id] = {
-        ...pendingPatchesRef.current[id],
-        ...patch,
-      };
-      if (!flushScheduledRef.current) {
-        flushScheduledRef.current = true;
-        setTimeout(flushPatches, 100);
-      }
-    },
-    [flushPatches],
-  );
-
-  const uploadItem = React.useCallback(async (item: UploadItem) => {
-    const controller = new AbortController();
-    controllersRef.current[item.id] = controller;
-
-    // No per-item throttling needed here anymore - patchItem itself now
-    // batches every update (from every concurrently-uploading file) into a
-    // single globally-bounded flush, so calling it on every raw progress
-    // tick is fine.
-    const onProgress = (percent: number) => {
-      patchItem(item.id, { progress: percent });
-    };
-
-    try {
-      // Uploads the real file, byte for byte - it used to go through
-      // compressImage first, which re-encoded anything over 500KB as a
-      // resized, quality-0.8 JPEG. That's why a downloaded file could come
-      // back smaller (and lower-fidelity) than what was actually selected:
-      // the compressed copy was the only one ever stored, so there was
-      // nothing left to reconstruct the original from. It bought faster
-      // uploads for large images, but the grid/lightbox previews never
-      // depended on it - they're served from generate_thumbnail's own
-      // server-side, disk-cached thumbnail, generated once from whatever
-      // gets uploaded and unaffected by this either way. Large files are
-      // now handled by chunked upload below instead, so there's no
-      // performance case left for shrinking the stored copy.
-      const dimensions = await getImageDimensions(item.file);
-      const width = dimensions?.width ?? null;
-      const height = dimensions?.height ?? null;
-      const pixelWidth = dimensions?.pixelWidth ?? null;
-      const pixelHeight = dimensions?.pixelHeight ?? null;
-
-      // Cloudflare's proxy rejects any request body over ~100MB before it
-      // reaches the backend at all (see chunkedUpload.ts) - anything above
-      // the threshold has to be split into chunks instead of one request.
-      const saved =
-        item.file.size > CHUNK_UPLOAD_THRESHOLD
-          ? await uploadFileChunked(
-              item.file,
-              { width, height, pixelWidth, pixelHeight },
-              onProgress,
-              controller.signal,
-            )
-          : await (async () => {
-              const form = new FormData();
-              form.append("files", item.file);
-              form.append(
-                "metadata",
-                JSON.stringify([
-                  {
-                    filename: item.file.name,
-                    width,
-                    height,
-                    pixel_width: pixelWidth,
-                    pixel_height: pixelHeight,
-                  },
-                ]),
-              );
-
-              const res = await apiClient.postWithProgress<UploadResponse>(
-                uploadEndpoint,
-                form,
-                onProgress,
-                controller.signal,
-              );
-              return res.files[0];
-            })();
-
-      patchItem(item.id, {
-        status: "done",
-        progress: 100,
-        path: saved.path,
-        width: saved.width,
-        height: saved.height,
-        pixelWidth: saved.pixel_width,
-        pixelHeight: saved.pixel_height,
-      });
-    } catch (err: any) {
-      const wasCancelled =
-        err?.code === "ERR_CANCELED" || err?.name === "CanceledError";
-      if (wasCancelled) return;
-
-      patchItem(item.id, {
-        status: "error",
-        errorMessage:
-          err?.response?.data?.detail || "Upload failed. Please retry.",
-      });
-    } finally {
-      delete controllersRef.current[item.id];
-    }
-  }, [patchItem, apiClient, uploadEndpoint]);
+  const { addFiles, removeItem, retryItem } = useUploadQueue({ items, onChange, multiple, apiClient, uploadEndpoint, deleteEndpointBase });
 
   const openPicker = () => inputRef.current?.click();
 
@@ -376,70 +60,18 @@ const GmailFileUploader = ({
     if (!e.target.files) return;
 
     const selected = Array.from(e.target.files);
+    e.target.value = "";
 
     const oversized = selected.filter((file) => file.size > maxFileSize);
     if (oversized.length > 0) {
-      const limitLabel = formatFileSize(maxFileSize);
-      alert(
-        `The following files exceed the ${limitLabel} limit:\n${oversized.map((f) => f.name).join("\n")}`,
-      );
-      e.target.value = "";
+      alert(`The following files exceed the ${formatFileSize(maxFileSize)} limit:\n${oversized.map((f) => f.name).join("\n")}`);
       return;
     }
 
-    const newItems: UploadItem[] = selected.map((file) => ({
-      id:
-        typeof crypto !== "undefined" && crypto.randomUUID
-          ? crypto.randomUUID()
-          : `${Date.now()}-${Math.random()}`,
-      file,
-      name: file.name,
-      size: file.size,
-      status: "uploading",
-      progress: 0,
-    }));
-
-    const merged = multiple ? [...itemsRef.current, ...newItems] : newItems;
-    itemsRef.current = merged;
-    onChange?.(merged);
-
-    newItems.forEach((item) => uploadItem(item));
-
-    e.target.value = "";
+    addFiles(selected);
   };
 
-  const removeItem = React.useCallback(
-    (id: string) => {
-      const item = itemsRef.current.find((it) => it.id === id);
-
-      if (item?.status === "uploading") {
-        controllersRef.current[id]?.abort();
-        delete controllersRef.current[id];
-      } else if (item?.status === "done" && item.path) {
-        apiClient.delete(`${deleteEndpointBase}/${encodeURIComponent(item.path)}`).catch(() => {});
-      }
-
-      const next = itemsRef.current.filter((it) => it.id !== id);
-      itemsRef.current = next;
-      onChange?.(next);
-    },
-    [onChange, apiClient, deleteEndpointBase],
-  );
-
-  const retryItem = React.useCallback(
-    (id: string) => {
-      const item = itemsRef.current.find((it) => it.id === id);
-      if (!item) return;
-      patchItem(id, { status: "uploading", progress: 0, errorMessage: undefined });
-      uploadItem({ ...item, status: "uploading", progress: 0 });
-    },
-    [patchItem, uploadItem],
-  );
-
-  const totalSize = items.reduce((sum, it) => sum + it.size, 0);
   const hasErrors = items.some((it) => it.status === "error");
-  const uploadingCount = items.filter((it) => it.status === "uploading").length;
-  const doneCount = items.filter((it) => it.status === "done").length;
 
   const handleOpenDialog = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevents opening the file picker
@@ -582,92 +214,14 @@ const GmailFileUploader = ({
         </Typography>
       )}
 
-      {/* Attachments Popup Dialog */}
-      <Dialog
+      <AttachmentsDialog
         open={modalOpen}
+        items={items}
         onClose={() => setModalOpen(false)}
-        maxWidth="xs"
-        fullWidth
-        PaperProps={{
-          elevation: 4,
-          sx: {
-            borderRadius: "10px",
-            border: "1px solid var(--slate-200)",
-          },
-        }}
-      >
-        <DialogTitle
-          sx={{
-            py: 1.5,
-            px: 2,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            borderBottom: "1px solid var(--slate-100)",
-          }}
-        >
-          <Box>
-            <Typography variant="body2" sx={{ fontWeight: 600, color: "var(--slate-900)", fontSize: "var(--fs-lg)" }}>
-              Attached Files ({items.length})
-            </Typography>
-            {uploadingCount > 0 && (
-              <Typography variant="caption" sx={{ color: "var(--slate-500)", fontSize: "var(--fs-2xs)" }}>
-                {doneCount} of {items.length} uploaded · {formatFileSize(totalSize)} total
-              </Typography>
-            )}
-          </Box>
-          <IconButton size="small" onClick={() => setModalOpen(false)} sx={{ color: "var(--slate-400)" }}>
-            <Close sx={{ fontSize: 18 }} />
-          </IconButton>
-        </DialogTitle>
-
-        <DialogContent sx={{ p: 0, maxHeight: "360px" }}>
-          {items.length === 0 ? (
-            <Box sx={{ py: 5, px: 2, textAlign: "center" }}>
-              <FolderZipOutlined sx={{ fontSize: 36, color: "var(--slate-300)", mb: 1 }} />
-              <Typography variant="body2" sx={{ color: "var(--slate-600)", fontWeight: 500, fontSize: "var(--fs-md)" }}>
-                No files attached yet
-              </Typography>
-              <Typography variant="caption" sx={{ color: "var(--slate-400)", fontSize: "var(--fs-xs)", display: "block", mt: 0.5 }}>
-                Click below to select and upload files.
-              </Typography>
-            </Box>
-          ) : (
-            <Stack spacing={0}>
-              {items.map((item) => (
-                <FileRow
-                  key={item.id}
-                  item={item}
-                  onRemove={removeItem}
-                  onRetry={retryItem}
-                />
-              ))}
-            </Stack>
-          )}
-        </DialogContent>
-
-        <DialogActions sx={{ px: 2, py: 1.25, borderTop: "1px solid var(--slate-100)", justifyContent: "space-between" }}>
-          <Typography variant="caption" sx={{ color: "var(--slate-500)", fontSize: "var(--fs-xs)" }}>
-            Total: {formatFileSize(totalSize)}
-          </Typography>
-          <Box sx={{ display: "flex", gap: 1 }}>
-            <Button
-              size="small"
-              onClick={openPicker}
-              sx={{ textTransform: "none", fontSize: "var(--fs-xs)", color: "var(--slate-700)", fontWeight: 500 }}
-            >
-              + Add files
-            </Button>
-            <Button
-              size="small"
-              onClick={() => setModalOpen(false)}
-              sx={{ textTransform: "none", fontSize: "var(--fs-xs)", color: "var(--slate-500)" }}
-            >
-              Close
-            </Button>
-          </Box>
-        </DialogActions>
-      </Dialog>
+        onAddFiles={openPicker}
+        onRemove={removeItem}
+        onRetry={retryItem}
+      />
     </Box>
   );
 };

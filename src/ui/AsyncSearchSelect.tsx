@@ -6,14 +6,14 @@ import CloseIcon from "@mui/icons-material/Close";
 import { apiService } from "../api/service";
 import { messages } from "../messages";
 
-interface AsyncSearchSelectProps {
+interface AsyncSearchSelectProps<T> {
   label?: React.ReactNode;
   placeholder?: string;
   endpoint: string;
   searchParam?: string;
   extraParams?: Record<string, string | number>;
-  getOptionLabel: (item: any) => string;
-  getOptionValue: (item: any) => string | number;
+  getOptionLabel: (item: T) => string;
+  getOptionValue: (item: T) => string | number;
   value?: string | number | null;
   onChange?: (value: string | number | undefined) => void;
   error?: boolean;
@@ -26,10 +26,10 @@ interface AsyncSearchSelectProps {
   // directly - e.g. this field keys options by username, but the users
   // endpoint's single-record lookup is by numeric id, so that fetch 422s
   // and the field would otherwise silently show blank forever.
-  initialOption?: any;
+  initialOption?: T;
 }
 
-export default function AsyncSearchSelect({
+export default function AsyncSearchSelect<T>({
   label,
   placeholder = "Type to search...",
   endpoint,
@@ -45,11 +45,11 @@ export default function AsyncSearchSelect({
   className,
   sx,
   initialOption,
-}: AsyncSearchSelectProps) {
+}: AsyncSearchSelectProps<T>) {
   const [open, setOpen] = React.useState(false);
   const [inputValue, setInputValue] = React.useState("");
   const [debouncedInput, setDebouncedInput] = React.useState("");
-  const [selected, setSelected] = React.useState<any | null>(null);
+  const [selected, setSelected] = React.useState<T | null>(null);
 
   const extraParamsKey = JSON.stringify(extraParams ?? {});
 
@@ -68,7 +68,7 @@ export default function AsyncSearchSelect({
   const listQuery = useQuery({
     queryKey: ["async-select-options", endpoint, debouncedInput, extraParamsKey],
     queryFn: async () => {
-      const data = await apiService.get<any[] | { items: any[] }>(endpoint, {
+      const data = await apiService.get<T[] | { items: T[] }>(endpoint, {
         params: {
           [searchParam]: debouncedInput || undefined,
           ...JSON.parse(extraParamsKey),
@@ -98,7 +98,7 @@ export default function AsyncSearchSelect({
 
   const hydrationQuery = useQuery({
     queryKey: ["async-select-item", endpoint, value],
-    queryFn: () => apiService.get<any>(`${endpoint}/${value}`),
+    queryFn: () => apiService.get<T>(`${endpoint}/${value}`),
     enabled: needsHydration,
     // Some endpoints don't support a single-record lookup at all (see the
     // initialOption comment above) - fail quietly once, not with retries.
@@ -146,9 +146,7 @@ export default function AsyncSearchSelect({
         value={selected}
         filterOptions={(x) => x} // Disable client filtering since backend handles query
         isOptionEqualToValue={(a, b) => getOptionValue(a) === getOptionValue(b)}
-        getOptionLabel={(opt) =>
-          typeof opt === "string" ? opt : getOptionLabel(opt)
-        }
+        getOptionLabel={getOptionLabel}
         loadingText={
           <Typography sx={{ fontSize: "var(--fs-sm)", color: "text.secondary" }}>
             Loading...

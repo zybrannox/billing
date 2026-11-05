@@ -60,6 +60,7 @@ export function SwitchRow({
         gap: 3,
         py: 1,
         opacity: disabled ? 0.55 : 1,
+        transition: "opacity 0.2s ease",
         "& + &": { borderTop: "1px solid var(--slate-100)" },
       }}
     >

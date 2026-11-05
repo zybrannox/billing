@@ -1,75 +1,25 @@
-import type { GridColDef } from "@mui/x-data-grid";
-import { Tooltip } from "@mui/material";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import CalendarTodayRoundedIcon from "@mui/icons-material/CalendarTodayRounded";
+import { useMemo } from "react";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import PlaceRoundedIcon from "@mui/icons-material/PlaceRounded";
-import CrudActions from "../../ui/Actions";
-import { useProjectStore, type Project } from "../../store/useProjectStore";
-import { apiService } from "../../api/service";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import Chip from "../../ui/Chip";
-import { semanticChipSx } from "../../ui/chipStyles";
-import { getSemanticColor } from "../../utils/colors";
-import { SemanticSelectEditCell } from "../../ui/Select";
-import Dialog from "../../ui/Dialog";
-import { useDialogStore } from "../../store/useDialogStore";
-import { useConfirmDialogStore } from "../../hooks/useconfirmDialogStore";
 import { useAppStore } from "../../store/useAppStore";
-import AddProject from "./AddProject";
-import AddCustomer from "../customers/AddCustomer";
-import DeliveryCheck from "./DeliveryCheck";
-import Button from "../../ui/Button";
-import { getRowClassName } from "../../utils/appSupport";
-import { formatDateTime } from "../../format/date";
-import Table from "../../ui/Table";
-import ProjectFilesList from "./ProjectFilesList";
-import TableSearchBar from "../../ui/TableSearchBar";
-import FilterMenu, {
-  type FilterFieldDefinition,
-} from "../../ui/FilterMenu";
+import { useDialogStore } from "../../store/useDialogStore";
+import { useProjectStore, type Project, type ProjectOrder } from "../../store/useProjectStore";
 import BulkDeleteButton from "../../ui/BulkDeleteButton";
+import Button from "../../ui/Button";
+import Dialog from "../../ui/Dialog";
+import FilterMenu from "../../ui/FilterMenu";
 import RefreshButton from "../../ui/RefreshButton";
-import { notifyClientWhatsApp } from "./notifyClientWhatsApp";
-import { messages } from "../../messages";
-
-const priorityOrder: Record<string, number> = {
-  Urgent: 1,
-  High: 2,
-  Normal: 3,
-};
-
-const printStatusOrder: Record<string, number> = {
-  Pending: 1,
-  "In Progress": 2,
-  Completed: 3,
-};
-
-const filterFields: FilterFieldDefinition[] = [
-  {
-    type: "select",
-    key: "printStatus",
-    label: messages.fields.printStatus,
-    placeholder: "All",
-    options: ["Pending", "In Progress", "Completed"],
-  },
-  {
-    type: "select",
-    key: "priority",
-    label: "Priority",
-    placeholder: "All",
-    options: ["Urgent", "High", "Normal"],
-  },
-  {
-    type: "async_select",
-    key: "customer",
-    label: "Customer",
-    endpoint: "/customers",
-    extraParams: { limit: 20 },
-    getOptionLabel: (c) => `${c.first_name} ${c.last_name}`,
-    getOptionValue: (c) => c.id,
-  },
-];
+import Table from "../../ui/Table";
+import TableSearchBar from "../../ui/TableSearchBar";
+import { getRowClassName } from "../../utils/appSupport";
+import AddCustomer from "../customers/AddCustomer";
+import AddProject from "./AddProject";
+import DeliveryCheck from "./DeliveryCheck";
+import ProjectFilesList from "./ProjectFilesList";
+import ProjectRowActions from "./list/ProjectRowActions";
+import { buildProjectColumns, projectFilterFields } from "./list/projectColumns";
+import { useProjectList } from "./list/useProjectList";
+import { useProjectListActions } from "./list/useProjectListActions";
 
 interface ProjectsProps {
   // Only the admin "Ongoing Activities" route sets this - everything else
@@ -77,6 +27,7 @@ interface ProjectsProps {
   // completely unaffected and keeps seeing every project, unfiltered,
   // exactly as before this feature existed.
   filterOngoing?: boolean;
+  order?: ProjectOrder;
   title?: string;
   // Project History is a browse/archive view - creating new ongoing work
   // from there would be a confusing place to do it, so it drops the two
@@ -87,6 +38,7 @@ interface ProjectsProps {
 
 const Projects = ({
   filterOngoing = false,
+  order,
   title = "Ongoing Activities",
   hideCreateActions = false,
 }: ProjectsProps = {}) => {
@@ -100,169 +52,23 @@ const Projects = ({
   const projects = useProjectStore((s) => s.projects);
   const projectsTotal = useProjectStore((s) => s.projectsTotal);
   const projectsLoading = useProjectStore((s) => s.projectsLoading);
-  const fetchProjects = useProjectStore((s) => s.fetchProjects);
-  const updateProject = useProjectStore((s) => s.updateProject);
-  const deleteProject = useProjectStore((s) => s.deleteProject);
-  const deleteProjects = useProjectStore((s) => s.deleteProjects);
-  const markPrintCompleted = useProjectStore((s) => s.markPrintCompleted);
-  const togglePinProject = useProjectStore((s) => s.togglePinProject);
-  const notifyClient = useProjectStore((s) => s.notifyClient);
 
-  const columns: GridColDef[] = useMemo(
-    () => [
-           {
-        field: "customer_name",
-        headerName: "Customer",
-        flex: 1,
-        editable: false,
-        // Editing which customer a project belongs to needs the same
-        // search-driven picker as the create form, not a plain text edit -
-        // out of scope here, this column is display-only.
-        renderCell: ({ value }) => (
-          <span style={{ fontWeight: 600 }}>{value || "—"}</span>
-        ),
-      },
-      {
-        field: "assigned_to",
-        headerName: "Assignee",
-        flex: 1,
-        editable: isAdmin,
-      },
-      {
-        field: "project_type",
-        headerName: messages.fields.projectType,
-        flex: 1,
-        editable: true,
-      },
-      {
-        field: "description",
-        headerName: "Description",
-        flex: 1.5,
-        editable: true,
-        // Already fetched on every project row (see `rows` above) and
-        // already handled by processRowUpdate - this column only needed
-        // adding here, no new data or requests involved.
-        renderCell: ({ value }) => (
-          <span
-            style={{
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-              display: "block",
-              fontWeight: 600,
-            }}
-            title={value || undefined}
-          >
-            {value || "—"}
-          </span>
-        ),
-      },
-      {
-        field: "delivery_date",
-        headerName: "Deliveryadd invoice / Start Date",
-        flex: 1.5,
-        minWidth: 200,
-        editable: true,
-        valueFormatter: (value) => formatDateTime(value),
-        renderCell: ({ value, row }) => (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              overflow: "hidden",
-              width: "100%",
-            }}
-          >
-            <span
-              style={{
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-                minWidth: 0,
-              }}
-            >
-              {formatDateTime(value)}
-            </span>
-            {row.start_date && (
-              <Tooltip title={`Started ${formatDateTime(row.start_date)}`} arrow placement="top">
-                <CalendarTodayRoundedIcon
-                  sx={{ fontSize: 14, color: "var(--slate-400)", flexShrink: 0, cursor: "default" }}
-                />
-              </Tooltip>
-            )}
-          </div>
-        ),
-      },
-      {
-        field: "priority",
-        headerName: "Priority",
-        flex: 1,
-        editable: true,
-        type: "singleSelect",
-        valueOptions: ["Normal", "High", "Urgent"],
-        // Lets a user re-sort the *current page* by clicking the column header.
-        // The default (no header sort applied) order comes from the server.
-        sortComparator: (v1, v2) => {
-          const order1 = priorityOrder[v1 as string] || 5;
-          const order2 = priorityOrder[v2 as string] || 5;
-          return order1 - order2;
-        },
-        renderCell: ({ value }) => (
-          <Chip
-            label={value}
-            sx={semanticChipSx(getSemanticColor("priority", value))}
-          />
-        ),
-        renderEditCell: (params) => (
-          <SemanticSelectEditCell {...params} semantic="priority" />
-        ),
-      },
-      {
-        field: "client_status",
-        headerName: messages.fields.clientStatus,
-        flex: 1,
-        editable: true,
-        type: "singleSelect",
-        valueOptions: ["Confirmed", "Correction"],
-        renderCell: ({ value }) => (
-          <Chip
-            label={value}
-            sx={semanticChipSx(getSemanticColor("clientStatus", value))}
-          />
-        ),
-        renderEditCell: (params) => (
-          <SemanticSelectEditCell {...params} semantic="clientStatus" />
-        ),
-      },
-      {
-        field: "print_status",
-        headerName: messages.fields.printStatus,
-        flex: 1,
-        editable: true,
-        type: "singleSelect",
-        valueOptions: ({ row }) =>
-          row?.design_completed_at
-            ? ["Pending", "In Progress", "Completed"]
-            : ["Pending", "In Progress"],
-        sortComparator: (v1, v2) => {
-          const order1 = printStatusOrder[v1 as string] || 4;
-          const order2 = printStatusOrder[v2 as string] || 4;
-          return order1 - order2;
-        },
-        renderCell: ({ value }) => (
-          <Chip
-            label={value}
-            sx={semanticChipSx(getSemanticColor("printStatus", value))}
-          />
-        ),
-        renderEditCell: (params) => (
-          <SemanticSelectEditCell {...params} semantic="printStatus" />
-        ),
-      },
-    ],
-    [isAdmin],
-  );
+  const {
+    focusedProjectId,
+    clearFocusedProject,
+    searchInput,
+    setSearchInput,
+    printStatusFilter,
+    setPrintStatusFilter,
+    customerFilter,
+    setCustomerFilter,
+    paginationModel,
+    setPaginationModel,
+    loadProjects,
+  } = useProjectList({ filterOngoing, order });
+  const actions = useProjectListActions(loadProjects);
+
+  const columns = useMemo(() => buildProjectColumns(isAdmin), [isAdmin]);
 
   const rows = useMemo(() => {
     return projects.map((p) => ({
@@ -271,7 +77,6 @@ const Projects = ({
       assigned_to: p.assigned_to,
       start_date: p.start_date,
       delivery_date: p.delivery_date,
-      priority: p.priority,
       client_status: p.client_status,
       print_status: p.print_status,
       description: p.description,
@@ -290,183 +95,6 @@ const Projects = ({
       pinned: p.pinned,
     }));
   }, [projects]);
-
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const showDialog = useConfirmDialogStore((s) => s.showDialog);
-  const closeDialog = useConfirmDialogStore((s) => s.closeDialog);
-  const setLoading = useConfirmDialogStore((s) => s.setLoading);
-  const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
-
-  // Arriving here from a dashboard/notification row (e.g. "Recent
-  // Deliveries") jumps straight to that one project via an exact server-side
-  // id match, rather than relying on the free-text search possibly matching
-  // more than one row (or not matching a name with unusual punctuation).
-  const focusedProjectId = searchParams.get("projectId");
-
-  const clearFocusedProject = useCallback(() => {
-    const next = new URLSearchParams(searchParams);
-    next.delete("projectId");
-    setSearchParams(next, { replace: true });
-  }, [searchParams, setSearchParams]);
-
-  // Search/filters are sent to the server rather than applied client-side,
-  // so the browser never has to hold more than one page of projects.
-  const [searchInput, setSearchInput] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [printStatusFilter, setPrintStatusFilter] = useState("");
-  const [priorityFilter, setPriorityFilter] = useState("");
-  const [customerFilter, setCustomerFilter] = useState<string | number | undefined>(
-    undefined,
-  );
-  const [paginationModel, setPaginationModel] = useState({
-    page: 0, // MUI DataGrid pages are 0-indexed; the API is 1-indexed.
-    pageSize: 20,
-  });
-
-  // Debounce the search box so every keystroke doesn't fire a request.
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(searchInput), 350);
-    return () => clearTimeout(timer);
-  }, [searchInput]);
-
-  // Any new search/filter should land back on page 1.
-  useEffect(() => {
-    setPaginationModel((prev) => (prev.page === 0 ? prev : { ...prev, page: 0 }));
-  }, [debouncedSearch, printStatusFilter, priorityFilter, customerFilter, focusedProjectId]);
-
-  // Shared by the auto-refetch effect below and the manual refresh button -
-  // "refresh" means reload whatever the user is currently looking at
-  // (same page, same search/filters), not reset any of it. When a
-  // `projectId` is focused, the server ignores every other filter and
-  // returns just that one project (see GET /projects, project_id param).
-  const loadProjects = useCallback(() => {
-    fetchProjects({
-      page: paginationModel.page + 1,
-      pageSize: paginationModel.pageSize,
-      search: debouncedSearch,
-      printStatus: printStatusFilter,
-      priority: priorityFilter,
-      customerId: customerFilter,
-      projectId: focusedProjectId || undefined,
-      view: filterOngoing ? "ongoing" : undefined,
-    });
-  }, [
-    fetchProjects,
-    paginationModel,
-    debouncedSearch,
-    printStatusFilter,
-    priorityFilter,
-    customerFilter,
-    focusedProjectId,
-    filterOngoing,
-  ]);
-
-  useEffect(() => {
-    loadProjects();
-  }, [loadProjects]);
-
-  const processRowUpdate = async (newRow: Project, oldRow: Project) => {
-    const payload: Partial<Project> = {
-      project_type: newRow.project_type,
-      assigned_to: newRow.assigned_to,
-      start_date: newRow.start_date,
-      delivery_date: newRow.delivery_date,
-      priority: newRow.priority,
-      client_status: newRow.client_status,
-      print_status: newRow.print_status,
-      description: newRow.description,
-    };
-
-    const hasChanges = Object.keys(payload).some(
-      (key) => payload[key as keyof Project] !== (oldRow as any)[key],
-    );
-
-    if (!hasChanges) return oldRow;
-
-    await updateProject(newRow.id, payload); // ✅ API fires ONLY on Save
-    return newRow;
-  };
-
-  const handleMarkPrintCompleted = (id: string) => {
-    showDialog({
-      title: "Mark Print Completed?",
-      description: "This flags printing as done for this order.",
-      confirmText: "Mark Completed",
-      onConfirm: async () => {
-        try {
-          setLoading(true);
-          await markPrintCompleted(id);
-          closeDialog();
-        } finally {
-          setLoading(false);
-        }
-      },
-    });
-  };
-
-  // Fetched on demand (not preloaded per row) since most projects are
-  // browsed far more often than their invoice is actually opened - a
-  // project without one yet just gets a friendly message here instead of
-  // the menu having to know in advance whether one exists.
-  const handleViewInvoice = async (id: string | number) => {
-    try {
-      const invoice = await apiService.get<{ id: number }>(
-        `/invoices/project/${id}/latest`,
-      );
-      openDialog("viewInvoice", invoice.id, "view");
-    } catch {
-      showDialog({
-        title: "No Invoice Yet",
-        description: "This project hasn't been invoiced yet.",
-        confirmText: "OK",
-      });
-    }
-  };
-
-  const handleDeleteProject = async (id: string | number) => {
-    await deleteProject(String(id));
-    loadProjects();
-  };
-
-  // Pin/unpin also changes sort order (pinned projects sort first - see
-  // GET /projects), not just the icon's own state, so this refetches the
-  // current page afterward the same way delete does, rather than leaving
-  // the row showing pinned but stuck in its old position.
-  const handleTogglePin = async (id: string | number) => {
-    await togglePinProject(String(id));
-    loadProjects();
-  };
-
-  // Opens WhatsApp with a pre-filled message (see notifyClientWhatsApp.ts -
-  // addressless, same as every other WhatsApp share in this app; staff
-  // picks the actual recipient in WhatsApp itself) and separately records
-  // that a notify happened (PATCH /projects/{id}/notify), independent of
-  // whether the wa.me tab is actually used to send anything.
-  const handleNotifyClient = (row: Project) => {
-    notifyClientWhatsApp({ project_type: row.project_type, customer_name: row.customer_name });
-    notifyClient(String(row.id));
-  };
-
-  const handleBulkDelete = () => {
-    showDialog({
-      title: "Delete Selected?",
-      description: `Are you sure you want to delete ${selectedIds.length} projects?`,
-      confirmText: "Delete",
-      isDestructive: true,
-      onConfirm: async () => {
-        try {
-          setLoading(true);
-          await deleteProjects(selectedIds);
-          setSelectedIds([]);
-          loadProjects();
-          closeDialog();
-        } finally {
-          setLoading(false);
-        }
-      },
-    });
-  };
 
   return (
     <div className="h-full p-4">
@@ -500,21 +128,18 @@ const Projects = ({
               />
 
               <FilterMenu
-                fields={filterFields}
+                fields={projectFilterFields}
                 values={{
                   printStatus: printStatusFilter,
-                  priority: priorityFilter,
                   customer: customerFilter,
                 }}
                 onChange={(key, value) => {
                   if (focusedProjectId) clearFocusedProject();
                   if (key === "printStatus") setPrintStatusFilter((value as string) ?? "");
-                  if (key === "priority") setPriorityFilter((value as string) ?? "");
                   if (key === "customer") setCustomerFilter(value);
                 }}
                 onClearAll={() => {
                   setPrintStatusFilter("");
-                  setPriorityFilter("");
                   setCustomerFilter(undefined);
                 }}
               />
@@ -523,8 +148,8 @@ const Projects = ({
 
               {isAdmin && (
                 <BulkDeleteButton
-                  selectedCount={selectedIds.length}
-                  onDelete={handleBulkDelete}
+                  selectedCount={actions.selectedIds.length}
+                  onDelete={actions.bulkDelete}
                 />
               )}
             </div>
@@ -581,74 +206,17 @@ const Projects = ({
           <Table<Project>
             rows={rows}
             columns={columns}
-            processRowUpdate={processRowUpdate}
+            processRowUpdate={actions.processRowUpdate}
             getRowClassName={getRowClassName}
             checkboxSelection={isAdmin}
-            onDelete={handleDeleteProject}
+            onDelete={actions.deleteOne}
             renderActions={(params, handlers) => [
-              <CrudActions
-                key="crud"
-                edit
-                download
-                delete
-                info
-                pin
-                orderMilestones
-                viewInvoice
-                onViewInvoice={() => handleViewInvoice(params.row.id)}
-                viewCustomer={isAdmin && !!params.row.customer_id}
-                onViewCustomer={() => navigate(`/admin/customers/${params.row.customer_id}`)}
-                notifyClient={!!params.row.customer_id}
-                onNotifyClient={() => handleNotifyClient(params.row)}
-                data={params.row}
-                isPinned={!!params.row.pinned}
-                onTogglePin={() => handleTogglePin(params.row.id)}
-                onEdit={handlers.edit}
-                onDelete={handlers.delete}
-                onDownload={handlers.download}
-                printStatus={params.row.print_status}
-                designCompletedMeta={
-                  params.row.design_completed_at
-                    ? {
-                      at: params.row.design_completed_at,
-                      by: params.row.design_completed_by,
-                    }
-                    : null
-                }
-                printCompletedMeta={
-                  params.row.print_completed_at
-                    ? {
-                      at: params.row.print_completed_at,
-                      by: params.row.print_completed_by,
-                    }
-                    : null
-                }
-                deliveredMeta={
-                  params.row.delivered_at
-                    ? { at: params.row.delivered_at, by: params.row.delivered_by }
-                    : null
-                }
-                // Marking design done now always goes through the invoice
-                // dialog (see GenerateInvoice.tsx) - creating an invoice is
-                // open to any authenticated role on the backend, not just
-                // admins, since it's the employee finishing their own
-                // assigned work that triggers it.
-                onMarkDesignCompleted={() =>
-                  openDialog("invoiceDesignComplete", params.row.id, "add")
-                }
-                onMarkPrintCompleted={() =>
-                  handleMarkPrintCompleted(params.row.id)
-                }
-                // Opens the full order/payment breakdown dialog instead
-                // of a plain confirm - see DeliveryCheck.tsx, which is
-                // itself what gates delivery on payment being complete.
-                onMarkDelivered={() => openDialog("deliveryCheck", params.row.id, "add")}
-              />,
+              <ProjectRowActions key="crud" params={params} handlers={handlers} actions={actions} isAdmin={isAdmin} />,
             ]}
             onSelectionChange={(newSelectionModel) => {
-              setSelectedIds(newSelectionModel as string[]);
+              actions.setSelectedIds(newSelectionModel as string[]);
             }}
-            rowSelectionModel={selectedIds}
+            rowSelectionModel={actions.selectedIds}
             paginationMode="server"
             rowCount={projectsTotal}
             paginationModel={paginationModel}

@@ -1,29 +1,27 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Box, Typography, Tooltip } from "@mui/material";
-import FolderOpenRoundedIcon from "@mui/icons-material/FolderOpenRounded";
-import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
+import { Box, Button as MuiButton, CircularProgress, IconButton, Menu, MenuItem, Typography, Tooltip } from "@mui/material";
+import FileDownloadRoundedIcon from "@mui/icons-material/FileDownloadRounded";
+import MoreHorizRoundedIcon from "@mui/icons-material/MoreHorizRounded";
+import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 
-import { apiService } from "../../api/service";
-import { formatDateTime } from "../../format/date";
-import { getSemanticColor } from "../../utils/colors";
+import { formatDate } from "../../format/date";
+import InvoiceStatusChip from "./InvoiceStatusChip";
 import { useDialogStore } from "../../store/useDialogStore";
 import { useConfirmDialogStore } from "../../hooks/useconfirmDialogStore";
-import { useInvoiceStore } from "./useInvoiceStore";
+import { useInvoiceActions } from "./useInvoiceActions";
 import { shareInvoiceToWhatsApp } from "./shareInvoiceToWhatsApp";
 import { downloadInvoicePdf } from "./downloadDocument";
 import { useInvoiceList, useInvalidateBilling } from "./queries";
-import Chip from "../../ui/Chip";
-import { semanticChipSx } from "../../ui/chipStyles";
-import CrudActions from "../../ui/Actions";
 import ListPager from "../../ui/ListPager";
 import PaymentHistory from "./PaymentHistory";
 import ProjectFilesButton from "./ProjectFilesButton";
-import RecordPaymentDialog, { type RecordPaymentTarget } from "./RecordPaymentDialog";
-import { formatRupeesWhole as money } from "../../format/money";
+import RecordPaymentDialog from "./RecordPaymentDialog";
+import { formatRupees } from "../../format/money";
 import { messages } from "../../messages";
 import ListState from "../../ui/ListState";
+import { surfaceSx } from "../../ui/surface";
 
 // A page at a time, not the customer's whole invoice history - this panel
 // is a quick peek from the Customers list (see Customers.tsx's
@@ -41,18 +39,20 @@ const PAGE_SIZE = 10;
 export default function CustomerInvoicesList({
   customerId,
   showCustomerLink = true,
+  onChanged,
 }: {
   customerId: number;
+  // When the page around this list shows figures a payment or cancel changes.
+  onChanged?: () => void;
   // Off when already on the customer's own page (see CustomerInvoicesDrawer).
   showCustomerLink?: boolean;
 }) {
   const navigate = useNavigate();
   const { openDialog } = useDialogStore();
   const { showDialog } = useConfirmDialogStore();
-  const { updateInvoice } = useInvoiceStore();
   const [page, setPage] = useState(1);
-  const [paymentTarget, setPaymentTarget] = useState<RecordPaymentTarget | null>(null);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
+  const [menu, setMenu] = useState<{ anchor: HTMLElement; id: number; number: string } | null>(null);
 
   const query = useInvoiceList({ customer_id: customerId, page, page_size: PAGE_SIZE });
   const invoices = query.data?.items ?? null;
@@ -60,7 +60,12 @@ export default function CustomerInvoicesList({
   const error = query.isError;
   // After an action on a card: refetch this list (and any other billing list
   // showing the same invoice) instead of patching local state.
-  const load = useInvalidateBilling();
+  const invalidate = useInvalidateBilling();
+  const load = () => {
+    invalidate();
+    onChanged?.();
+  };
+  const { markPaid: handleMarkPaid, cancel: handleCancel, paymentTarget, setPaymentTarget } = useInvoiceActions(load);
 
   const handleDownload = async (invoiceId: number) => {
     setDownloadingId(invoiceId);
@@ -76,46 +81,6 @@ export default function CustomerInvoicesList({
     } finally {
       setDownloadingId(null);
     }
-  };
-
-  // Goes through the dedicated PATCH /invoices/{id}/mark-paid endpoint
-  // (see app/invoices/service.py's service_mark_paid), same as
-  // CustomerProfile.tsx's Billing tab and DeliveryCheck.tsx's "Complete
-  // Payment" panel - never the generic updateInvoice({status: "paid"}),
-  // which never touches advance_amount and would leave a stale nonzero
-  // balance_due on an invoice every aggregate (Dashboard, this same
-  // Customers list's payment_status chip) has already stopped counting as
-  // outstanding the moment status flips to "paid".
-  const handleMarkPaid = (invoiceId: number) => {
-    showDialog({
-      title: "Mark Invoice as Paid",
-      description: "This records the invoice as paid in full. How was it paid?",
-      confirmText: messages.actions.invoice.markPaid,
-      paymentMethodRequired: true,
-      onConfirm: async (paymentMethod) => {
-        await apiService.patch(`/invoices/${invoiceId}/mark-paid`, {
-          payment_method: paymentMethod,
-        });
-        load();
-      },
-    });
-  };
-
-  // Cancelling is final (an invoice can't leave "cancelled"), so it's
-  // confirmed first. A failure shows inside the dialog (see
-  // useConfirmDialogStore) and leaves it open to retry.
-  const handleCancel = (invoiceId: number, invoiceNumber: string) => {
-    showDialog({
-      title: "Cancel this invoice?",
-      description: `${invoiceNumber} will be marked as cancelled. This can't be undone.`,
-      confirmText: messages.actions.invoice.cancel,
-      cancelText: "Keep Invoice",
-      isDestructive: true,
-      onConfirm: async () => {
-        await updateInvoice(invoiceId, { status: "cancelled" });
-        load();
-      },
-    });
   };
 
   const handleShareFailed = () => {
@@ -146,111 +111,138 @@ export default function CustomerInvoicesList({
       onClose={() => setPaymentTarget(null)}
       onRecorded={load}
     />
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-      {invoices.map((inv) => (
-        <Box
-          key={inv.id}
-          role="button"
-          tabIndex={0}
-          onClick={() => openDialog("viewInvoice", inv.id, "view")}
-          onKeyDown={(e) => {
-            if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
-              e.preventDefault();
-              openDialog("viewInvoice", inv.id, "view");
-            }
-          }}
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 0.75,
-            px: 1.5,
-            py: 1.25,
-            borderRadius: 2,
-            bgcolor: "var(--white)",
-            border: "1px solid var(--slate-200)",
-            cursor: "pointer",
-            transition: "border-color 0.15s ease, box-shadow 0.15s ease",
-            "&:hover": { borderColor: "var(--blue-300)", boxShadow: "0 1px 6px rgba(37, 99, 235, 0.10)" },
-            "&:focus-visible": { outline: "2px solid var(--blue-500)", outlineOffset: 1 },
-          }}
-        >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <ReceiptLongRoundedIcon fontSize="small" sx={{ color: "var(--slate-400)", flexShrink: 0 }} />
-            <Typography variant="body2" sx={{ fontWeight: 700, color: "var(--slate-800)", flex: 1, minWidth: 0 }} noWrap>
-              {inv.invoice_number}
-            </Typography>
-            <Typography variant="body2" sx={{ fontWeight: 700, color: "var(--slate-800)", flexShrink: 0 }}>
-              {money(inv.amount)}
-            </Typography>
-            <Chip
-              label={inv.status}
-              sx={semanticChipSx(
-                getSemanticColor("invoiceStatus", inv.status),
-              )}
-            />
-          </Box>
-
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Tooltip
-              title={inv.project_type && inv.project_description ? `${inv.project_type} — ${inv.project_description}` : ""}
-            >
-              <Box sx={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 0.5 }}>
-                <FolderOpenRoundedIcon sx={{ fontSize: "var(--fs-xl)", color: "var(--slate-400)", flexShrink: 0 }} />
-                <Typography variant="body2" color="text.secondary" noWrap>
-                  {inv.project_type || "—"}
-                  {inv.project_description ? ` — ${inv.project_description}` : ""}
-                </Typography>
-              </Box>
-            </Tooltip>
-            <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>
-              {formatDateTime(inv.created_at)}
-            </Typography>
-          </Box>
-
-          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1 }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
-              <PaymentHistory invoiceId={inv.id} />
-              <ProjectFilesButton invoiceId={inv.id} invoiceNumber={inv.invoice_number} />
-              <Typography variant="caption" sx={{ color: "var(--amber-700)", fontWeight: 600 }} noWrap>
-                {inv.status === "pending" && inv.balance_due < inv.amount
-                  ? `Paid ${money(inv.amount - inv.balance_due)} · ${money(inv.balance_due)} due`
-                  : ""}
+    <Box component="ul" sx={{ listStyle: "none", m: 0, p: 0, ...surfaceSx, overflow: "hidden" }}>
+      {invoices.map((inv) => {
+        const pending = inv.status === "pending";
+        const partlyPaid = pending && inv.balance_due < inv.amount;
+        return (
+          <Box
+            component="li"
+            key={inv.id}
+            role="button"
+            tabIndex={0}
+            aria-label={`Open invoice ${inv.invoice_number}`}
+            onClick={() => openDialog("viewInvoice", inv.id, "view")}
+            onKeyDown={(e) => {
+              if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+                e.preventDefault();
+                openDialog("viewInvoice", inv.id, "view");
+              }
+            }}
+            sx={{
+              px: 1.5,
+              py: 1.25,
+              cursor: "pointer",
+              transition: "background-color 0.15s ease",
+              "& + &": { borderTop: "1px solid var(--slate-100)" },
+              "&:hover": { bgcolor: "var(--slate-50)" },
+              "&:focus-visible": { outline: "2px solid var(--blue-500)", outlineOffset: -2 },
+            }}
+          >
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1 }}>
+              <Typography noWrap sx={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--blue-700)", minWidth: 0 }}>
+                {inv.invoice_number}
+              </Typography>
+              <Typography sx={{ fontSize: "var(--fs-md)", fontWeight: 700, color: "var(--slate-900)", flexShrink: 0 }}>
+                {formatRupees(inv.amount)}
               </Typography>
             </Box>
-            <Box onClick={(e) => e.stopPropagation()}>
-            <CrudActions
-              downloadDocument
-              onDownloadDocument={() => handleDownload(inv.id)}
-              documentBusy={downloadingId === inv.id}
-              shareInvoice
-              onShareInvoice={() =>
-                shareInvoiceToWhatsApp(inv.id).catch((err) => {
-                  console.error("Failed to share invoice to WhatsApp", err);
-                  handleShareFailed();
-                })
-              }
-              recordPayment
-              onRecordPayment={() =>
-                setPaymentTarget({
-                  id: inv.id,
-                  invoice_number: inv.invoice_number,
-                  amount: inv.amount,
-                  balance_due: inv.balance_due,
-                })
-              }
-              markPaid
-              cancelInvoice
-              invoiceStatus={inv.status}
-              onMarkPaid={() => handleMarkPaid(inv.id)}
-              onCancelInvoice={() => handleCancel(inv.id, inv.invoice_number)}
-              size="small"
-            />
+
+            <Tooltip title={inv.project_type && inv.project_description ? `${inv.project_type} — ${inv.project_description}` : ""}>
+              <Typography noWrap sx={{ mt: 0.25, fontSize: "var(--fs-xs)", color: "var(--slate-500)" }}>
+                {[inv.project_type, formatDate(inv.created_at), inv.due_date ? `Due ${formatDate(inv.due_date)}` : null].filter(Boolean).join(" · ")}
+              </Typography>
+            </Tooltip>
+
+            <Box sx={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 1, mt: 0.75 }}>
+              <InvoiceStatusChip invoice={inv} />
+              {partlyPaid && (
+                <Typography sx={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--amber-800)" }}>
+                  {formatRupees(inv.amount - inv.balance_due)} paid · {formatRupees(inv.balance_due)} due
+                </Typography>
+              )}
+            </Box>
+
+            <Box
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
+              sx={{ display: "flex", alignItems: "center", gap: 0.25, mt: 0.75, "& .MuiIconButton-root": { color: "var(--slate-500)" } }}
+            >
+              <Tooltip title={messages.actions.invoice.shareWhatsApp}>
+                <IconButton
+                  size="small"
+                  aria-label={messages.actions.invoice.shareWhatsApp}
+                  onClick={() =>
+                    shareInvoiceToWhatsApp(inv.id).catch((err) => {
+                      console.error("Failed to share invoice to WhatsApp", err);
+                      handleShareFailed();
+                    })
+                  }
+                >
+                  <WhatsAppIcon sx={{ fontSize: 18 }} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Download PDF">
+                <span>
+                  <IconButton size="small" aria-label="Download PDF" disabled={downloadingId === inv.id} onClick={() => handleDownload(inv.id)}>
+                    {downloadingId === inv.id ? <CircularProgress size={16} thickness={5} /> : <FileDownloadRoundedIcon sx={{ fontSize: 18 }} />}
+                  </IconButton>
+                </span>
+              </Tooltip>
+              <PaymentHistory invoiceId={inv.id} />
+              <ProjectFilesButton invoiceId={inv.id} invoiceNumber={inv.invoice_number} />
+              <Box sx={{ flex: 1 }} />
+              {pending && (
+                <>
+                  <MuiButton
+                    size="small"
+                    variant="outlined"
+                    onClick={() =>
+                      setPaymentTarget({ id: inv.id, invoice_number: inv.invoice_number, amount: inv.amount, balance_due: inv.balance_due })
+                    }
+                    sx={{ textTransform: "none", fontWeight: 600, borderRadius: "8px", color: "var(--slate-700)", borderColor: "var(--slate-300)", whiteSpace: "nowrap", bgcolor: "var(--white)", "&:hover": { borderColor: "var(--blue-500)", color: "var(--blue-700)", bgcolor: "var(--white)" } }}
+                  >
+                    {messages.actions.invoice.recordPayment}
+                  </MuiButton>
+                  <Tooltip title="More">
+                    <IconButton
+                      size="small"
+                      aria-label={`More actions for ${inv.invoice_number}`}
+                      onClick={(e) => setMenu({ anchor: e.currentTarget, id: inv.id, number: inv.invoice_number })}
+                    >
+                      <MoreHorizRoundedIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </Tooltip>
+                </>
+              )}
             </Box>
           </Box>
-        </Box>
-      ))}
+        );
+      })}
+    </Box>
 
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", pt: 0.5 }}>
+    <Menu anchorEl={menu?.anchor} open={!!menu} onClose={() => setMenu(null)}>
+      <MenuItem
+        onClick={() => {
+          if (menu) handleMarkPaid(menu.id);
+          setMenu(null);
+        }}
+        sx={{ fontSize: "var(--fs-sm)" }}
+      >
+        {messages.actions.invoice.markPaid}
+      </MenuItem>
+      <MenuItem
+        onClick={() => {
+          if (menu) handleCancel(menu.id, menu.number);
+          setMenu(null);
+        }}
+        sx={{ fontSize: "var(--fs-sm)", color: "var(--red-600)" }}
+      >
+        {messages.actions.invoice.cancel}
+      </MenuItem>
+    </Menu>
+
+    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", pt: 1 }}>
         <ListPager page={page} pageSize={PAGE_SIZE} total={total} onPageChange={setPage} />
 
         {showCustomerLink && (
@@ -278,7 +270,6 @@ export default function CustomerInvoicesList({
             <ArrowForwardRoundedIcon sx={{ fontSize: "var(--fs-lg)" }} />
           </Box>
         )}
-      </Box>
     </Box>
     </>
   );

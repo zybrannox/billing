@@ -3,7 +3,21 @@ import { formatDateTime } from "../format/date";
 import { messages } from "../messages";
 
 // The hover card behind a project row's "info" action.
-export default function ProjectDetailsTooltip({ data }: { data: any }) {
+export interface ProjectDetails {
+  project_type?: string | null;
+  description?: string | null;
+  assigned_to?: string | null;
+  start_date?: string | null;
+  delivery_date?: string | null;
+  client_status?: string | null;
+  print_status?: string | null;
+  design_completed_at?: string | null;
+  design_completed_by?: string | null;
+  delivered_at?: string | null;
+  delivered_by?: string | null;
+}
+
+export default function ProjectDetailsTooltip({ data }: { data: ProjectDetails }) {
   return (
   <Box sx={{ p: 2, width: 260 }}>
     <Typography
@@ -23,7 +37,6 @@ export default function ProjectDetailsTooltip({ data }: { data: any }) {
         { label: "Assignee", value: data?.assigned_to },
         { label: messages.fields.startDate, value: formatDateTime(data?.start_date) },
         { label: "Delivery", value: formatDateTime(data?.delivery_date) },
-        { label: "Priority", value: data?.priority },
         { label: messages.fields.clientStatus, value: data?.client_status },
         { label: messages.fields.printStatus, value: data?.print_status },
         {

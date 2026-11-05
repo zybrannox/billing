@@ -1,5 +1,6 @@
 import type { AxiosRequestConfig } from "axios";
 import portalAxiosClient from "./portalClient";
+import { runGuardedTransfer } from "./transfer";
 
 // Mirrors api/service.ts's apiService exactly, just backed by
 // portalAxiosClient instead of the staff axiosClient - see that file for
@@ -9,30 +10,33 @@ export const portalApiService = {
     const res = await portalAxiosClient.get(url, config);
     return res.data;
   },
-  post: async <T>(url: string, data?: any): Promise<T> => {
+  post: async <T>(url: string, data?: unknown): Promise<T> => {
     return (await portalAxiosClient.post(url, data)).data;
   },
   postWithProgress: async <T>(
     url: string,
-    data: any,
+    data: unknown,
     onProgress: (percent: number) => void,
     signal?: AbortSignal,
-  ): Promise<T> => {
-    const res = await portalAxiosClient.post(url, data, {
-      onUploadProgress: (event) => {
-        if (event.total) {
-          const percent = Math.min(99, Math.round((event.loaded / event.total) * 100));
-          onProgress(percent);
-        }
-      },
-      signal,
-    });
-    return res.data;
-  },
-  put: async <T>(url: string, data?: any): Promise<T> => {
+  ): Promise<T> =>
+    runGuardedTransfer(signal, async (guardedSignal, touch) => {
+      const res = await portalAxiosClient.post(url, data, {
+        timeout: 0,
+        onUploadProgress: (event) => {
+          touch();
+          if (event.total) {
+            const percent = Math.min(99, Math.round((event.loaded / event.total) * 100));
+            onProgress(percent);
+          }
+        },
+        signal: guardedSignal,
+      });
+      return res.data;
+    }),
+  put: async <T>(url: string, data?: unknown): Promise<T> => {
     return (await portalAxiosClient.put(url, data)).data;
   },
-  patch: async <T>(url: string, data?: any): Promise<T> => {
+  patch: async <T>(url: string, data?: unknown): Promise<T> => {
     return (await portalAxiosClient.patch(url, data)).data;
   },
   delete: async <T>(url: string): Promise<T> => {

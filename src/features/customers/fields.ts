@@ -41,7 +41,7 @@ export const addCustomerFields: FieldDefinition[] = [
     required: false,
     row: 3,
     asyncEndpoint: "/companies",
-    getOptionLabel: (c) => c.name,
-    getOptionValue: (c) => c.id,
+    getOptionLabel: (c: { name: string }) => c.name,
+    getOptionValue: (c: { id: number }) => c.id,
   },
 ];

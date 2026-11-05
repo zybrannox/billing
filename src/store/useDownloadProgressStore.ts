@@ -8,6 +8,8 @@ export interface DownloadEntry {
   total: number | null; // total bytes, when known (single-file downloads always know it; a streamed zip doesn't)
   fileCount: number | null; // how many files this download represents, when known (e.g. "download all")
   done: boolean;
+  error: string | null; // set when the download failed, instead of it just vanishing
+  note: string | null; // shown instead of "Done", e.g. when the browser took over
 }
 
 interface DownloadProgressState {
@@ -25,8 +27,9 @@ interface DownloadProgressState {
   // than removing it immediately, so a fast download is still perceptible
   // instead of flashing on and off faster than it can be registered.
   // DownloadProgressIndicator removes it a moment later.
-  finish: (id: string) => void;
-  // Failure/cancel path: remove immediately, no "Done" state to show.
+  finish: (id: string, note?: string) => void;
+  // Failure path: keeps the card, showing why, until dismissed.
+  fail: (id: string, error: string) => void;
   remove: (id: string) => void;
 }
 
@@ -46,6 +49,8 @@ export const useDownloadProgressStore = create<DownloadProgressState>(
             total: null,
             fileCount: fileCount ?? null,
             done: false,
+            error: null,
+            note: null,
           },
         ],
       })),
@@ -59,11 +64,16 @@ export const useDownloadProgressStore = create<DownloadProgressState>(
         ),
       })),
 
-    finish: (id) =>
+    finish: (id, note) =>
       set((state) => ({
         downloads: state.downloads.map((d) =>
-          d.id === id ? { ...d, percent: 100, done: true } : d,
+          d.id === id ? { ...d, percent: 100, done: true, note: note ?? null } : d,
         ),
+      })),
+
+    fail: (id, error) =>
+      set((state) => ({
+        downloads: state.downloads.map((d) => (d.id === id ? { ...d, error } : d)),
       })),
 
     remove: (id) =>
