@@ -129,20 +129,22 @@ export default function Robot({ size = 72, still = false }: { size?: number; sti
           </svg>
         </Box>
       </Box>
-      <Box
-        sx={{
-          position: "absolute",
-          left: "22%",
-          right: "22%",
-          bottom: -4,
-          height: size * 0.09,
-          borderRadius: "50%",
-          bgcolor: palette.blue[900],
-          opacity: 0.22,
-          filter: "blur(3px)",
-          ...motion(`${shadowPulse} 3.2s ease-in-out infinite`),
-        }}
-      />
+      {!still && (
+        <Box
+          sx={{
+            position: "absolute",
+            left: "22%",
+            right: "22%",
+            bottom: -4,
+            height: size * 0.09,
+            borderRadius: "50%",
+            bgcolor: palette.blue[900],
+            opacity: 0.22,
+            filter: "blur(3px)",
+            ...motion(`${shadowPulse} 3.2s ease-in-out infinite`),
+          }}
+        />
+      )}
     </Box>
   );
 }

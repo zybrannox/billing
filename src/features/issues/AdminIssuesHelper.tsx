@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Box, Button as MuiButton, Typography } from "@mui/material";
+import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
-import ReplayRoundedIcon from "@mui/icons-material/ReplayRounded";
+import InboxRoundedIcon from "@mui/icons-material/InboxRounded";
 import { apiService } from "../../api/service";
 import type { Issue, IssueList } from "../../api/types";
 import { formatDateTime } from "../../format/date";
+import EmptyState from "../../ui/EmptyState";
 import FilterPill from "../../ui/FilterPill";
+import InitialsAvatar from "../../ui/InitialsAvatar";
 import ListPager from "../../ui/ListPager";
 import ListState from "../../ui/ListState";
 import { getApiErrorMessage } from "../../utils/apiError";
@@ -18,41 +21,82 @@ const PAGE_SIZE = 20;
 
 type Filter = "open" | "done" | "all";
 
-const EMPTY_TEXT: Record<Filter, string> = {
-  open: "All clear. Nothing is waiting on you.",
-  done: "Nothing's been marked done yet.",
-  all: "No one has reported an issue yet.",
+const EMPTY: Record<Filter, { icon: React.ReactNode; title: string; description: string }> = {
+  open: { icon: <CheckCircleRoundedIcon />, title: "You're all caught up", description: "No issues are waiting on you." },
+  done: { icon: <InboxRoundedIcon />, title: "Nothing solved yet", description: "Issues you mark as done appear here." },
+  all: { icon: <InboxRoundedIcon />, title: "No issues yet", description: "Anything employees report appears here." },
+};
+
+const waitingLabel = (count: number | undefined) => {
+  if (count === undefined) return "Issues your employees have reported";
+  if (count === 0) return "No issues waiting";
+  return `${count} ${count === 1 ? "issue" : "issues"} waiting`;
 };
 
 function IssueRow({ issue, busy, onToggle }: { issue: Issue; busy: boolean; onToggle: () => void }) {
   return (
-    <Box component="li" sx={{ px: 1.5, py: 1.25, borderTop: "1px solid var(--slate-100)", "&:first-of-type": { borderTop: "none" } }}>
-      <Typography
-        sx={{
-          fontSize: "var(--fs-sm)",
-          whiteSpace: "pre-wrap",
-          overflowWrap: "anywhere",
-          color: issue.is_done ? "var(--slate-500)" : "var(--slate-900)",
-        }}
-      >
-        {issue.text}
-      </Typography>
-      <Box sx={{ mt: 0.75, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1 }}>
-        <Typography sx={{ fontSize: "var(--fs-xs)", color: "var(--slate-500)", minWidth: 0 }}>
-          {issue.reported_by} · {formatDateTime(issue.created_at)}
-          {issue.is_done && ` · Done by ${issue.done_by ?? "an admin"}, ${formatDateTime(issue.done_at)}`}
-        </Typography>
-        <MuiButton
-          size="small"
-          variant={issue.is_done ? "text" : "outlined"}
-          color={issue.is_done ? "inherit" : "success"}
-          disabled={busy}
-          startIcon={issue.is_done ? <ReplayRoundedIcon /> : <CheckRoundedIcon />}
-          onClick={onToggle}
-          sx={{ flexShrink: 0, textTransform: "none", fontWeight: 600, whiteSpace: "nowrap", borderRadius: "8px" }}
+    <Box
+      component="li"
+      sx={{ display: "flex", gap: 1.25, px: 2, py: 1.5, borderTop: "1px solid var(--slate-100)", "&:first-of-type": { borderTop: "none" } }}
+    >
+      <InitialsAvatar name={issue.reported_by} size={30} />
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Box sx={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 1 }}>
+          <Typography noWrap sx={{ fontWeight: 600, fontSize: "var(--fs-sm)", color: "var(--slate-900)", minWidth: 0 }}>
+            {issue.reported_by}
+          </Typography>
+          <Typography sx={{ flexShrink: 0, fontSize: "var(--fs-xs)", color: "var(--slate-500)" }}>
+            {formatDateTime(issue.created_at)}
+          </Typography>
+        </Box>
+        <Typography
+          sx={{
+            mt: 0.25,
+            fontSize: "var(--fs-sm)",
+            lineHeight: 1.45,
+            whiteSpace: "pre-wrap",
+            overflowWrap: "anywhere",
+            color: issue.is_done ? "var(--slate-500)" : "var(--slate-700)",
+          }}
         >
-          {issue.is_done ? "Reopen" : "Mark as done"}
-        </MuiButton>
+          {issue.text}
+        </Typography>
+        {issue.is_done ? (
+          <Box sx={{ mt: 0.75, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1 }}>
+            <Typography sx={{ display: "flex", alignItems: "center", gap: 0.5, minWidth: 0, fontSize: "var(--fs-xs)", color: "var(--emerald-700)" }}>
+              <CheckCircleRoundedIcon sx={{ fontSize: 14 }} />
+              Solved by {issue.done_by ?? "an admin"}, {formatDateTime(issue.done_at)}
+            </Typography>
+            <MuiButton
+              size="small"
+              disabled={busy}
+              onClick={onToggle}
+              sx={{ flexShrink: 0, minWidth: 0, px: 1, textTransform: "none", fontWeight: 600, fontSize: "var(--fs-xs)", color: "var(--slate-600)" }}
+            >
+              Reopen
+            </MuiButton>
+          </Box>
+        ) : (
+          <MuiButton
+            size="small"
+            variant="outlined"
+            disabled={busy}
+            startIcon={<CheckRoundedIcon />}
+            onClick={onToggle}
+            sx={{
+              mt: 1,
+              textTransform: "none",
+              fontWeight: 600,
+              fontSize: "var(--fs-xs)",
+              borderRadius: "8px",
+              color: "var(--slate-700)",
+              borderColor: "var(--slate-300)",
+              "&:hover": { color: "var(--emerald-700)", borderColor: "var(--emerald-600)", bgcolor: "var(--emerald-50)" },
+            }}
+          >
+            Mark as done
+          </MuiButton>
+        )}
       </Box>
     </Box>
   );
@@ -88,6 +132,7 @@ export default function AdminIssuesHelper() {
   const issues = list.data?.items ?? [];
   const openCount = list.data?.open_count ?? 0;
   const doneCount = list.data?.done_count ?? 0;
+  const empty = EMPTY[filter];
 
   const changeFilter = (next: Filter) => {
     setFilter(next);
@@ -110,8 +155,8 @@ export default function AdminIssuesHelper() {
   return (
     <RobotDock label="issues from employees" open={open} badge={waiting ?? 0} onToggle={() => setOpen((value) => !value)}>
       {open && (
-        <RobotPanel label="Issues from employees" subtitle="Issues your employees have reported" wide onClose={() => setOpen(false)}>
-          <Box sx={{ display: "flex", gap: 0.75, px: 1.5, py: 1, overflowX: "auto", borderBottom: "1px solid var(--slate-200)" }}>
+        <RobotPanel label="Issues from employees" subtitle={waitingLabel(waiting)} wide onClose={() => setOpen(false)}>
+          <Box sx={{ display: "flex", gap: 0.75, px: 2, py: 1.25, overflowX: "auto", borderBottom: "1px solid var(--slate-200)" }}>
             <FilterPill label="To do" count={openCount} active={filter === "open"} onClick={() => changeFilter("open")} />
             <FilterPill label="Done" count={doneCount} active={filter === "done"} onClick={() => changeFilter("done")} />
             <FilterPill label="All" count={openCount + doneCount} active={filter === "all"} onClick={() => changeFilter("all")} />
@@ -124,20 +169,16 @@ export default function AdminIssuesHelper() {
           )}
 
           <Box sx={{ flex: 1, overflowY: "auto" }}>
-            {issues.length === 0 ? (
-              <ListState
-                loading={list.isPending}
-                error={list.isError}
-                empty
-                errorText="Couldn't load the issues."
-                emptyText={EMPTY_TEXT[filter]}
-              />
-            ) : (
+            {issues.length > 0 ? (
               <Box component="ul" sx={{ listStyle: "none", m: 0, p: 0 }}>
                 {issues.map((issue) => (
                   <IssueRow key={issue.id} issue={issue} busy={busyId === issue.id} onToggle={() => toggle(issue)} />
                 ))}
               </Box>
+            ) : list.isPending || list.isError ? (
+              <ListState loading={list.isPending} error={list.isError} empty={false} errorText="Couldn't load the issues." emptyText="" />
+            ) : (
+              <EmptyState icon={empty.icon} title={empty.title} description={empty.description} />
             )}
           </Box>
 

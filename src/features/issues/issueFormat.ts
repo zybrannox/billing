@@ -7,9 +7,9 @@ const preview = (text: string) => {
 
 // What the robot says when an admin has solved something this person reported.
 export const solvedNotice = (items: { text: string; unseen: boolean }[], unseenCount: number) => {
-  if (unseenCount > 1) return `Good news! ${unseenCount} of your issues have been solved.`;
+  if (unseenCount > 1) return `${unseenCount} of your issues have been solved.`;
   const solved = items.find((item) => item.unseen);
-  return solved ? `Good news! Your issue was solved: "${preview(solved.text)}"` : "Good news! Your issue was solved.";
+  return solved ? `Your issue was solved: "${preview(solved.text)}"` : "Your issue was solved.";
 };
 
 // Enter sends and Shift+Enter starts a new line, except while an input method

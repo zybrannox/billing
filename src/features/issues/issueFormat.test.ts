@@ -4,7 +4,7 @@ import { isSendKey, solvedNotice } from "./issueFormat";
 describe("solvedNotice", () => {
   it("names the one issue that was solved", () => {
     const items = [{ text: "Still open", unseen: false }, { text: "Printer  is\njammed", unseen: true }];
-    expect(solvedNotice(items, 1)).toBe('Good news! Your issue was solved: "Printer is jammed"');
+    expect(solvedNotice(items, 1)).toBe('Your issue was solved: "Printer is jammed"');
   });
 
   it("shortens a long issue", () => {
@@ -14,11 +14,11 @@ describe("solvedNotice", () => {
   });
 
   it("gives a count when several were solved", () => {
-    expect(solvedNotice([], 3)).toBe("Good news! 3 of your issues have been solved.");
+    expect(solvedNotice([], 3)).toBe("3 of your issues have been solved.");
   });
 
   it("still makes sense when the solved one is too old to be in the list", () => {
-    expect(solvedNotice([], 1)).toBe("Good news! Your issue was solved.");
+    expect(solvedNotice([], 1)).toBe("Your issue was solved.");
   });
 });
 

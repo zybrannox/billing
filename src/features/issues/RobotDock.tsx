@@ -1,9 +1,15 @@
 import { useEffect, type ReactNode } from "react";
-import { Badge, Box, ButtonBase, IconButton, Paper, Tooltip, Typography } from "@mui/material";
+import { Badge, Box, ButtonBase, IconButton, Tooltip, Typography } from "@mui/material";
+import { keyframes } from "@mui/material/styles";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import Robot from "./Robot";
 
 const GUTTER = { xs: 16, sm: 24 };
+
+const rise = keyframes`
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+`;
 
 // Zybran floating at the bottom right, with whatever it's showing stacked above it.
 export function RobotDock({
@@ -30,7 +36,7 @@ export function RobotDock({
         display: "flex",
         flexDirection: "column",
         alignItems: "flex-end",
-        gap: 1,
+        gap: 1.25,
         pointerEvents: "none",
         "& > *": { pointerEvents: "auto" },
         "@media print": { display: "none" },
@@ -53,7 +59,7 @@ export function RobotDock({
   );
 }
 
-// The panel that opens from the robot.
+// The card that opens from the robot.
 export function RobotPanel({
   label,
   subtitle,
@@ -78,32 +84,47 @@ export function RobotPanel({
   }, [onClose]);
 
   return (
-    <Paper
+    <Box
       role="dialog"
       aria-label={label}
-      elevation={8}
       sx={{
-        width: { xs: "calc(100vw - 32px)", sm: wide ? 440 : 360 },
-        height: { xs: "min(70vh, 480px)", sm: wide ? "min(75vh, 580px)" : "min(70vh, 500px)" },
+        width: { xs: "calc(100vw - 32px)", sm: wide ? 440 : 380 },
+        height: { xs: "min(72vh, 520px)", sm: wide ? "min(75vh, 580px)" : "min(72vh, 540px)" },
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
-        borderRadius: "16px",
+        bgcolor: "var(--white)",
+        border: "1px solid var(--slate-200)",
+        borderRadius: "14px",
+        boxShadow: "0 16px 40px -12px rgba(15, 23, 42, 0.22), 0 2px 6px rgba(15, 23, 42, 0.05)",
+        transformOrigin: "bottom right",
+        animation: `${rise} 0.16s ease-out`,
+        "@media (prefers-reduced-motion: reduce)": { animation: "none" },
       }}
     >
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, px: 1.5, py: 1, bgcolor: "var(--blue-900)", color: "var(--white)" }}>
-        <Box sx={{ flexShrink: 0, mt: 0.5 }}>
-          <Robot size={34} still />
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, px: 2, py: 1.5, borderBottom: "1px solid var(--slate-200)" }}>
+        <Box
+          sx={{
+            width: 38,
+            height: 38,
+            flexShrink: 0,
+            display: "grid",
+            placeItems: "center",
+            borderRadius: "10px",
+            bgcolor: "var(--blue-50)",
+          }}
+        >
+          <Robot size={27} still />
         </Box>
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography sx={{ fontWeight: 700, fontSize: "var(--fs-md)", lineHeight: 1.2 }}>Zybran</Typography>
-          <Typography sx={{ fontSize: "var(--fs-xs)", opacity: 0.8 }}>{subtitle}</Typography>
+          <Typography sx={{ fontWeight: 700, fontSize: "var(--fs-lg)", lineHeight: 1.25, color: "var(--slate-900)" }}>Zybran</Typography>
+          <Typography noWrap sx={{ fontSize: "var(--fs-xs)", color: "var(--slate-500)" }}>{subtitle}</Typography>
         </Box>
-        <IconButton size="small" aria-label="Close" onClick={onClose} sx={{ color: "var(--white)" }}>
+        <IconButton size="small" aria-label="Close" onClick={onClose} sx={{ color: "var(--slate-500)", "&:hover": { color: "var(--slate-900)" } }}>
           <CloseRoundedIcon fontSize="small" />
         </IconButton>
       </Box>
       {children}
-    </Paper>
+    </Box>
   );
 }

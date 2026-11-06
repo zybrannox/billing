@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Box, ButtonBase, IconButton, InputBase, Paper, Tooltip, Typography } from "@mui/material";
+import { Alert, Box, ButtonBase, IconButton, InputBase, Typography } from "@mui/material";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
@@ -8,6 +8,7 @@ import { apiService } from "../../api/service";
 import type { MyIssues } from "../../api/types";
 import { formatDateTime } from "../../format/date";
 import { getApiErrorMessage } from "../../utils/apiError";
+import Robot from "./Robot";
 import { RobotDock, RobotPanel } from "./RobotDock";
 import { isSendKey, solvedNotice } from "./issueFormat";
 
@@ -16,46 +17,71 @@ import { isSendKey, solvedNotice } from "./issueFormat";
 const POLL_INTERVAL_MS = 60_000;
 const MAX_LENGTH = 2000;
 
-function RobotSays({ children, solved = false }: { children: ReactNode; solved?: boolean }) {
+function Greeting({ children }: { children: ReactNode }) {
   return (
-    <Box
-      sx={{
-        alignSelf: "flex-start",
-        maxWidth: "88%",
-        px: 1.5,
-        py: 1,
-        borderRadius: "14px 14px 14px 4px",
-        fontSize: "var(--fs-sm)",
-        lineHeight: 1.45,
-        color: solved ? "var(--emerald-800)" : "var(--slate-700)",
-        bgcolor: solved ? "var(--emerald-50)" : "var(--slate-100)",
-      }}
-    >
-      {children}
-    </Box>
-  );
-}
-
-function YouSaid({ text, at }: { text: string; at: string }) {
-  return (
-    <Box sx={{ alignSelf: "flex-end", maxWidth: "88%", textAlign: "right" }}>
+    <Box sx={{ display: "flex", alignItems: "flex-end", gap: 1, maxWidth: "92%" }}>
+      <Box sx={{ flexShrink: 0, mb: 0.25 }}>
+        <Robot size={24} still />
+      </Box>
       <Box
         sx={{
           px: 1.5,
           py: 1,
-          textAlign: "left",
-          borderRadius: "14px 14px 4px 14px",
+          borderRadius: "12px 12px 12px 4px",
           fontSize: "var(--fs-sm)",
-          lineHeight: 1.45,
+          lineHeight: 1.5,
+          color: "var(--slate-700)",
+          bgcolor: "var(--white)",
+          border: "1px solid var(--slate-200)",
+        }}
+      >
+        {children}
+      </Box>
+    </Box>
+  );
+}
+
+function IssueStatus({ issue }: { issue: MyIssues["items"][number] }) {
+  if (issue.is_done) {
+    return (
+      <Typography sx={{ display: "inline-flex", alignItems: "center", gap: 0.5, fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--emerald-700)" }}>
+        <CheckCircleRoundedIcon sx={{ fontSize: 14 }} />
+        Solved{issue.done_by && ` by ${issue.done_by}`}
+      </Typography>
+    );
+  }
+  return (
+    <Typography sx={{ display: "inline-flex", alignItems: "center", gap: 0.625, fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--amber-700)" }}>
+      <Box component="span" sx={{ width: 7, height: 7, borderRadius: "50%", bgcolor: "var(--amber-500)" }} />
+      Waiting for admin
+    </Typography>
+  );
+}
+
+function IssueMessage({ issue }: { issue: MyIssues["items"][number] }) {
+  return (
+    <Box sx={{ alignSelf: "flex-end", maxWidth: "88%", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 0.5 }}>
+      <Box
+        sx={{
+          px: 1.5,
+          py: 1,
+          borderRadius: "12px 12px 4px 12px",
+          fontSize: "var(--fs-sm)",
+          lineHeight: 1.5,
           color: "var(--white)",
-          bgcolor: "var(--blue-700)",
+          bgcolor: "var(--blue-600)",
           whiteSpace: "pre-wrap",
           overflowWrap: "anywhere",
         }}
       >
-        {text}
+        {issue.text}
       </Box>
-      <Typography sx={{ mt: 0.25, fontSize: "var(--fs-2xs)", color: "var(--slate-400)" }}>{formatDateTime(at)}</Typography>
+      <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "flex-end", alignItems: "center", columnGap: 0.75 }}>
+        <IssueStatus issue={issue} />
+        <Typography sx={{ fontSize: "var(--fs-xs)", color: "var(--slate-400)" }}>
+          · {formatDateTime(issue.is_done ? issue.done_at : issue.created_at)}
+        </Typography>
+      </Box>
     </Box>
   );
 }
@@ -126,26 +152,13 @@ export default function IssueHelper() {
     <RobotDock label="report an issue" open={open} badge={unseenCount} onToggle={() => setOpen((value) => !value)}>
       {open && (
         <RobotPanel label="Report an issue to Zybran" subtitle="I'll pass your issue to the admins" onClose={() => setOpen(false)}>
-          <Box sx={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 1, p: 1.5 }}>
-            <RobotSays>Hi, I'm Zybran! What's going wrong? Tell me here and I'll pass it to the admins. I'll let you know when it's solved.</RobotSays>
+          <Box sx={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 1.75, p: 2, bgcolor: "var(--slate-50)" }}>
+            <Greeting>Hi, I'm Zybran. Tell me what's going wrong and I'll pass it to the admins. I'll let you know here when it's solved.</Greeting>
             {query.isError && items.length === 0 && (
-              <RobotSays>I couldn't load your earlier issues, but you can still send a new one.</RobotSays>
+              <Greeting>I couldn't load your earlier issues, but you can still send a new one.</Greeting>
             )}
             {conversation.map((issue) => (
-              <Box key={issue.id} sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                <YouSaid text={issue.text} at={issue.created_at} />
-                {issue.is_done ? (
-                  <RobotSays solved>
-                    <Box component="span" sx={{ display: "inline-flex", alignItems: "center", gap: 0.5, fontWeight: 700 }}>
-                      <CheckCircleRoundedIcon sx={{ fontSize: 15 }} /> Solved
-                    </Box>
-                    {issue.done_by && ` by ${issue.done_by}`}
-                    {issue.done_at && `, ${formatDateTime(issue.done_at)}`}
-                  </RobotSays>
-                ) : (
-                  <RobotSays>The admins have this. I'll let you know when it's solved.</RobotSays>
-                )}
-              </Box>
+              <IssueMessage key={issue.id} issue={issue} />
             ))}
             <div ref={endRef} />
           </Box>
@@ -156,67 +169,99 @@ export default function IssueHelper() {
             </Alert>
           )}
 
-          <Box sx={{ display: "flex", alignItems: "flex-end", gap: 0.5, p: 1, borderTop: "1px solid var(--slate-200)" }}>
-            <InputBase
-              inputRef={inputRef}
-              multiline
-              maxRows={4}
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => {
-                if (!isSendKey({ key: e.key, shiftKey: e.shiftKey, isComposing: e.nativeEvent.isComposing })) return;
-                e.preventDefault();
-                send();
+          <Box sx={{ p: 1.5, borderTop: "1px solid var(--slate-200)" }}>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "flex-end",
+                gap: 0.5,
+                p: 0.5,
+                pl: 1.25,
+                border: "1px solid var(--slate-300)",
+                borderRadius: "10px",
+                transition: "border-color 0.15s ease, box-shadow 0.15s ease",
+                "&:focus-within": { borderColor: "var(--blue-500)", boxShadow: "var(--shadow-ring)" },
               }}
-              placeholder="Describe the issue..."
-              inputProps={{ maxLength: MAX_LENGTH, "aria-label": "Describe the issue" }}
-              sx={{ flex: 1, px: 1, py: 0.75, fontSize: "var(--fs-sm)" }}
-            />
-            <Tooltip title="Send">
-              <span>
-                <IconButton
-                  aria-label="Send"
-                  disabled={!text.trim() || sending}
-                  onClick={send}
-                  sx={{ color: "var(--blue-700)" }}
-                >
-                  <SendRoundedIcon fontSize="small" />
-                </IconButton>
-              </span>
-            </Tooltip>
+            >
+              <InputBase
+                inputRef={inputRef}
+                multiline
+                maxRows={4}
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (!isSendKey({ key: e.key, shiftKey: e.shiftKey, isComposing: e.nativeEvent.isComposing })) return;
+                  e.preventDefault();
+                  send();
+                }}
+                placeholder="Describe the issue..."
+                inputProps={{ maxLength: MAX_LENGTH, "aria-label": "Describe the issue" }}
+                sx={{ flex: 1, py: 0.5, fontSize: "var(--fs-sm)" }}
+              />
+              <IconButton
+                aria-label="Send"
+                size="small"
+                disabled={!text.trim() || sending}
+                onClick={send}
+                sx={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: "8px",
+                  color: "var(--white)",
+                  bgcolor: "var(--blue-600)",
+                  "&:hover": { bgcolor: "var(--blue-700)" },
+                  "&.Mui-disabled": { color: "var(--slate-400)", bgcolor: "var(--slate-100)" },
+                }}
+              >
+                <SendRoundedIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Box>
+            <Typography sx={{ display: { xs: "none", md: "block" }, mt: 0.75, fontSize: "var(--fs-2xs)", color: "var(--slate-400)" }}>
+              Enter to send · Shift + Enter for a new line
+            </Typography>
           </Box>
         </RobotPanel>
       )}
 
       {showNotice && (
-        <Paper
+        <Box
           role="status"
-          elevation={6}
-          sx={{ display: "flex", alignItems: "flex-start", maxWidth: 280, borderRadius: "14px 14px 4px 14px", bgcolor: "var(--emerald-50)" }}
+          sx={{
+            display: "flex",
+            alignItems: "flex-start",
+            maxWidth: 300,
+            bgcolor: "var(--white)",
+            border: "1px solid var(--slate-200)",
+            borderRadius: "12px",
+            boxShadow: "0 12px 28px -10px rgba(15, 23, 42, 0.22)",
+          }}
         >
           <ButtonBase
             onClick={() => setOpen(true)}
             sx={{
               flex: 1,
+              alignItems: "flex-start",
               justifyContent: "flex-start",
+              gap: 1,
               textAlign: "left",
               pl: 1.5,
-              py: 1,
+              py: 1.25,
+              borderRadius: "12px",
               fontFamily: "inherit",
               fontSize: "var(--fs-sm)",
-              lineHeight: 1.4,
-              color: "var(--emerald-800)",
+              lineHeight: 1.45,
+              color: "var(--slate-700)",
               overflowWrap: "anywhere",
             }}
           >
+            <CheckCircleRoundedIcon sx={{ fontSize: 18, mt: 0.125, color: "var(--emerald-600)" }} />
             {solvedNotice(items, unseenCount)}
           </ButtonBase>
-          <IconButton size="small" aria-label="Dismiss" onClick={() => setNoticeDismissedAt(unseenCount)} sx={{ m: 0.25, color: "var(--emerald-800)" }}>
+          <IconButton size="small" aria-label="Dismiss" onClick={() => setNoticeDismissedAt(unseenCount)} sx={{ m: 0.5, color: "var(--slate-400)" }}>
             <CloseRoundedIcon sx={{ fontSize: 16 }} />
           </IconButton>
-        </Paper>
+        </Box>
       )}
-
     </RobotDock>
   );
 }
