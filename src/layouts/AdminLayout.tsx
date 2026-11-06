@@ -8,6 +8,9 @@ import { MenuOutlined } from "@mui/icons-material";
 import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 import RequestQuoteRoundedIcon from "@mui/icons-material/RequestQuoteRounded";
 import { adminNavigations } from "./navigation";
+import { useQuery } from "@tanstack/react-query";
+import { apiService } from "../api/service";
+import type { IssueList } from "../api/types";
 import Avatar from "../ui/Avatar";
 import Menu from "../ui/Menu";
 import Drawer from "../ui/Drawer";
@@ -34,6 +37,16 @@ export default function AdminLayout() {
   // must stay open until the user picks a link or taps the backdrop/close
   // button - auto-closing it after a few seconds mid-decision is a trap.
 
+  // How many reported issues are waiting, on the Issues menu item from any page.
+  const openIssues = useQuery({
+    queryKey: ["issues", "open-count"],
+    queryFn: () => apiService.get<IssueList>("/issues/", { params: { status: "open", page_size: 1 } }),
+    refetchInterval: 60_000,
+  }).data?.open_count;
+  const navigations = adminNavigations.map((item) =>
+    item.href === "/admin/issues" ? { ...item, badge: openIssues } : item,
+  );
+
   const handleDrawerToggle = () => setOpen((p) => !p);
   const handleDrawerClose = () => setOpen(false);
 
@@ -45,7 +58,7 @@ export default function AdminLayout() {
           open={open}
           onClose={handleDrawerClose}
           onToggle={handleDrawerToggle}
-          navigations={adminNavigations}
+          navigations={navigations}
         />
         {/* Main area */}
         {/* minWidth: 0 is required so this flex item actually shrinks when

@@ -1,4 +1,4 @@
-import { Assignment, Badge, People, Settings, Dashboard, Business, Inbox, History, StickyNote2, ReceiptLong } from "@mui/icons-material";
+import { Assignment, Badge, SupportAgent, People, Settings, Dashboard, Business, Inbox, History, StickyNote2, ReceiptLong } from "@mui/icons-material";
 import type { NavItem } from "../types/adminTypes";
 
 export const adminNavigations: NavItem[] = [
@@ -7,6 +7,7 @@ export const adminNavigations: NavItem[] = [
   { name: "Project History", href: "/admin/project-history", icon: History },
   { name: "Invoices", href: "/admin/invoices", icon: ReceiptLong },
   { name: "Notes", href: "/admin/notes", icon: StickyNote2 },
+  { name: "Issues", href: "/admin/issues", icon: SupportAgent },
   { name: "Customers", href: "/admin/customers", icon: People },
   { name: "Companies", href: "/admin/companies", icon: Business },
   { name: "Job Requests", href: "/admin/job-requests", icon: Inbox },

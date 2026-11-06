@@ -1059,6 +1059,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/issues/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Issues */
+        get: operations["list_issues_issues__get"];
+        put?: never;
+        /** Report Issue */
+        post: operations["report_issue_issues__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/issues/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My Issues */
+        get: operations["my_issues_issues_mine_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/issues/mine/seen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark Mine Seen */
+        post: operations["mark_mine_seen_issues_mine_seen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/issues/{issue_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Issue */
+        patch: operations["update_issue_issues__issue_id__patch"];
+        trace?: never;
+    };
     "/job-requests/": {
         parameters: {
             query?: never;
@@ -2816,6 +2885,44 @@ export interface components {
             /** Unpaid */
             unpaid: number;
         };
+        /** IssueCreate */
+        IssueCreate: {
+            /** Text */
+            text: string;
+        };
+        /** IssueListResponse */
+        IssueListResponse: {
+            /** Done Count */
+            done_count: number;
+            /** Items */
+            items: components["schemas"]["IssueRead"][];
+            /** Open Count */
+            open_count: number;
+            /** Total */
+            total: number;
+        };
+        /** IssueRead */
+        IssueRead: {
+            /** Created At */
+            created_at: string;
+            /** Done At */
+            done_at: string | null;
+            /** Done By */
+            done_by: string | null;
+            /** Id */
+            id: number;
+            /** Is Done */
+            is_done: boolean;
+            /** Reported By */
+            reported_by: string;
+            /** Text */
+            text: string;
+        };
+        /** IssueUpdate */
+        IssueUpdate: {
+            /** Is Done */
+            is_done: boolean;
+        };
         /** JobRequestCreate */
         JobRequestCreate: {
             /** Description */
@@ -2987,6 +3094,32 @@ export interface components {
             amount: number;
             /** Up To Sq Ft */
             up_to_sq_ft: number;
+        };
+        /** MyIssue */
+        MyIssue: {
+            /** Created At */
+            created_at: string;
+            /** Done At */
+            done_at: string | null;
+            /** Done By */
+            done_by: string | null;
+            /** Id */
+            id: number;
+            /** Is Done */
+            is_done: boolean;
+            /** Reported By */
+            reported_by: string;
+            /** Text */
+            text: string;
+            /** Unseen */
+            unseen: boolean;
+        };
+        /** MyIssuesResponse */
+        MyIssuesResponse: {
+            /** Items */
+            items: components["schemas"]["MyIssue"][];
+            /** Unseen Count */
+            unseen_count: number;
         };
         /** NewCustomer */
         NewCustomer: {
@@ -6200,6 +6333,175 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_issues_issues__get: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+                status?: ("open" | "done") | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                access_token?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IssueListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    report_issue_issues__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                access_token?: string;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IssueCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IssueRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_issues_issues_mine_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                access_token?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyIssuesResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mark_mine_seen_issues_mine_seen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                access_token?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_issue_issues__issue_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                issue_id: number;
+            };
+            cookie?: {
+                access_token?: string;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IssueUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IssueRead"];
                 };
             };
             /** @description Validation Error */

@@ -15,6 +15,9 @@ export type Note = Schemas["NoteRead"];
 export type NoteListResponse = Schemas["NoteListResponse"];
 export type BinListResponse = Schemas["BinListResponse"];
 export type BackupStatus = Schemas["BackupStatusRead"];
+export type Issue = Schemas["IssueRead"];
+export type IssueList = Schemas["IssueListResponse"];
+export type MyIssues = Schemas["MyIssuesResponse"];
 
 export type Invoice = Schemas["InvoiceRead"];
 export type InvoiceDetail = Schemas["InvoiceDetailRead"];

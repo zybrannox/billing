@@ -17,6 +17,7 @@ import { Suspense } from "react";
 import PageSpinner from "../ui/PageSpinner";
 import { useInvalidateBilling } from "../features/billing/queries";
 import { useOnDialogClose } from "../hooks/useOnDialogClose";
+import IssueHelper from "../features/issues/IssueHelper";
 
 
 export default function EmployeeLayout() {
@@ -93,6 +94,8 @@ export default function EmployeeLayout() {
               minWidth: 0,
               width: "100%",
               height: "100%",
+              // Room to scroll the page's last rows clear of the floating robot.
+              pb: 12,
               backgroundColor: "var(--white)",
               transition: theme.transitions.create("margin", {
                 easing: theme.transitions.easing.sharp,
@@ -106,6 +109,7 @@ export default function EmployeeLayout() {
           </Box>
         </Box>
       </Box>
+      <IssueHelper />
     </>
   );
 }
