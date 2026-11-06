@@ -124,6 +124,7 @@ const Projects = ({
                   setSearchInput(value);
                 }}
                 placeholder="Search projects or customers..."
+                shortcuts
                 sx={{ flex: 1, minWidth: 0 }}
               />
 

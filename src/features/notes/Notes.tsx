@@ -44,7 +44,7 @@ function CustomerPicker({ value, onChange }: { value?: number; onChange: (id?: n
     <AsyncSearchSelect
       placeholder="Customer (optional)"
       endpoint="/customers"
-      extraParams={{ limit: 20 }}
+      extraParams={{ limit: 20, exclude_placeholders: "true" }}
       getOptionLabel={customerLabel}
       getOptionValue={(c: CustomerOption) => c.id}
       value={value}

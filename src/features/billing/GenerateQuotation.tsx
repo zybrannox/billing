@@ -16,7 +16,6 @@ import TextField from "../../ui/TextField";
 import DateTimePicker from "../../ui/DateTimePicker";
 import Dropdown from "../../ui/Dropdown";
 import Button from "../../ui/Button";
-import AsyncSearchSelect from "../../ui/AsyncSearchSelect";
 import ItemLineEditor from "./ItemLineEditor";
 import { newRow, toNumber, collectRows, subtotalOf, rowToItemPayload, type ItemRow, type ItemTypeOption } from "./itemLineUtils";
 import { useDialogStore } from "../../store/useDialogStore";
@@ -24,12 +23,8 @@ import { useListOptionsStore } from "../../store/useListOptionsStore";
 import { InvoiceMetaPanel, InvoicePanelLabel, InvoiceTotalCard } from "../../ui/InvoiceDocument";
 import { messages } from "../../messages";
 import { getErrorMessage } from "../../utils/apiError";
-
-interface CustomerOption {
-  id: number;
-  first_name: string;
-  last_name: string;
-}
+import CustomerChoice from "./generateInvoice/CustomerChoice";
+import { customerChoicePayload, customerChoiceProblem, emptyCustomerChoice } from "./generateInvoice/customerChoiceRules";
 
 const defaultValidUntil = () => {
   const d = new Date();
@@ -49,7 +44,7 @@ export default function GenerateQuotation() {
   const fetchActiveOptions = useListOptionsStore((s) => s.fetchActiveOptions);
   const projectTypeOptions = useListOptionsStore((s) => s.activeByCategory["project_type"]);
 
-  const [customerId, setCustomerId] = useState<number | undefined>(undefined);
+  const [customerChoice, setCustomerChoice] = useState(() => emptyCustomerChoice());
   const [projectType, setProjectType] = useState("");
   const [validUntil, setValidUntil] = useState<string | null>(defaultValidUntil());
   const [items, setItems] = useState<ItemRow[]>([newRow()]);
@@ -84,8 +79,9 @@ export default function GenerateQuotation() {
     setDiscountError(null);
     setFormError(null);
 
-    if (!customerId || !projectType) {
-      setFormError("Pick a customer and a job type before generating the quotation.");
+    const customerProblem = customerChoiceProblem(customerChoice);
+    if (customerProblem || !projectType) {
+      setFormError(customerProblem ?? "Pick a job type before generating the quotation.");
       return;
     }
 
@@ -105,7 +101,7 @@ export default function GenerateQuotation() {
     setSubmitting(true);
     try {
       const quotation = await apiService.post<{ id: number }>("/quotations/", {
-        customer_id: customerId,
+        ...customerChoicePayload(customerChoice),
         project_type: projectType,
         valid_until: validUntil || undefined,
         discount_amount: discount > 0 ? discount : undefined,
@@ -164,15 +160,7 @@ export default function GenerateQuotation() {
             <Box sx={{ flex: 1 }}>
               <InvoicePanelLabel>Quoted To</InvoicePanelLabel>
               <Box sx={{ mt: 0.75 }}>
-                <AsyncSearchSelect
-                  placeholder={messages.placeholders.searchCustomers}
-                  endpoint="/customers"
-                  extraParams={{ limit: 20, sort: "most_used" }}
-                  getOptionLabel={(c: CustomerOption) => `${c.first_name} ${c.last_name}`}
-                  getOptionValue={(c: CustomerOption) => c.id}
-                  value={customerId}
-                  onChange={(v) => setCustomerId(v as number | undefined)}
-                />
+                <CustomerChoice value={customerChoice} onChange={setCustomerChoice} />
               </Box>
             </Box>
           </Box>

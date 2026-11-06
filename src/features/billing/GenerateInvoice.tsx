@@ -41,6 +41,7 @@ import type { InvoicePreview, InvoiceProject as ProjectSummary, InvoiceProjectFi
 import { getErrorMessage } from "../../utils/apiError";
 import AdvancePaymentFields from "./generateInvoice/AdvancePaymentFields";
 import { BilledToPicker, BilledToSummary } from "./generateInvoice/BilledTo";
+import { customerChoicePayload, customerChoiceProblem, emptyCustomerChoice } from "./generateInvoice/customerChoiceRules";
 import DiscountField from "./generateInvoice/DiscountField";
 import ExistingProjectPicker from "./generateInvoice/ExistingProjectPicker";
 import InvoiceModeToggle, { type InvoiceMode } from "./generateInvoice/InvoiceModeToggle";
@@ -119,7 +120,7 @@ export default function GenerateInvoice() {
   // app/invoices/repository.py's create_invoice) since this project exists
   // only to hang the invoice off of.
   const [newProjectType, setNewProjectType] = useState("");
-  const [newCustomerId, setNewCustomerId] = useState<number | undefined>(billingNote?.customerId);
+  const [customerChoice, setCustomerChoice] = useState(() => emptyCustomerChoice(billingNote?.customerId));
   const [newJobError, setNewJobError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -174,8 +175,9 @@ export default function GenerateInvoice() {
     setDiscountError(null);
     setNewJobError(null);
 
-    if (isNewJob && !newCustomerId) {
-      setNewJobError("Pick a customer before generating.");
+    const customerProblem = isNewJob ? customerChoiceProblem(customerChoice) : null;
+    if (customerProblem) {
+      setNewJobError(customerProblem);
       return;
     }
 
@@ -201,7 +203,7 @@ export default function GenerateInvoice() {
           ? {
               new_project: {
                 project_type: newProjectType || undefined,
-                customer_id: newCustomerId,
+                ...customerChoicePayload(customerChoice),
               },
             }
           : { project_id: Number(projectId) }),
@@ -343,7 +345,7 @@ export default function GenerateInvoice() {
       >
         <InvoiceMetaPanel>
           {isNewJob ? (
-            <BilledToPicker value={newCustomerId} onChange={setNewCustomerId} />
+            <BilledToPicker value={customerChoice} onChange={setCustomerChoice} />
           ) : (
             <BilledToSummary customer={customer} />
           )}

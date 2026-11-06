@@ -1,5 +1,6 @@
 
 import { basics } from "../../theme/tokens";
+import { planPdfPages } from "./pdfPages";
 
 // Renders a DOM node (the printable invoice sheet) to a single-page-per-
 // screen-height PDF, image-based rather than real PDF text - the simplest
@@ -60,12 +61,18 @@ export async function generateInvoicePdf(node: HTMLElement, filename: string): P
   const pxPerPt = canvas.width / contentWidth;
   const pageSliceHeightPx = Math.max(1, Math.floor(contentHeight * pxPerPt));
 
-  const pdf = new jsPDF({ unit: "pt", format: "a4" });
-  let renderedPx = 0;
-  let firstPage = true;
+  // Worked out from the on-screen box rather than a fixed factor, so it holds
+  // however the sheet happens to be scaled when captured.
+  const box = node.getBoundingClientRect();
+  const safeBreaks = Array.from(node.querySelectorAll(".invoice-row")).map((el) =>
+    Math.round(((el.getBoundingClientRect().top - box.top) / box.height) * canvas.height),
+  );
+  const { scale, slices } = planPdfPages(canvas.height, pageSliceHeightPx, safeBreaks);
 
-  while (renderedPx < canvas.height) {
-    const sliceHeightPx = Math.min(pageSliceHeightPx, canvas.height - renderedPx);
+  const pdf = new jsPDF({ unit: "pt", format: "a4" });
+
+  slices.forEach(({ start, end }, index) => {
+    const sliceHeightPx = end - start;
 
     // A real crop (drawImage with source offsets), not a stretch - addImage
     // always stretches whatever width/height it's given to fill, so tiling
@@ -81,18 +88,16 @@ export async function generateInvoicePdf(node: HTMLElement, filename: string): P
     ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
     ctx.drawImage(
       canvas,
-      0, renderedPx, canvas.width, sliceHeightPx,
+      0, start, canvas.width, sliceHeightPx,
       0, 0, canvas.width, sliceHeightPx
     );
 
-    if (!firstPage) pdf.addPage();
-    firstPage = false;
+    if (index > 0) pdf.addPage();
 
-    const sliceHeightPt = sliceHeightPx / pxPerPt;
-    pdf.addImage(sliceCanvas.toDataURL("image/jpeg", JPEG_QUALITY), "JPEG", margin, margin, contentWidth, sliceHeightPt);
-
-    renderedPx += sliceHeightPx;
-  }
+    const drawnWidth = contentWidth * scale;
+    const drawnHeight = (sliceHeightPx / pxPerPt) * scale;
+    pdf.addImage(sliceCanvas.toDataURL("image/jpeg", JPEG_QUALITY), "JPEG", (pageWidth - drawnWidth) / 2, margin, drawnWidth, drawnHeight);
+  });
 
   const blob = pdf.output("blob");
   return new File([blob], filename, { type: "application/pdf" });

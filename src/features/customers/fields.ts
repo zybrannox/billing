@@ -13,8 +13,8 @@ export const addCustomerFields: FieldDefinition[] = [
     name: "last_name",
     label: "Last Name",
     type: "text",
-    required: true,
-    placeholder: "Enter last name",
+    required: false,
+    placeholder: "Enter last name (optional)",
     row: 1,
   },
   {

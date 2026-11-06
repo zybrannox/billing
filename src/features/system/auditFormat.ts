@@ -34,6 +34,7 @@ const ACTION_LABELS: Record<string, string> = {
   "invoice.mark_paid": "Marked paid",
   "invoice.cancel": "Invoice cancelled",
   "invoice.status": "Invoice status changed",
+  "invoice.print": "Invoice printed",
   "quotation.accepted": "Quotation accepted",
   "quotation.rejected": "Quotation rejected",
   // Only on older entries; bulk deletes now get one entry per project.

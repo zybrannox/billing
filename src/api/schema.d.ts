@@ -1007,6 +1007,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/invoices/{invoice_id}/print": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Print Invoice */
+        post: operations["print_invoice_invoices__invoice_id__print_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/invoices/{invoice_id}/record-payment": {
         parameters: {
             query?: never;
@@ -1971,6 +1988,11 @@ export interface components {
             /** File */
             file: string;
         };
+        /** Body_print_invoice_invoices__invoice_id__print_post */
+        Body_print_invoice_invoices__invoice_id__print_post: {
+            /** File */
+            file: string;
+        };
         /** Body_upload_chunk_files_upload_chunk_post */
         Body_upload_chunk_files_upload_chunk_post: {
             /** Chunk */
@@ -2683,7 +2705,8 @@ export interface components {
         /** InvoiceNewProject */
         InvoiceNewProject: {
             /** Customer Id */
-            customer_id: number;
+            customer_id?: number | null;
+            new_customer?: components["schemas"]["NewCustomer"] | null;
             /** Project Type */
             project_type?: string | null;
         };
@@ -2965,10 +2988,7 @@ export interface components {
             /** Up To Sq Ft */
             up_to_sq_ft: number;
         };
-        /**
-         * NewCustomer
-         * @description A customer typed straight into the Add Project form.
-         */
+        /** NewCustomer */
         NewCustomer: {
             /** Contact Number */
             contact_number: string;
@@ -3310,7 +3330,7 @@ export interface components {
         /** QuotationCreate */
         QuotationCreate: {
             /** Customer Id */
-            customer_id: number;
+            customer_id?: number | null;
             /**
              * Discount Amount
              * @default 0
@@ -3318,6 +3338,7 @@ export interface components {
             discount_amount: number;
             /** Items */
             items: components["schemas"]["QuotationItemCreate"][];
+            new_customer?: components["schemas"]["NewCustomer"] | null;
             /** Project Type */
             project_type: string;
             /** Valid Until */
@@ -6035,6 +6056,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InvoicePaymentRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    print_invoice_invoices__invoice_id__print_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoice_id: number;
+            };
+            cookie?: {
+                access_token?: string;
+            };
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_print_invoice_invoices__invoice_id__print_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

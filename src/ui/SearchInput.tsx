@@ -1,9 +1,12 @@
 import React from "react";
-import { TextField, InputAdornment, IconButton, type TextFieldProps } from "@mui/material";
+import { Box, TextField, InputAdornment, IconButton, type TextFieldProps } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
 
-type SearchInputProps = Omit<TextFieldProps, "variant" | "size">;
+type SearchInputProps = Omit<TextFieldProps, "variant" | "size"> & {
+  // A keyboard shortcut to mention at the right of the box.
+  shortcutHint?: string;
+};
 
 export default function SearchInput({
   placeholder = "Search...",
@@ -13,6 +16,7 @@ export default function SearchInput({
   onChange,
   name,
   id,
+  shortcutHint,
   ...props
 }: SearchInputProps) {
   const hasValue = typeof value === "string" && value.length > 0;
@@ -65,6 +69,30 @@ export default function SearchInput({
         ),
         // Positioned absolutely to prevent horizontal width shifting when visible
         endAdornment: (
+          <>
+          {shortcutHint && (
+            // Keyboards only: phones and tablets don't need the reminder.
+            <Box
+              component="kbd"
+              sx={{
+                display: { xs: "none", md: "inline-flex" },
+                position: "absolute",
+                right: hasValue ? 34 : 8,
+                px: 0.75,
+                py: 0.125,
+                fontFamily: "inherit",
+                fontSize: "var(--fs-xs)",
+                lineHeight: 1.4,
+                color: "var(--slate-500)",
+                bgcolor: "var(--slate-100)",
+                border: "1px solid var(--slate-200)",
+                borderRadius: "var(--border-radius-sm, 4px)",
+                pointerEvents: "none",
+              }}
+            >
+              {shortcutHint}
+            </Box>
+          )}
           <InputAdornment
             position="end"
             sx={{
@@ -97,6 +125,7 @@ export default function SearchInput({
               <CloseIcon sx={{ fontSize: 15 }} />
             </IconButton>
           </InputAdornment>
+          </>
         ),
         ...InputProps,
         sx: {
@@ -105,7 +134,8 @@ export default function SearchInput({
           borderRadius: "var(--border-radius-md, 6px)",
           bgcolor: "var(--white)",
           paddingLeft: "10px",
-          paddingRight: "32px", // Fixed reserve padding so text doesn't overlap the clear button
+          // Fixed reserve padding so text doesn't overlap the clear button or the hint.
+          paddingRight: shortcutHint ? { xs: "32px", md: hasValue ? "72px" : "44px" } : "32px",
           transition: "background-color 0.2s ease, box-shadow 0.2s ease",
           "& input": {
             paddingY: 0,
