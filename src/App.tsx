@@ -40,7 +40,6 @@ const GenerateInvoice = lazy(() => import("./features/billing/GenerateInvoice"))
 const GenerateQuotation = lazy(() => import("./features/billing/GenerateQuotation"));
 const SystemSetup = lazy(() => import("./features/system/SystemSetup"));
 const Notes = lazy(() => import("./features/notes/Notes"));
-const IssuesPage = lazy(() => import("./features/issues/IssuesPage"));
 const InvoicesPage = lazy(() => import("./features/billing/InvoicesPage"));
 const Dashboard = lazy(() => import("./features/dashboard/Dashboard"));
 const Login = lazy(() => import("./features/auth/Login"));
@@ -186,7 +185,6 @@ function App() {
                 <Route path="employees/:id" element={<EmployeeProfile />} />
                 <Route path="system-setup" element={<SystemSetup />} />
                 <Route path="notes" element={<Notes />} />
-                <Route path="issues" element={<IssuesPage />} />
                 <Route path="invoices" element={<InvoicesPage />} />
                 <Route path="invoices/:id" element={<InvoicesPage />} />
               </Route>

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Badge, Box, ButtonBase, IconButton, InputBase, Paper, Tooltip, Typography } from "@mui/material";
+import { Alert, Box, ButtonBase, IconButton, InputBase, Paper, Tooltip, Typography } from "@mui/material";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
@@ -8,14 +8,13 @@ import { apiService } from "../../api/service";
 import type { MyIssues } from "../../api/types";
 import { formatDateTime } from "../../format/date";
 import { getApiErrorMessage } from "../../utils/apiError";
-import Robot from "./Robot";
+import { RobotDock, RobotPanel } from "./RobotDock";
 import { isSendKey, solvedNotice } from "./issueFormat";
 
 // A solved issue is meant to read as live without needing a websocket, same as
 // the admin's notification bell.
 const POLL_INTERVAL_MS = 60_000;
 const MAX_LENGTH = 2000;
-const GUTTER = { xs: 16, sm: 24 };
 
 function RobotSays({ children, solved = false }: { children: ReactNode; solved?: boolean }) {
   return (
@@ -62,7 +61,7 @@ function YouSaid({ text, at }: { text: string; at: string }) {
 }
 
 // Zybran, the floating helper employees tell their problems to. It isn't an AI: what they
-// write goes to the admins' Issues page, and it tells them once it's been solved.
+// write goes to the admins (see AdminIssuesHelper.tsx), and it tells them once it's solved.
 export default function IssueHelper() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -124,52 +123,9 @@ export default function IssueHelper() {
   const showNotice = !open && unseenCount > 0 && unseenCount !== noticeDismissedAt;
 
   return (
-    <Box
-      sx={{
-        position: "fixed",
-        right: GUTTER,
-        bottom: GUTTER,
-        // Above the page, below any dialog.
-        zIndex: (theme) => theme.zIndex.speedDial,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "flex-end",
-        gap: 1,
-        pointerEvents: "none",
-        "& > *": { pointerEvents: "auto" },
-        "@media print": { display: "none" },
-      }}
-    >
+    <RobotDock label="report an issue" open={open} badge={unseenCount} onToggle={() => setOpen((value) => !value)}>
       {open && (
-        <Paper
-          role="dialog"
-          aria-label="Report an issue to Zybran"
-          elevation={8}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") setOpen(false);
-          }}
-          sx={{
-            width: { xs: "calc(100vw - 32px)", sm: 360 },
-            height: { xs: "min(70vh, 480px)", sm: "min(70vh, 500px)" },
-            display: "flex",
-            flexDirection: "column",
-            overflow: "hidden",
-            borderRadius: "16px",
-          }}
-        >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, px: 1.5, py: 1, bgcolor: "var(--blue-900)", color: "var(--white)" }}>
-            <Box sx={{ flexShrink: 0, mt: 0.5 }}>
-              <Robot size={34} still />
-            </Box>
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography sx={{ fontWeight: 700, fontSize: "var(--fs-md)", lineHeight: 1.2 }}>Zybran</Typography>
-              <Typography sx={{ fontSize: "var(--fs-xs)", opacity: 0.8 }}>Tell me your issue. It goes straight to the admins.</Typography>
-            </Box>
-            <IconButton size="small" aria-label="Close" onClick={() => setOpen(false)} sx={{ color: "var(--white)" }}>
-              <CloseRoundedIcon fontSize="small" />
-            </IconButton>
-          </Box>
-
+        <RobotPanel label="Report an issue to Zybran" subtitle="I'll pass your issue to the admins" onClose={() => setOpen(false)}>
           <Box sx={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 1, p: 1.5 }}>
             <RobotSays>Hi, I'm Zybran! What's going wrong? Tell me here and I'll pass it to the admins. I'll let you know when it's solved.</RobotSays>
             {query.isError && items.length === 0 && (
@@ -229,7 +185,7 @@ export default function IssueHelper() {
               </span>
             </Tooltip>
           </Box>
-        </Paper>
+        </RobotPanel>
       )}
 
       {showNotice && (
@@ -261,18 +217,6 @@ export default function IssueHelper() {
         </Paper>
       )}
 
-      <Tooltip title={open ? "" : "Zybran: report an issue"} placement="left">
-        <ButtonBase
-          aria-label={unseenCount > 0 ? `Zybran: report an issue. ${unseenCount} solved.` : "Zybran: report an issue"}
-          aria-expanded={open}
-          onClick={() => setOpen((value) => !value)}
-          sx={{ borderRadius: "50%", p: 0.5, "&:focus-visible": { outline: "2px solid var(--blue-500)" } }}
-        >
-          <Badge badgeContent={unseenCount} color="error" overlap="circular" sx={{ "& .MuiBadge-badge": { fontWeight: 700 } }}>
-            <Robot size={68} />
-          </Badge>
-        </ButtonBase>
-      </Tooltip>
-    </Box>
+    </RobotDock>
   );
 }

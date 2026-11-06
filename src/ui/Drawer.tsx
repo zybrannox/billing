@@ -12,7 +12,6 @@ import Box from "@mui/material/Box";
 import List from "@mui/material/List";
 import IconButton from "@mui/material/IconButton";
 import ListItem from "@mui/material/ListItem";
-import Badge from "@mui/material/Badge";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
 import { CloseOutlined } from "@mui/icons-material";
@@ -224,7 +223,7 @@ const Drawer: React.FC<Props> = ({ open, onClose, onToggle, navigations }) => {
   };
 
   const renderNav = (items: NavItem[]) =>
-    items.map(({ name, href, icon: Icon, badge }: NavItem) => {
+    items.map(({ name, href, icon: Icon }: NavItem) => {
       const isActive = pathname === href;
       return (
         <ListItem
@@ -256,9 +255,7 @@ const Drawer: React.FC<Props> = ({ open, onClose, onToggle, navigations }) => {
                 mr: !isMobileOrTablet && open ? 1.5 : "auto",
               }}
             >
-              <Badge badgeContent={badge} color="error" sx={{ "& .MuiBadge-badge": { fontSize: "var(--fs-2xs)", fontWeight: 700, minWidth: 16, height: 16 } }}>
-                <Icon />
-              </Badge>
+              <Icon />
             </ListItemIcon>
 
             <ListItemText
