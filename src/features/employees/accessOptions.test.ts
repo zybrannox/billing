@@ -8,11 +8,11 @@ describe("accessSummary", () => {
   });
 
   it("counts a partial grant", () => {
-    expect(accessSummary(["invoice.create", "invoice.edit"])).toBe("2 of 4");
+    expect(accessSummary(["invoice.edit", "notes.access"])).toBe("2 of 3");
   });
 
   it("says Full access when everything is on", () => {
-    expect(accessSummary(["invoice.create", "invoice.edit", "workspace.manage", "notes.access"])).toBe("Full access");
+    expect(accessSummary(["invoice.edit", "workspace.manage", "notes.access"])).toBe("Full access");
   });
 
   it("ignores permissions it doesn't know", () => {
@@ -22,6 +22,6 @@ describe("accessSummary", () => {
 
 describe("accessNames", () => {
   it("names what is switched on, in the panel's order", () => {
-    expect(accessNames(["workspace.manage", "invoice.create"])).toBe("New invoices, Workspace settings");
+    expect(accessNames(["workspace.manage", "invoice.edit"])).toBe("Edit project invoices, Workspace settings");
   });
 });

@@ -16,15 +16,12 @@ export const adminNavigations: NavItem[] = [
 
 export const employeeNavigations = ({
   canManageWorkspace,
-  canSeeInvoices,
   canSeeNotes,
 }: {
   canManageWorkspace: boolean;
-  canSeeInvoices: boolean;
   canSeeNotes: boolean;
 }): NavItem[] => [
   { name: "Projects", href: "/", icon: Assignment },
-  ...(canSeeInvoices ? [{ name: "Invoices", href: "/invoices", icon: ReceiptLong }] : []),
   ...(canSeeNotes ? [{ name: "Notes", href: "/notes", icon: StickyNote2 }] : []),
   ...(canManageWorkspace ? [{ name: "System Setup", href: "/system-setup", icon: Settings }] : []),
 ];

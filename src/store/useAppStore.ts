@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 
-export type Permission = "invoice.create" | "invoice.edit" | "workspace.manage" | "notes.access";
+export type Permission = "invoice.edit" | "workspace.manage" | "notes.access";
 
 export type User = {
   username: string;

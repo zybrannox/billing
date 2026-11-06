@@ -1,4 +1,3 @@
-import { usePermission } from "../../hooks/usePermission";
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -88,7 +87,6 @@ export default function QuotationView({
   // job type, line items, discount) already lives on the quotation and
   // carries straight over server-side (see
   // app/quotations/repository.py's convert_quotation_to_invoice).
-  const canConvert = usePermission("invoice.create");
   const [convertOpen, setConvertOpen] = useState(false);
   const [convertAssignedTo, setConvertAssignedTo] = useState<string | undefined>(undefined);
   const [convertStartDate, setConvertStartDate] = useState<string | null>(new Date().toISOString());
@@ -456,7 +454,6 @@ export default function QuotationView({
         )}
         {quotation.status === "accepted" && (
           <Stack direction="row" justifyContent="flex-end">
-            {canConvert && (
             <Button
               variant="contained"
               disableElevation
@@ -466,7 +463,6 @@ export default function QuotationView({
             >
               Convert to Invoice
             </Button>
-            )}
           </Stack>
         )}
         {quotation.status === "converted" && quotation.converted_invoice_id && (

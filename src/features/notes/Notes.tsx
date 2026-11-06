@@ -12,7 +12,6 @@ import type { Note, NoteListResponse } from "../../api/types";
 import { formatDateTime } from "../../format/date";
 import { useConfirmDialogStore } from "../../hooks/useconfirmDialogStore";
 import { useOnDialogClose } from "../../hooks/useOnDialogClose";
-import { usePermission } from "../../hooks/usePermission";
 import { messages } from "../../messages";
 import { useDialogStore } from "../../store/useDialogStore";
 import AsyncSearchSelect from "../../ui/AsyncSearchSelect";
@@ -170,7 +169,6 @@ function NoteText({ text, done }: { text: string; done: boolean }) {
 
 function NoteRow({
   note,
-  canBill,
   onToggleDone,
   onSaveEdit,
   onDelete,
@@ -178,7 +176,6 @@ function NoteRow({
   onOpenInvoice,
 }: {
   note: Note;
-  canBill: boolean;
   onToggleDone: () => void;
   onSaveEdit: (text: string, customerId?: number) => Promise<boolean>;
   onDelete: () => void;
@@ -282,26 +279,24 @@ function NoteRow({
                 {note.invoice_number ?? "View invoice"}
               </MuiButton>
             ) : (
-              canBill && (
-                <MuiButton
-                  size="small"
-                  variant="outlined"
-                  startIcon={<ReceiptLongRoundedIcon />}
-                  onClick={onBill}
-                  sx={{
-                    textTransform: "none",
-                    fontWeight: 600,
-                    whiteSpace: "nowrap",
-                    borderRadius: "8px",
-                    color: "var(--slate-700)",
-                    borderColor: "var(--slate-300)",
-                    bgcolor: "var(--white)",
-                    "&:hover": { borderColor: "var(--blue-500)", color: "var(--blue-700)", bgcolor: "var(--white)" },
-                  }}
-                >
-                  Make bill
-                </MuiButton>
-              )
+              <MuiButton
+                size="small"
+                variant="outlined"
+                startIcon={<ReceiptLongRoundedIcon />}
+                onClick={onBill}
+                sx={{
+                  textTransform: "none",
+                  fontWeight: 600,
+                  whiteSpace: "nowrap",
+                  borderRadius: "8px",
+                  color: "var(--slate-700)",
+                  borderColor: "var(--slate-300)",
+                  bgcolor: "var(--white)",
+                  "&:hover": { borderColor: "var(--blue-500)", color: "var(--blue-700)", bgcolor: "var(--white)" },
+                }}
+              >
+                Make bill
+              </MuiButton>
             )}
             <Tooltip title="Edit">
               <IconButton size="small" aria-label="Edit note" onClick={() => setEditing(true)} sx={{ color: "var(--slate-400)", "&:hover": { color: "var(--slate-700)" } }}>
@@ -329,7 +324,6 @@ function NoteRow({
 // it into a bill. Shared by everyone with access, so anyone can tick off anyone's note.
 export default function Notes() {
   const queryClient = useQueryClient();
-  const canBill = usePermission("invoice.create");
   const { showDialog, closeDialog } = useConfirmDialogStore();
   const openDialog = useDialogStore((s) => s.openDialog);
   const openInvoiceFromNote = useDialogStore((s) => s.openInvoiceFromNote);
@@ -463,7 +457,6 @@ export default function Notes() {
                   <NoteRow
                     key={note.id}
                     note={note}
-                    canBill={canBill}
                     onToggleDone={() => toggleDone(note)}
                     onSaveEdit={(text, customerId) => saveEdit(note, text, customerId)}
                     onDelete={() => remove(note)}

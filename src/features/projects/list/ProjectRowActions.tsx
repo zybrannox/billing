@@ -48,8 +48,7 @@ export default function ProjectRowActions({
       designCompletedMeta={meta(row.design_completed_at, row.design_completed_by)}
       printCompletedMeta={meta(row.print_completed_at, row.print_completed_by)}
       deliveredMeta={meta(row.delivered_at, row.delivered_by)}
-      // With invoice access, marking design done goes through the invoice dialog
-      // (see GenerateInvoice.tsx); without it, it just records the design is done.
+      // Marking design done goes through the invoice dialog (see GenerateInvoice.tsx).
       onMarkDesignCompleted={() => actions.markDesignCompleted(row.id)}
       onMarkPrintCompleted={() => actions.markPrintCompleted(row.id)}
       // Opens the full order/payment breakdown instead of a plain confirm: see

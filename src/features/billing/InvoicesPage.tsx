@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Box, IconButton, Tooltip, useMediaQuery, useTheme } from "@mui/material";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
@@ -7,7 +7,6 @@ import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 import type { Invoice } from "../../api/types";
 import { useConfirmDialogStore } from "../../hooks/useconfirmDialogStore";
 import { useOnDialogClose } from "../../hooks/useOnDialogClose";
-import { usePermission } from "../../hooks/usePermission";
 import { useDialogStore } from "../../store/useDialogStore";
 import CrudActions from "../../ui/Actions";
 import Button from "../../ui/Button";
@@ -38,14 +37,12 @@ const VIEW_VALUES = VIEWS.map((v) => v.value as string);
 export default function InvoicesPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { pathname, search: queryString } = useLocation();
+  const { search: queryString } = useLocation();
   const [params, setParams] = useSearchParams();
-  const base = pathname.startsWith("/admin") ? "/admin/invoices" : "/invoices";
+  const base = "/admin/invoices";
 
   const theme = useTheme();
   const isWide = useMediaQuery(theme.breakpoints.up("md"), { noSsr: true });
-  const canCreate = usePermission("invoice.create");
-  const canEdit = usePermission("invoice.edit");
   const openDialog = useDialogStore((s) => s.openDialog);
   const dialogInvoiceOpen = useDialogStore((s) => s.isDialogOpen && s.editingType === "viewInvoice");
   const { showDialog } = useConfirmDialogStore();
@@ -136,9 +133,7 @@ export default function InvoicesPage() {
       showDialog({ title: "Couldn't share invoice", description: "Something went wrong preparing the WhatsApp share link. Please try again.", confirmText: "OK" });
     });
 
-  if (!canCreate && !canEdit) return <Navigate to="/" replace />;
-
-  const newButton = canCreate && (
+  const newButton = (
     <Button size="small" onClick={() => openDialog("invoiceDesignComplete")}>+ New</Button>
   );
 

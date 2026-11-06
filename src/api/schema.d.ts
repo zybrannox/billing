@@ -2965,6 +2965,16 @@ export interface components {
             /** Up To Sq Ft */
             up_to_sq_ft: number;
         };
+        /**
+         * NewCustomer
+         * @description A customer typed straight into the Add Project form.
+         */
+        NewCustomer: {
+            /** Contact Number */
+            contact_number: string;
+            /** Name */
+            name: string;
+        };
         /** NoteCreate */
         NoteCreate: {
             /** Customer Id */
@@ -3094,6 +3104,7 @@ export interface components {
             delivery_date: string;
             /** Description */
             description?: string | null;
+            new_customer?: components["schemas"]["NewCustomer"] | null;
             /**
              * Print Status
              * @default In Progress
@@ -3656,7 +3667,7 @@ export interface components {
         /** UserPermissionsUpdate */
         UserPermissionsUpdate: {
             /** Permissions */
-            permissions: ("invoice.create" | "invoice.edit" | "workspace.manage" | "notes.access")[];
+            permissions: ("invoice.edit" | "workspace.manage" | "notes.access")[];
         };
         /** UserRead */
         UserRead: {
@@ -4611,6 +4622,7 @@ export interface operations {
                 page_size?: number;
                 search?: string | null;
                 sort?: "name" | "most_used";
+                exclude_placeholders?: boolean;
             };
             header?: never;
             path?: never;

@@ -205,8 +205,6 @@ function App() {
               <Route path="/" element={<EmployeeLayout />}>
                 <Route index element={<Projects />} />
                 <Route path="notes" element={<RequirePermission permission="notes.access"><Notes /></RequirePermission>} />
-                <Route path="invoices" element={<InvoicesPage />} />
-                <Route path="invoices/:id" element={<InvoicesPage />} />
                 <Route path="system-setup" element={<SystemSetup />} />
               </Route>
             </Route>
@@ -295,8 +293,8 @@ function App() {
               so viewing one never navigates away from the customer. */}
           <Dialog type="viewQuotation" title="Quotation" children={<Suspense fallback={<PageSpinner />}><QuotationDialogView /></Suspense>} maxWidth="md" />
 
-          {/* Admin-only (see InvoiceView.tsx's "Edit" action, the only place
-              this is opened from) - reuses the same xl width as
+          {/* For admins and anyone given "Edit project invoices" (see
+              InvoiceView.tsx's "Edit" action, the only place this is opened from) - reuses the same xl width as
               invoiceDesignComplete below since it hosts the same line-item
               table. */}
           <Dialog type="editInvoice" title="Invoice" children={<Suspense fallback={<PageSpinner />}><EditInvoice /></Suspense>} maxWidth="xl" fullWidth />

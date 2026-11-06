@@ -1,7 +1,8 @@
 import { getErrorMessage } from "../../utils/apiError";
 import type { z } from "zod";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { addProjectFields } from "./fields";
+import { cleanPhone } from "./addProject.schema";
 import { useApiRequest } from "../../hooks/useApiRequest";
 import { useDialogStore } from "../../store/useDialogStore";
 import { useAppStore } from "../../store/useAppStore";
@@ -18,6 +19,7 @@ export default function AddProject() {
   const { user } = useAppStore();
   const imagesRef = useRef<UploadItem[]>([]);
   const submittedRef = useRef(false);
+  const [customerMode, setCustomerMode] = useState("existing");
 
   // Project Type's options now live in the admin-managed list_options table
   // (see features/system/SystemSetup.tsx) instead of the hardcoded array in
@@ -54,11 +56,14 @@ export default function AddProject() {
   // username there 422s and the field would show blank. initialOption
   // hands it an already-resolved option so it never needs that lookup.
   const fields = useMemo(() => {
-    const withLiveProjectTypes = addProjectFields.map((field) =>
-      field.name === "project_type" && projectTypeOptions?.length
-        ? { ...field, options: projectTypeOptions.map((o) => o.value) }
-        : field,
-    );
+    const hidden = customerMode === "new" ? ["customer_id"] : ["new_customer_name", "new_customer_phone"];
+    const withLiveProjectTypes = addProjectFields
+      .filter((field) => !hidden.includes(field.name))
+      .map((field) =>
+        field.name === "project_type" && projectTypeOptions?.length
+          ? { ...field, options: projectTypeOptions.map((o) => o.value) }
+          : field,
+      );
 
     if (user?.role === "admin") return withLiveProjectTypes;
 
@@ -72,10 +77,10 @@ export default function AddProject() {
           }
         : field,
     );
-  }, [user, projectTypeOptions]);
+  }, [user, projectTypeOptions, customerMode]);
 
   const handleSubmit = async (formData: z.infer<typeof addProjectSchema> & { images?: UploadItem[] }) => {
-    const { images, ...rest } = formData;
+    const { images, customer_mode, customer_id, new_customer_name, new_customer_phone, ...rest } = formData;
     const items: UploadItem[] = images || [];
 
     // Images upload as soon as they're picked (see GmailFileUploader), so by
@@ -107,6 +112,9 @@ export default function AddProject() {
       // 1️⃣ Create project
       const projectPayload = {
         ...rest,
+        ...(customer_mode === "new"
+          ? { new_customer: { name: new_customer_name, contact_number: cleanPhone(new_customer_phone ?? "") } }
+          : { customer_id }),
         print_status: "In Progress",
       };
 
@@ -158,6 +166,7 @@ export default function AddProject() {
       zodSchema={addProjectSchema}
       onValuesChange={(values) => {
         imagesRef.current = values.images || [];
+        setCustomerMode(values.customer_mode ?? "existing");
       }}
     />
   );
