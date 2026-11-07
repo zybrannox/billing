@@ -184,7 +184,7 @@ export function sampleInvoiceDocument(settings: DocumentSettings): DocumentData 
         { id: 2, description: "Installation", width: 0, height: 0, unit: "ft", sq_ft: 0, rate: 650, pieces: 2, total: 1300, is_manual_total: false, has_dimensions: false, sort_order: 1, project_file_id: null },
       ],
       payments: [
-        { id: 1, amount: 2000, payment_method: "UPI", payment_reference: "TXN123456", paid_at: today, recorded_by: null },
+        { id: 1, amount: 2000, payment_method: "UPI", payment_reference: "TXN123456", paid_at: today, recorded_by: null, customer_payment_id: null },
       ],
     },
     settings,

@@ -8,13 +8,17 @@ import { formatDateTime } from "../../format/date";
 import { getSemanticColor } from "../../utils/colors";
 import Chip from "../../ui/Chip";
 import { semanticChipSx } from "../../ui/chipStyles";
-import CustomerInvoicesList from "../billing/CustomerInvoicesList";
+import CustomerInvoicesTab from "./CustomerInvoicesTab";
 import CustomerQuotationsList from "../billing/CustomerQuotationsList";
 import { useOnDialogClose } from "../../hooks/useOnDialogClose";
 import Table from "../../ui/Table";
 import Button from "../../ui/Button";
 import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 import StatementDialog from "./statement/StatementDialog";
+import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
+import type { CustomerPayment } from "../../api/types";
+import CustomerPaymentsTab from "./payments/CustomerPaymentsTab";
+import ReceivePaymentDialog from "./payments/ReceivePaymentDialog";
 import EmptyState from "../../ui/EmptyState";
 import PageShell from "../../ui/PageShell";
 import PageSpinner from "../../ui/PageSpinner";
@@ -37,6 +41,7 @@ interface CustomerStats {
   total_spent: number;
   outstanding_balance: number;
   pending_invoices: number;
+  credit: number;
 }
 
 interface OrderItem {
@@ -54,6 +59,7 @@ interface CustomerProfileData {
   projects: OrderItem[];
   invoice_count: number;
   quotation_count: number;
+  payment_count: number;
 }
 
 
@@ -101,7 +107,9 @@ export default function CustomerProfile() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [statementOpen, setStatementOpen] = useState(false);
-  const [tab, setTab] = useState<"invoices" | "orders" | "quotations">("invoices");
+  const [tab, setTab] = useState<"invoices" | "payments" | "orders" | "quotations">("invoices");
+  // Receiving new money, or (with a payment) spending what's left of an earlier one.
+  const [paymentDialog, setPaymentDialog] = useState<{ credit: CustomerPayment | null } | null>(null);
 
   const load = () => {
     setLoading(true);
@@ -148,9 +156,14 @@ export default function CustomerProfile() {
       <ProfileHeader
         name={fullName}
         actions={
-          <Button startIcon={<ReceiptLongRoundedIcon />} onClick={() => setStatementOpen(true)}>
-            Statement
-          </Button>
+          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+            <Button variantColor="outline" startIcon={<ReceiptLongRoundedIcon />} onClick={() => setStatementOpen(true)}>
+              Statement
+            </Button>
+            <Button startIcon={<PaymentsRoundedIcon />} onClick={() => setPaymentDialog({ credit: null })}>
+              Receive payment
+            </Button>
+          </Box>
         }
         phone={customer.contact_number}
         email={customer.email}
@@ -164,10 +177,21 @@ export default function CustomerProfile() {
             sub: `${stats.pending_invoices} pending`,
             valueColor: stats.outstanding_balance > 0 ? "var(--red-600)" : undefined,
           },
+          ...(stats.credit > 0
+            ? [{ label: "Credit", value: money(stats.credit), sub: "paid, not on an invoice yet", valueColor: "var(--emerald-700)" }]
+            : []),
         ]}
       />
 
       <StatementDialog customerId={customer.id} customerName={fullName} open={statementOpen} onClose={() => setStatementOpen(false)} />
+      <ReceivePaymentDialog
+        open={paymentDialog !== null}
+        onClose={() => setPaymentDialog(null)}
+        customerId={customer.id}
+        customerName={fullName}
+        credit={paymentDialog?.credit}
+        onSaved={load}
+      />
 
       <Box component="section" sx={{ ...surfaceSx, overflow: "hidden", minWidth: 0 }}>
         <Tabs
@@ -178,14 +202,16 @@ export default function CustomerProfile() {
           sx={{ px: 1, minHeight: 44, borderBottom: "1px solid var(--slate-100)", "& .MuiTab-root": { minHeight: 44, textTransform: "none", fontWeight: 600, fontSize: "var(--fs-sm)" } }}
         >
           <Tab value="invoices" label={`Invoices (${data.invoice_count})`} />
+          <Tab value="payments" label={`Payments (${data.payment_count})`} />
           <Tab value="orders" label={`Orders (${projects.length})`} />
           <Tab value="quotations" label={`Quotations (${data.quotation_count})`} />
         </Tabs>
 
         {tab === "invoices" && (
-          <Box sx={{ p: 1.5 }}>
-            <CustomerInvoicesList customerId={customer.id} showCustomerLink={false} onChanged={load} />
-          </Box>
+          <CustomerInvoicesTab customerId={customer.id} onChanged={load} />
+        )}
+        {tab === "payments" && (
+          <CustomerPaymentsTab customerId={customer.id} onUseCredit={(payment) => setPaymentDialog({ credit: payment })} onChanged={load} />
         )}
         {tab === "quotations" && (
           <Box sx={{ p: 1.5 }}>

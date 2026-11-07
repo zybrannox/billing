@@ -42,7 +42,7 @@ describe("invoice adapter", () => {
 
   it("marks negative ledger entries as adjustments", () => {
     const inv = baseInvoice();
-    inv.payments = [{ id: 1, amount: -200, payment_method: "Cash", payment_reference: null, paid_at: "2026-10-01T00:00:00", recorded_by: null }];
+    inv.payments = [{ id: 1, amount: -200, payment_method: "Cash", payment_reference: null, paid_at: "2026-10-01T00:00:00", recorded_by: null, customer_payment_id: null }];
     expect(invoiceToDocument(inv, settings).payments[0]).toMatchObject({ method: "Adjustment", amount: "-INR 200.00" });
   });
 
@@ -95,6 +95,6 @@ function baseInvoice(): InvoiceDetail {
     items: [
       { id: 1, description: "Banner", width: 10, height: 10, unit: "ft", sq_ft: 100, rate: 10, pieces: 1, total: 1000, is_manual_total: false, has_dimensions: true, sort_order: 0, project_file_id: null },
     ],
-    payments: [{ id: 1, amount: 400, payment_method: "Cash", payment_reference: "r1", paid_at: "2026-10-18T12:00:00", recorded_by: "alan" }],
+    payments: [{ id: 1, amount: 400, payment_method: "Cash", payment_reference: "r1", paid_at: "2026-10-18T12:00:00", recorded_by: "alan", customer_payment_id: null }],
   };
 }

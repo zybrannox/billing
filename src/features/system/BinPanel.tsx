@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Box, Button as MuiButton, CircularProgress, IconButton, Tooltip, Typography } from "@mui/material";
 import ApartmentRoundedIcon from "@mui/icons-material/ApartmentRounded";
+import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
 import BadgeRoundedIcon from "@mui/icons-material/BadgeRounded";
 import DeleteForeverRoundedIcon from "@mui/icons-material/DeleteForeverRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
@@ -36,6 +37,7 @@ const TYPE_ICONS: Record<string, ReactNode> = {
   customer: <PersonRoundedIcon />,
   company: <ApartmentRoundedIcon />,
   employee: <BadgeRoundedIcon />,
+  customer_payment: <PaymentsRoundedIcon />,
 };
 
 function BinRow({

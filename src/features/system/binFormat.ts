@@ -24,4 +24,5 @@ export const BIN_TYPE_LABELS: Record<string, { one: string; many: string }> = {
   customer: { one: "Customer", many: "Customers" },
   company: { one: "Company", many: "Companies" },
   employee: { one: "Employee", many: "Employees" },
+  customer_payment: { one: "Payment", many: "Payments" },
 };

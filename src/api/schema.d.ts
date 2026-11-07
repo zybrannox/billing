@@ -399,6 +399,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/customer-payments/{payment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Payment */
+        delete: operations["delete_payment_customer_payments__payment_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/customer-payments/{payment_id}/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Apply Credit */
+        post: operations["apply_credit_customer_payments__payment_id__apply_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/customers/": {
         parameters: {
             query?: never;
@@ -431,6 +465,41 @@ export interface paths {
         post?: never;
         /** Delete Customer */
         delete: operations["delete_customer_customers__customer_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/customers/{customer_id}/open-invoices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Open Invoices */
+        get: operations["list_open_invoices_customers__customer_id__open_invoices_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/customers/{customer_id}/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Customer Payments */
+        get: operations["list_customer_payments_customers__customer_id__payments_get"];
+        put?: never;
+        /** Receive Payment */
+        post: operations["receive_payment_customers__customer_id__payments_post"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1908,6 +1977,30 @@ export interface components {
             /** Token */
             token: string;
         };
+        /**
+         * Allocation
+         * @description How much of a payment goes to one invoice.
+         */
+        Allocation: {
+            /** Amount */
+            amount: number;
+            /** Invoice Id */
+            invoice_id: number;
+        };
+        /** AppliedTo */
+        AppliedTo: {
+            /** Amount */
+            amount: number;
+            /** Invoice Id */
+            invoice_id: number;
+            /** Invoice Number */
+            invoice_number: string | null;
+        };
+        /** ApplyCredit */
+        ApplyCredit: {
+            /** Allocations */
+            allocations: components["schemas"]["Allocation"][];
+        };
         /** AttachFileEntry */
         AttachFileEntry: {
             /** Height */
@@ -2298,11 +2391,69 @@ export interface components {
             /** Total Pages */
             total_pages: number;
         };
+        /** CustomerPaymentCreate */
+        CustomerPaymentCreate: {
+            /**
+             * Allocations
+             * @default []
+             */
+            allocations: components["schemas"]["Allocation"][];
+            /** Amount */
+            amount: number;
+            /** Note */
+            note?: string | null;
+            /**
+             * Payment Method
+             * @enum {string}
+             */
+            payment_method: "Cash" | "UPI" | "Bank Transfer" | "Card" | "Cheque" | "Other";
+            /** Payment Reference */
+            payment_reference?: string | null;
+            /** Received At */
+            received_at?: string | null;
+        };
+        /** CustomerPaymentList */
+        CustomerPaymentList: {
+            /** Credit */
+            credit: number;
+            /** Items */
+            items: components["schemas"]["CustomerPaymentRead"][];
+        };
+        /** CustomerPaymentRead */
+        CustomerPaymentRead: {
+            /** Amount */
+            amount: number;
+            /** Applied To */
+            applied_to: components["schemas"]["AppliedTo"][];
+            /** Created At */
+            created_at: string;
+            /** Customer Id */
+            customer_id: number;
+            /** Id */
+            id: number;
+            /** Note */
+            note: string | null;
+            /** Payment Method */
+            payment_method: string;
+            /** Payment Reference */
+            payment_reference: string | null;
+            /** Received At */
+            received_at: string;
+            /** Recorded By */
+            recorded_by: string | null;
+            /** Unused */
+            unused: number;
+        };
         /** CustomerProfile */
         CustomerProfile: {
             customer: components["schemas"]["CustomerRead"];
             /** Invoice Count */
             invoice_count: number;
+            /**
+             * Payment Count
+             * @default 0
+             */
+            payment_count: number;
             /** Projects */
             projects: components["schemas"]["ProjectRead"][];
             /** Quotation Count */
@@ -2332,6 +2483,8 @@ export interface components {
         };
         /** CustomerStatement */
         CustomerStatement: {
+            /** Credit */
+            credit: number;
             customer: components["schemas"]["app__invoices__model__CustomerSummary"];
             /** Date From */
             date_from: string | null;
@@ -2339,6 +2492,8 @@ export interface components {
             date_to: string | null;
             /** Generated At */
             generated_at: string;
+            /** Payments */
+            payments: components["schemas"]["StatementPayment"][];
             /** Rows */
             rows: components["schemas"]["StatementRow"][];
             /** Total Balance */
@@ -2354,6 +2509,11 @@ export interface components {
         CustomerStats: {
             /** Active Orders */
             active_orders: number;
+            /**
+             * Credit
+             * @default 0
+             */
+            credit: number;
             /** Outstanding Balance */
             outstanding_balance: number;
             /** Pending Invoices */
@@ -2798,6 +2958,8 @@ export interface components {
         InvoicePaymentRead: {
             /** Amount */
             amount: number;
+            /** Customer Payment Id */
+            customer_payment_id: number | null;
             /** Id */
             id: number;
             /** Paid At */
@@ -3211,6 +3373,26 @@ export interface components {
             is_done?: boolean | null;
             /** Text */
             text?: string | null;
+        };
+        /**
+         * OpenInvoice
+         * @description An unpaid invoice a payment can go to, oldest first.
+         */
+        OpenInvoice: {
+            /** Amount */
+            amount: number;
+            /** Balance Due */
+            balance_due: number;
+            /** Created At */
+            created_at: string;
+            /** Due Date */
+            due_date: string | null;
+            /** Id */
+            id: number;
+            /** Invoice Number */
+            invoice_number: string | null;
+            /** Job */
+            job: string | null;
         };
         /** OtherProcessRead */
         OtherProcessRead: {
@@ -3764,6 +3946,25 @@ export interface components {
             ms: number;
             /** Statement */
             statement: string;
+        };
+        /**
+         * StatementPayment
+         * @description Money received as one payment and split across invoices, shown once as
+         *     the customer remembers paying it.
+         */
+        StatementPayment: {
+            /** Amount */
+            amount: number;
+            /** Applied To */
+            applied_to: string[];
+            /** Date */
+            date: string;
+            /** Payment Method */
+            payment_method: string;
+            /** Payment Reference */
+            payment_reference: string | null;
+            /** Unused */
+            unused: number;
         };
         /** StatementRow */
         StatementRow: {
@@ -4825,6 +5026,76 @@ export interface operations {
             };
         };
     };
+    delete_payment_customer_payments__payment_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                payment_id: number;
+            };
+            cookie?: {
+                access_token?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    apply_credit_customer_payments__payment_id__apply_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                payment_id: number;
+            };
+            cookie?: {
+                access_token?: string;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApplyCredit"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerPaymentRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_customers_customers__get: {
         parameters: {
             query?: {
@@ -4987,6 +5258,109 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_open_invoices_customers__customer_id__open_invoices_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customer_id: number;
+            };
+            cookie?: {
+                access_token?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenInvoice"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_customer_payments_customers__customer_id__payments_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customer_id: number;
+            };
+            cookie?: {
+                access_token?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerPaymentList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    receive_payment_customers__customer_id__payments_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customer_id: number;
+            };
+            cookie?: {
+                access_token?: string;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomerPaymentCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerPaymentRead"];
                 };
             };
             /** @description Validation Error */

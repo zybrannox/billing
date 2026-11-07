@@ -9,6 +9,7 @@ import { resolveDocumentStyle } from "./documentTemplates";
 import { useDocumentSettings } from "./useDocumentSettingsStore";
 
 const COLS = "100px 128px minmax(0, 1fr) 88px 80px 92px";
+const PAY_COLS = "100px minmax(0, 1fr) 100px";
 
 // A customer's statement, in the same branding as their invoices (see
 // DocumentSheet.tsx): every bill in the period, what's paid, what's owed.
@@ -177,6 +178,43 @@ const StatementSheet = forwardRef<HTMLDivElement, { statement: CustomerStatement
             <Typography sx={{ mt: 1, fontSize: "0.78rem", color: s.muted, textAlign: "right" }}>
               Includes every unpaid bill, not just this period's.
             </Typography>
+          )}
+          {statement.credit > 0 && (
+            <Typography sx={{ mt: 1, fontSize: "0.85rem", fontWeight: 600, textAlign: "right" }}>
+              Credit available: {formatInr(statement.credit)} (paid in advance, not yet on a bill)
+            </Typography>
+          )}
+
+          {statement.payments.length > 0 && (
+            <Box className="invoice-row" sx={{ mt: s.sectionGap }}>
+              <Label s={s}>Payments received</Label>
+              <Box sx={{ mt: 1, border: `1px solid ${s.hairline}`, borderRadius: "8px" }}>
+                {statement.payments.map((p, i) => (
+                  <Box
+                    key={i}
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: PAY_COLS,
+                      gap: 1,
+                      alignItems: "baseline",
+                      px: 2,
+                      py: 1.1,
+                      borderTop: i ? `1px solid ${s.hairline}` : "none",
+                      fontSize: "0.85rem",
+                    }}
+                  >
+                    <span style={{ whiteSpace: "nowrap" }}>{formatDate(p.date)}</span>
+                    <span style={{ color: s.muted, overflowWrap: "anywhere" }}>
+                      {p.payment_method}
+                      {p.payment_reference ? ` · ${p.payment_reference}` : ""}
+                      {p.applied_to.length ? ` — for ${p.applied_to.join(", ")}` : ""}
+                      {p.unused > 0 ? ` (${formatInr(p.unused)} kept as credit)` : ""}
+                    </span>
+                    <span style={{ textAlign: "right", fontWeight: 700 }}>{formatAmount(p.amount)}</span>
+                  </Box>
+                ))}
+              </Box>
+            </Box>
           )}
 
           <Box className="invoice-row" sx={{ mt: s.sectionGap + 2, pt: 2.5, borderTop: `1px solid ${s.hairline}`, textAlign: "center" }}>

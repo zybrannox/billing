@@ -93,8 +93,9 @@ export default function PaymentHistory({ invoiceId }: { invoiceId: number }) {
               >
                 <Box sx={{ minWidth: 0 }}>
                   <Typography variant="body2" sx={{ fontWeight: 600, color: "var(--slate-800)" }}>
-                    {p.amount < 0 ? "Adjustment" : p.payment_method || "Payment"}
-                    {p.payment_reference ? ` · ${p.payment_reference}` : ""}
+                    {p.amount < 0 ? (p.customer_payment_id ? "Payment taken back" : "Adjustment") : p.payment_method || "Payment"}
+                    {p.payment_reference && p.amount >= 0 ? ` · ${p.payment_reference}` : ""}
+                    {p.customer_payment_id && p.amount >= 0 ? " · part of a customer payment" : ""}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
                     {formatDateTime(p.paid_at)}

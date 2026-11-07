@@ -103,6 +103,14 @@ Work through this top to bottom the first time you ship this version, and re-che
 - **Backend code only (no migration ran):** check out the previous commit and restart the backend.
 - **After a migration:** `./venv/bin/alembic downgrade -1` reverses the newest migration (each phase 4 migration is reversible), then check out the previous commit and restart. If data was damaged, restore the pre-deploy dump with `pg_restore --clean --no-owner --dbname <url> <dump>` (stop the backend first).
 
+## Locked out of an account
+
+If nobody can sign in, set a new password from the machine the database is on. It asks privately and also clears failed attempts:
+
+```bash
+cd billing_server && ./venv/bin/python scripts/reset_password.py you@example.com
+```
+
 ## Deploying changes
 
 **Frontend:** edit code, then rebuild — the running `serve` daemon picks it up automatically:

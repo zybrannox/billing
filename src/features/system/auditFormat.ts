@@ -24,6 +24,7 @@ const ENTITY_NAMES: Record<string, string> = {
   client_account: "Client login",
   share_link: "Share link",
   note: "Note",
+  customer_payment: "Customer payment",
 };
 
 const VERBS: Record<string, string> = { create: "added", update: "edited", delete: "deleted" };
@@ -31,6 +32,8 @@ const VERBS: Record<string, string> = { create: "added", update: "edited", delet
 // Actions that aren't simply "<thing> added/edited/deleted".
 const ACTION_LABELS: Record<string, string> = {
   "invoice.payment": "Payment recorded",
+  "customer.payment": "Payment received",
+  "customer.payment_apply": "Credit used",
   "invoice.mark_paid": "Marked paid",
   "invoice.cancel": "Invoice cancelled",
   "invoice.status": "Invoice status changed",

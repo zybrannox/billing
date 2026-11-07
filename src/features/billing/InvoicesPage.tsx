@@ -1,14 +1,9 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { Box, IconButton, Tooltip, useMediaQuery, useTheme } from "@mui/material";
-import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
-import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import { Box, useMediaQuery, useTheme } from "@mui/material";
 import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 import type { Invoice } from "../../api/types";
-import { useConfirmDialogStore } from "../../hooks/useconfirmDialogStore";
-import { useOnDialogClose } from "../../hooks/useOnDialogClose";
 import { useDialogStore } from "../../store/useDialogStore";
-import CrudActions from "../../ui/Actions";
 import Button from "../../ui/Button";
 import EmptyState from "../../ui/EmptyState";
 import ListPager from "../../ui/ListPager";
@@ -16,16 +11,14 @@ import ListState from "../../ui/ListState";
 import PageShell from "../../ui/PageShell";
 import Table from "../../ui/Table";
 import TableSearchBar from "../../ui/TableSearchBar";
-import { downloadInvoicePdf } from "./downloadDocument";
-import InvoiceView from "./InvoiceView";
 import InvoiceRows from "./invoicesPage/InvoiceRows";
 import { INVOICE_COLUMNS } from "./invoicesPage/invoiceColumns";
-import PaymentActions from "./invoicesPage/PaymentActions";
+import InvoiceSplitView from "./invoicesPage/InvoiceSplitView";
+import { useInvoiceRowActions } from "./invoicesPage/useInvoiceRowActions";
 import PaymentSummary from "./invoicesPage/PaymentSummary";
 import { VIEWS } from "./invoicesPage/invoiceViews";
 import ViewPicker from "./invoicesPage/ViewPicker";
-import { useInvalidateBilling, useInvoiceList, useInvoiceSummary, type InvoiceViewName } from "./queries";
-import { shareInvoiceToWhatsApp } from "./shareInvoiceToWhatsApp";
+import { useInvoiceList, useInvoiceSummary, type InvoiceViewName } from "./queries";
 import { surfaceSx } from "../../ui/surface";
 
 const PAGE_SIZE = 25;
@@ -44,9 +37,6 @@ export default function InvoicesPage() {
   const theme = useTheme();
   const isWide = useMediaQuery(theme.breakpoints.up("md"), { noSsr: true });
   const openDialog = useDialogStore((s) => s.openDialog);
-  const dialogInvoiceOpen = useDialogStore((s) => s.isDialogOpen && s.editingType === "viewInvoice");
-  const { showDialog } = useConfirmDialogStore();
-  const invalidate = useInvalidateBilling();
 
   // Whatever a link or old bookmark says, only ask the server for what exists.
   const requestedView = params.get("view") ?? "all";
@@ -54,8 +44,6 @@ export default function InvoicesPage() {
   const search = params.get("q") ?? "";
   const page = Math.max(1, Math.trunc(Number(params.get("page"))) || 1);
   const [searchInput, setSearchInput] = useState(search);
-  const [reloadKey, setReloadKey] = useState(0);
-  const [busyId, setBusyId] = useState<number | null>(null);
 
   const selectedId = id ? Number(id) : null;
 
@@ -104,34 +92,10 @@ export default function InvoicesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pastTheEnd, lastPage]);
 
-  const changed = () => {
-    setReloadKey((k) => k + 1);
-    invalidate();
-  };
-
-  // Editing the open invoice happens in a dialog: show the result once it closes.
-  useOnDialogClose(() => setReloadKey((k) => k + 1));
-
   const openInvoice = (invoiceId: number) => navigate(`${base}/${invoiceId}${queryString}`);
   const closeInvoice = () => navigate(`${base}${queryString}`);
 
-  const download = async (invoiceId: number) => {
-    setBusyId(invoiceId);
-    try {
-      await downloadInvoicePdf(invoiceId);
-    } catch (err) {
-      console.error("Failed to download invoice", err);
-      showDialog({ title: "Couldn't download invoice", description: "Something went wrong preparing the PDF. Please try again.", confirmText: "OK" });
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  const share = (invoiceId: number) =>
-    shareInvoiceToWhatsApp(invoiceId).catch((err) => {
-      console.error("Failed to share invoice to WhatsApp", err);
-      showDialog({ title: "Couldn't share invoice", description: "Something went wrong preparing the WhatsApp share link. Please try again.", confirmText: "OK" });
-    });
+  const rowActions = useInvoiceRowActions();
 
   const newButton = (
     <Button size="small" onClick={() => openDialog("invoiceDesignComplete")}>+ New</Button>
@@ -191,18 +155,8 @@ export default function InvoicesPage() {
               paginationModel={{ page: page - 1, pageSize: PAGE_SIZE }}
               onPaginationModelChange={(model) => updateParams({ page: model.page > 0 ? String(model.page + 1) : null })}
               pageSizeOptions={[PAGE_SIZE]}
-              actionsWidth={110}
-              renderActions={(rowParams) => [
-                <CrudActions
-                  key="invoice"
-                  downloadDocument
-                  onDownloadDocument={() => download(Number(rowParams.id))}
-                  documentBusy={busyId === Number(rowParams.id)}
-                  shareInvoice
-                  onShareInvoice={() => share(Number(rowParams.id))}
-                  size="small"
-                />,
-              ]}
+              actionsWidth={150}
+              renderActions={rowActions}
             />
           )}
         </Box>
@@ -211,78 +165,30 @@ export default function InvoicesPage() {
   }
 
   return (
-    <Box
-      component="main"
-      sx={{
-        display: "flex",
-        minWidth: 0,
-        height: { xs: "auto", md: "calc(100vh - 64px)" },
-        bgcolor: "var(--white)",
-        borderTop: "1px solid var(--slate-200)",
-      }}
-    >
-      {/* The list, narrowed down the left. On a phone the invoice takes the screen. */}
-      <Box
-        component="aside"
-        aria-label="Invoices"
-        className="invoice-toolbar"
-        sx={{
-          display: { xs: "none", md: "flex" },
-          flexDirection: "column",
-          width: 340,
-          flexShrink: 0,
-          borderRight: "1px solid var(--slate-200)",
-        }}
-      >
-        <Box sx={{ p: 1.5, borderBottom: "1px solid var(--slate-100)" }}>
-          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, mb: 1, "& button:first-of-type": { fontSize: "var(--fs-2xl)" } }}>
-            <ViewPicker view={view} counts={counts} onChange={changeView} />
-            {newButton}
-          </Box>
-          <TableSearchBar value={searchInput} onChange={setSearchInput} placeholder="Number, customer, phone or job" sx={{ width: "100%", minWidth: 0 }} />
-        </Box>
-        <Box sx={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
-          {invoices.length === 0 ? (
-            list.isPending || list.isError ? (
-              <ListState loading={list.isPending} error={list.isError} empty={false} errorText="Couldn't load invoices." emptyText="" />
-            ) : (
-              <EmptyState title={emptyTitle} description={emptyDescription} />
-            )
-          ) : (
-            <InvoiceRows invoices={invoices} selectedId={selectedId} onOpen={openInvoice} />
-          )}
-        </Box>
-        <Box sx={{ display: "flex", justifyContent: "center", "&:not(:empty)": { borderTop: "1px solid var(--slate-100)", py: 0.5 } }}>
-          <ListPager page={page} pageSize={PAGE_SIZE} total={total} onPageChange={(next) => updateParams({ page: next > 1 ? String(next) : null })} />
-        </Box>
-      </Box>
-
-      {/* The open invoice. Hidden from printing while the same invoice is open in
-          a dialog on top of it, so only one copy prints. */}
-      <Box sx={{ flex: 1, minWidth: 0, overflowY: "auto", bgcolor: "var(--slate-50)", ...(dialogInvoiceOpen ? { "@media print": { display: "none" } } : {}) }}>
-        <Box className="invoice-toolbar" sx={{ display: "flex", alignItems: "center", gap: 0.5, px: 2, pt: 1.5 }}>
-          <Tooltip title="Back to all invoices">
-            <IconButton aria-label="Back to all invoices" onClick={closeInvoice} size="small" sx={{ display: { md: "none" } }}>
-              <ArrowBackRoundedIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Box sx={{ flex: 1 }} />
-          <Tooltip title="Close and show the full list">
-            <IconButton aria-label="Close invoice" onClick={closeInvoice} size="small" sx={{ display: { xs: "none", md: "inline-flex" } }}>
-              <CloseRoundedIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        </Box>
-        <Box sx={{ px: { xs: 1.5, md: 3 }, pb: 3 }}>
-          <InvoiceView
-            key={selectedId}
-            invoiceId={selectedId}
-            reloadKey={reloadKey}
-            onClose={closeInvoice}
-            renderActions={(invoice) => <PaymentActions invoice={invoice} onChanged={changed} />}
-          />
-        </Box>
-      </Box>
+    <Box component="main" sx={{ minWidth: 0, borderTop: "1px solid var(--slate-200)" }}>
+      <InvoiceSplitView
+        invoices={invoices}
+        selectedId={selectedId}
+        onOpen={openInvoice}
+        onClose={closeInvoice}
+        isPending={list.isPending}
+        isError={list.isError}
+        emptyTitle={emptyTitle}
+        emptyDescription={emptyDescription}
+        page={page}
+        pageSize={PAGE_SIZE}
+        total={total}
+        onPageChange={(next) => updateParams({ page: next > 1 ? String(next) : null })}
+        listHeader={
+          <>
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, mb: 1, "& button:first-of-type": { fontSize: "var(--fs-2xl)" } }}>
+              <ViewPicker view={view} counts={counts} onChange={changeView} />
+              {newButton}
+            </Box>
+            <TableSearchBar value={searchInput} onChange={setSearchInput} placeholder="Number, customer, phone or job" sx={{ width: "100%", minWidth: 0 }} />
+          </>
+        }
+      />
     </Box>
   );
 }
