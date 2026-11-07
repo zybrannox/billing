@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Box, ButtonBase, IconButton, InputBase, Typography } from "@mui/material";
+import CancelRoundedIcon from "@mui/icons-material/CancelRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
@@ -10,9 +11,9 @@ import { formatDateTime } from "../../format/date";
 import { getApiErrorMessage } from "../../utils/apiError";
 import Robot from "./Robot";
 import { RobotDock, RobotPanel } from "./RobotDock";
-import { isSendKey, solvedNotice } from "./issueFormat";
+import { isSendKey, issueNotice } from "./issueFormat";
 
-// A solved issue is meant to read as live without needing a websocket, same as
+// An answered issue is meant to read as live without needing a websocket, same as
 // the admin's notification bell.
 const POLL_INTERVAL_MS = 60_000;
 const MAX_LENGTH = 2000;
@@ -42,6 +43,14 @@ function Greeting({ children }: { children: ReactNode }) {
 }
 
 function IssueStatus({ issue }: { issue: MyIssues["items"][number] }) {
+  if (issue.is_cancelled) {
+    return (
+      <Typography sx={{ display: "inline-flex", alignItems: "center", gap: 0.5, fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--slate-500)" }}>
+        <CancelRoundedIcon sx={{ fontSize: 14 }} />
+        Cancelled{issue.cancelled_by && ` by ${issue.cancelled_by}`}
+      </Typography>
+    );
+  }
   if (issue.is_done) {
     return (
       <Typography sx={{ display: "inline-flex", alignItems: "center", gap: 0.5, fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--emerald-700)" }}>
@@ -79,7 +88,7 @@ function IssueMessage({ issue }: { issue: MyIssues["items"][number] }) {
       <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "flex-end", alignItems: "center", columnGap: 0.75 }}>
         <IssueStatus issue={issue} />
         <Typography sx={{ fontSize: "var(--fs-xs)", color: "var(--slate-400)" }}>
-          · {formatDateTime(issue.is_done ? issue.done_at : issue.created_at)}
+          · {formatDateTime(issue.done_at ?? issue.cancelled_at ?? issue.created_at)}
         </Typography>
       </Box>
     </Box>
@@ -87,7 +96,7 @@ function IssueMessage({ issue }: { issue: MyIssues["items"][number] }) {
 }
 
 // Zybran, the floating helper employees tell their problems to. It isn't an AI: what they
-// write goes to the admins (see AdminIssuesHelper.tsx), and it tells them once it's solved.
+// write goes to the admins (see AdminIssuesHelper.tsx), and it tells them once it's solved or cancelled.
 export default function IssueHelper() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -118,13 +127,13 @@ export default function IssueHelper() {
     if (open) endRef.current?.scrollIntoView({ block: "end" });
   }, [open, items.length]);
 
-  // Opening the panel is what shows them it's solved, so that's what clears the badge.
+  // Opening the panel is what shows them the answer, so that's what clears the badge.
   useEffect(() => {
     if (!open || unseenCount === 0) return;
     apiService
       .post("/issues/mine/seen")
       .then(() => queryClient.invalidateQueries({ queryKey: ["issues", "mine"] }))
-      .catch((err) => console.error("Couldn't mark solved issues as seen", err));
+      .catch((err) => console.error("Couldn't mark answered issues as seen", err));
   }, [open, unseenCount, queryClient]);
 
   const send = async () => {
@@ -254,8 +263,8 @@ export default function IssueHelper() {
               overflowWrap: "anywhere",
             }}
           >
-            <CheckCircleRoundedIcon sx={{ fontSize: 18, mt: 0.125, color: "var(--emerald-600)" }} />
-            {solvedNotice(items, unseenCount)}
+            <CheckCircleRoundedIcon sx={{ fontSize: 18, mt: 0.125, color: "var(--blue-600)" }} />
+            {issueNotice(items, unseenCount)}
           </ButtonBase>
           <IconButton size="small" aria-label="Dismiss" onClick={() => setNoticeDismissedAt(unseenCount)} sx={{ m: 0.5, color: "var(--slate-400)" }}>
             <CloseRoundedIcon sx={{ fontSize: 16 }} />

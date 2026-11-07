@@ -36,6 +36,7 @@ import QuotationSheet from "./QuotationSheet";
 import FitToView, { type FitToViewHandle } from "../documents/FitToView";
 import type { QuotationDetail } from "./quotationSheetUtils";
 import { generateInvoicePdf } from "../documents/generateInvoicePdf";
+import { printDocument } from "../documents/printDocument";
 import { shareToWhatsAppAfter } from "../documents/shareToWhatsApp";
 import AsyncSearchSelect from "../../ui/AsyncSearchSelect";
 import DateTimePicker from "../../ui/DateTimePicker";
@@ -402,7 +403,7 @@ export default function QuotationView({
               variant="contained"
               disableElevation
               startIcon={<PrintRoundedIcon />}
-              onClick={() => window.print()}
+              onClick={() => sheetRef.current && printDocument(sheetRef.current)}
               sx={{ bgcolor: "var(--slate-900)", color: "var(--white)", textTransform: "none", fontWeight: 600, borderRadius: 2, px: 2.5, "&:hover": { bgcolor: "var(--slate-800)" } }}
             >
               Print

@@ -48,6 +48,7 @@ const ACTION_LABELS: Record<string, string> = {
   "backup.run": "Backup taken",
   "issue.done": "Issue marked as done",
   "issue.reopen": "Issue reopened",
+  "issue.cancel": "Issue cancelled",
   "share_link.create": "Share link created",
   "share_link.delete": "Share link revoked",
 };

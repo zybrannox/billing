@@ -453,6 +453,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/customers/{customer_id}/statement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Customer Statement */
+        get: operations["get_customer_statement_customers__customer_id__statement_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/dashboard/notifications/deliveries": {
         parameters: {
             query?: never;
@@ -1001,23 +1018,6 @@ export interface paths {
         get: operations["get_invoice_payments_invoices__invoice_id__payments_get"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/invoices/{invoice_id}/print": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Print Invoice */
-        post: operations["print_invoice_invoices__invoice_id__print_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2057,11 +2057,6 @@ export interface components {
             /** File */
             file: string;
         };
-        /** Body_print_invoice_invoices__invoice_id__print_post */
-        Body_print_invoice_invoices__invoice_id__print_post: {
-            /** File */
-            file: string;
-        };
         /** Body_upload_chunk_files_upload_chunk_post */
         Body_upload_chunk_files_upload_chunk_post: {
             /** Chunk */
@@ -2334,6 +2329,26 @@ export interface components {
             outstanding_balance?: number | null;
             /** Payment Status */
             payment_status?: ("paid" | "pending" | "no_invoices") | null;
+        };
+        /** CustomerStatement */
+        CustomerStatement: {
+            customer: components["schemas"]["app__invoices__model__CustomerSummary"];
+            /** Date From */
+            date_from: string | null;
+            /** Date To */
+            date_to: string | null;
+            /** Generated At */
+            generated_at: string;
+            /** Rows */
+            rows: components["schemas"]["StatementRow"][];
+            /** Total Balance */
+            total_balance: number;
+            /** Total Billed */
+            total_billed: number;
+            /** Total Outstanding */
+            total_outstanding: number;
+            /** Total Paid */
+            total_paid: number;
         };
         /** CustomerStats */
         CustomerStats: {
@@ -2892,6 +2907,8 @@ export interface components {
         };
         /** IssueListResponse */
         IssueListResponse: {
+            /** Cancelled Count */
+            cancelled_count: number;
             /** Done Count */
             done_count: number;
             /** Items */
@@ -2903,6 +2920,10 @@ export interface components {
         };
         /** IssueRead */
         IssueRead: {
+            /** Cancelled At */
+            cancelled_at: string | null;
+            /** Cancelled By */
+            cancelled_by: string | null;
             /** Created At */
             created_at: string;
             /** Done At */
@@ -2911,6 +2932,8 @@ export interface components {
             done_by: string | null;
             /** Id */
             id: number;
+            /** Is Cancelled */
+            is_cancelled: boolean;
             /** Is Done */
             is_done: boolean;
             /** Reported By */
@@ -2920,8 +2943,11 @@ export interface components {
         };
         /** IssueUpdate */
         IssueUpdate: {
-            /** Is Done */
-            is_done: boolean;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "done" | "cancelled";
         };
         /** JobRequestCreate */
         JobRequestCreate: {
@@ -3097,6 +3123,10 @@ export interface components {
         };
         /** MyIssue */
         MyIssue: {
+            /** Cancelled At */
+            cancelled_at: string | null;
+            /** Cancelled By */
+            cancelled_by: string | null;
             /** Created At */
             created_at: string;
             /** Done At */
@@ -3105,6 +3135,8 @@ export interface components {
             done_by: string | null;
             /** Id */
             id: number;
+            /** Is Cancelled */
+            is_cancelled: boolean;
             /** Is Done */
             is_done: boolean;
             /** Reported By */
@@ -3732,6 +3764,30 @@ export interface components {
             ms: number;
             /** Statement */
             statement: string;
+        };
+        /** StatementRow */
+        StatementRow: {
+            /** Amount */
+            amount: number;
+            /** Balance */
+            balance: number;
+            /** Date */
+            date: string;
+            /** Due Date */
+            due_date: string | null;
+            /** Invoice Id */
+            invoice_id: number;
+            /** Invoice Number */
+            invoice_number: string | null;
+            /** Job */
+            job: string | null;
+            /** Paid */
+            paid: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "paid";
         };
         /** StatusCount */
         StatusCount: {
@@ -4977,6 +5033,42 @@ export interface operations {
             };
         };
     };
+    get_customer_statement_customers__customer_id__statement_get: {
+        parameters: {
+            query?: {
+                date_from?: string | null;
+                date_to?: string | null;
+            };
+            header?: never;
+            path: {
+                customer_id: number;
+            };
+            cookie?: {
+                access_token?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerStatement"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_delivery_notifications_dashboard_notifications_deliveries_get: {
         parameters: {
             query?: {
@@ -6202,43 +6294,6 @@ export interface operations {
             };
         };
     };
-    print_invoice_invoices__invoice_id__print_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                invoice_id: number;
-            };
-            cookie?: {
-                access_token?: string;
-            };
-        };
-        requestBody: {
-            content: {
-                "multipart/form-data": components["schemas"]["Body_print_invoice_invoices__invoice_id__print_post"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     record_invoice_payment_invoices__invoice_id__record_payment_patch: {
         parameters: {
             query?: never;
@@ -6351,7 +6406,7 @@ export interface operations {
             query?: {
                 page?: number;
                 page_size?: number;
-                status?: ("open" | "done") | null;
+                status?: ("open" | "done" | "cancelled") | null;
             };
             header?: never;
             path?: never;

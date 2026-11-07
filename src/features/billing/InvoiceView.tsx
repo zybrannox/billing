@@ -23,10 +23,10 @@ import FitScreenRoundedIcon from "@mui/icons-material/FitScreenRounded";
 import { saveAs } from "file-saver";
 
 import { apiService } from "../../api/service";
-import { getApiErrorMessage } from "../../utils/apiError";
 import { useDialogStore } from "../../store/useDialogStore";
 import { usePermission } from "../../hooks/usePermission";
 import { generateInvoicePdf } from "../documents/generateInvoicePdf";
+import { printDocument } from "../documents/printDocument";
 import { shareToWhatsAppAfter } from "../documents/shareToWhatsApp";
 import InvoiceSheet from "./InvoiceSheet";
 import FitToView, { type FitToViewHandle } from "../documents/FitToView";
@@ -75,9 +75,8 @@ export default function InvoiceView({
   // actual size.
   const fitRef = useRef<FitToViewHandle>(null);
   const [fit, setFit] = useState(true);
-  const [exporting, setExporting] = useState<"download" | "share" | "print" | null>(null);
+  const [exporting, setExporting] = useState<"download" | "share" | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
-  const [printedOn, setPrintedOn] = useState<string | null>(null);
   const [shareMenuAnchor, setShareMenuAnchor] = useState<HTMLElement | null>(null);
   // Feature-detected once, not on every render - a browser without the Web
   // Share API (most desktop browsers) shouldn't show a menu option that
@@ -104,29 +103,6 @@ export default function InvoiceView({
       return await (fitRef.current ? fitRef.current.runAtActualSize(capture) : capture());
     } finally {
       node.classList.remove("pdf-exporting");
-    }
-  };
-
-  // Straight to the printer connected to the server (see app/invoices/printing.py),
-  // since a web page can't skip the browser's print window. That window is still
-  // the fallback when the printer can't take it.
-  const handlePrint = async () => {
-    setExportError(null);
-    setPrintedOn(null);
-    setExporting("print");
-    try {
-      const file = await buildPdfFile();
-      if (!file || !invoice) return;
-      const form = new FormData();
-      form.append("file", file);
-      const { printer } = await apiService.post<{ printer: string }>(`/invoices/${invoice.id}/print`, form);
-      setPrintedOn(printer.replaceAll("_", " "));
-    } catch (err) {
-      console.error("Failed to print invoice", err);
-      setExportError(`${getApiErrorMessage(err, "Couldn't reach the printer.")} Opening the print window instead.`);
-      window.print();
-    } finally {
-      setExporting(null);
     }
   };
 
@@ -402,8 +378,7 @@ export default function InvoiceView({
             variant="contained"
             disableElevation
             startIcon={<PrintRoundedIcon />}
-            disabled={exporting !== null}
-            onClick={handlePrint}
+            onClick={() => sheetRef.current && printDocument(sheetRef.current)}
             sx={{
               bgcolor: "var(--slate-900)",
               color: "var(--white)",
@@ -414,17 +389,10 @@ export default function InvoiceView({
               "&:hover": { bgcolor: "var(--slate-800)" },
             }}
           >
-            {exporting === "print" ? "Printing..." : "Print"}
+            Print
           </Button>
         </Stack>
       </Box>
-      {printedOn && (
-        <Box sx={{ pb: 1 }}>
-          <Typography variant="caption" role="status" sx={{ color: "var(--green-700)", fontWeight: 600 }}>
-            Sent to {printedOn}.
-          </Typography>
-        </Box>
-      )}
       {exportError && (
         <Box sx={{ pb: 1 }}>
           <Typography variant="caption" sx={{ color: "var(--red-600)", fontWeight: 600 }}>

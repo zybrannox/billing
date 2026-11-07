@@ -29,7 +29,7 @@ export default function InvoiceModeToggle({ mode, onChange }: { mode: InvoiceMod
               "&:hover": { color: active ? "var(--white)" : "var(--slate-900)" },
             }}
           >
-            {m === "new" ? "New Job" : "Existing Project"}
+            {m === "new" ? "Create bill" : "Existing Project"}
           </Box>
         );
       })}

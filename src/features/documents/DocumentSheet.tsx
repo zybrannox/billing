@@ -22,7 +22,7 @@ import type { DocumentData } from "./documentTypes";
 const lines = (text: string | null | undefined) =>
   (text ?? "").split("\n").map((l) => l.trim()).filter(Boolean);
 
-function Label({ s, children }: { s: DocumentStyle; children: ReactNode }) {
+export function Label({ s, children }: { s: DocumentStyle; children: ReactNode }) {
   return (
     <Typography
       sx={{
@@ -38,7 +38,7 @@ function Label({ s, children }: { s: DocumentStyle; children: ReactNode }) {
   );
 }
 
-function Logo({ logoUrl, name, height }: { logoUrl: string | null; name: string; height: number }) {
+export function Logo({ logoUrl, name, height }: { logoUrl: string | null; name: string; height: number }) {
   if (logoUrl) {
     return (
       <Box

@@ -5,11 +5,12 @@ const preview = (text: string) => {
   return oneLine.length > PREVIEW_LENGTH ? `${oneLine.slice(0, PREVIEW_LENGTH).trimEnd()}...` : oneLine;
 };
 
-// What the robot says when an admin has solved something this person reported.
-export const solvedNotice = (items: { text: string; unseen: boolean }[], unseenCount: number) => {
-  if (unseenCount > 1) return `${unseenCount} of your issues have been solved.`;
-  const solved = items.find((item) => item.unseen);
-  return solved ? `Your issue was solved: "${preview(solved.text)}"` : "Your issue was solved.";
+// What the robot says when an admin has answered something this person reported.
+export const issueNotice = (items: { text: string; unseen: boolean; is_cancelled: boolean }[], unseenCount: number) => {
+  if (unseenCount > 1) return `${unseenCount} of your issues have been answered.`;
+  const answered = items.find((item) => item.unseen);
+  if (!answered) return "Your issue has been answered.";
+  return `Your issue was ${answered.is_cancelled ? "cancelled" : "solved"}: "${preview(answered.text)}"`;
 };
 
 // Enter sends and Shift+Enter starts a new line, except while an input method

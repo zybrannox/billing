@@ -13,6 +13,8 @@ import CustomerQuotationsList from "../billing/CustomerQuotationsList";
 import { useOnDialogClose } from "../../hooks/useOnDialogClose";
 import Table from "../../ui/Table";
 import Button from "../../ui/Button";
+import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
+import StatementDialog from "./statement/StatementDialog";
 import EmptyState from "../../ui/EmptyState";
 import PageShell from "../../ui/PageShell";
 import PageSpinner from "../../ui/PageSpinner";
@@ -98,6 +100,7 @@ export default function CustomerProfile() {
   const [data, setData] = useState<CustomerProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [statementOpen, setStatementOpen] = useState(false);
   const [tab, setTab] = useState<"invoices" | "orders" | "quotations">("invoices");
 
   const load = () => {
@@ -144,6 +147,11 @@ export default function CustomerProfile() {
 
       <ProfileHeader
         name={fullName}
+        actions={
+          <Button startIcon={<ReceiptLongRoundedIcon />} onClick={() => setStatementOpen(true)}>
+            Statement
+          </Button>
+        }
         phone={customer.contact_number}
         email={customer.email}
         metrics={[
@@ -158,6 +166,8 @@ export default function CustomerProfile() {
           },
         ]}
       />
+
+      <StatementDialog customerId={customer.id} customerName={fullName} open={statementOpen} onClose={() => setStatementOpen(false)} />
 
       <Box component="section" sx={{ ...surfaceSx, overflow: "hidden", minWidth: 0 }}>
         <Tabs

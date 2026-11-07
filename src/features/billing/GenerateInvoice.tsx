@@ -78,7 +78,7 @@ export default function GenerateInvoice() {
   //    (editingId set) - always an existing, already-tracked project.
   // 2. The header "Create Invoice" shortcut, "Existing Project" mode - pick
   //    an already-tracked project that just hasn't been invoiced yet.
-  // 3. The header shortcut's default, "New Job" mode - like Zoho Books'
+  // 3. The header shortcut's default, "Create bill" mode (New Job in the code) - like Zoho Books'
   //    New Invoice screen: just who it's billed to and what it's for
   //    (customer, job type) are entered right here, on the exact same page
   //    and the exact same Generate Invoice submit as the line items and
@@ -322,7 +322,7 @@ export default function GenerateInvoice() {
             </Typography>
             <Typography variant="caption" color="text.secondary">
               {isNewJob
-                ? "For name boards, signage, or any other job - a design file isn't required"
+                ? "Who it's for and what's billed. This won't add a project."
                 : (
                   <>Generating this invoice automatically updates the project design status to <strong>Completed</strong>.</>
                 )}

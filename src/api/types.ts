@@ -18,6 +18,7 @@ export type BackupStatus = Schemas["BackupStatusRead"];
 export type Issue = Schemas["IssueRead"];
 export type IssueList = Schemas["IssueListResponse"];
 export type MyIssues = Schemas["MyIssuesResponse"];
+export type CustomerStatement = Schemas["CustomerStatement"];
 
 export type Invoice = Schemas["InvoiceRead"];
 export type InvoiceDetail = Schemas["InvoiceDetailRead"];
