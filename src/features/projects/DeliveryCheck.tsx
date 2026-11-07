@@ -208,12 +208,11 @@ export default function DeliveryCheck() {
   // to - most invoices get settled by an actual payment, not a discount).
   const canCompletePayment = invoice.status === "pending";
   const canDeliver = invoice.status === "paid";
-  // Extending credit is a business-risk call on the same footing as the
-  // discount above (letting goods go out against money not yet in hand),
-  // so it's gated the same way: admin-only, and only while there's
-  // actually an unpaid balance to extend credit against - a cancelled
-  // invoice needs a new one generated first, same as normal delivery.
-  const canDeliverOnCredit = isAdmin && invoice.status === "pending";
+  // Any staff member can hand work over on credit, once they confirm the unpaid
+  // amount (see handleDeliverOnCredit). Only while there's an unpaid balance to
+  // extend credit against - a cancelled invoice needs a new one generated first,
+  // same as normal delivery.
+  const canDeliverOnCredit = invoice.status === "pending";
 
   return (
     <Box>
