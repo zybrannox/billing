@@ -16,6 +16,7 @@ export function useApiRequest() {
     onSuccess,
     onError,
     redirectTo,
+    notify,
   }: {
     endpoint: string;
     method?: "get" | "post" | "put" | "patch" | "delete";
@@ -24,6 +25,8 @@ export function useApiRequest() {
     // Pass it to getErrorMessage / getErrorDetail in utils/apiError.
     onError?: (err: unknown) => void;
     redirectTo?: string;
+    /** How the result is announced in the top-right corner (see api/client.ts). */
+    notify?: AxiosRequestConfig["notify"];
   }): Promise<T | undefined> => {
     setLoading(true);
     try {
@@ -47,10 +50,10 @@ export function useApiRequest() {
 
       const api = {
         get: () => apiService.get<T>(endpoint, payload as AxiosRequestConfig | undefined),
-        post: () => apiService.post<T>(endpoint, payload),
-        put: () => apiService.put<T>(endpoint, payload),
-        patch: () => apiService.patch<T>(endpoint, payload),
-        delete: () => apiService.delete<T>(endpoint),
+        post: () => apiService.post<T>(endpoint, payload, { notify }),
+        put: () => apiService.put<T>(endpoint, payload, { notify }),
+        patch: () => apiService.patch<T>(endpoint, payload, { notify }),
+        delete: () => apiService.delete<T>(endpoint, { notify }),
       }[method];
 
       if (!api) throw new Error(`Unsupported method: ${method}`);

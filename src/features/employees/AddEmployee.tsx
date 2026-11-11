@@ -22,6 +22,8 @@ export default function AddEmployee({ onSuccess }: AddEmployeeProps) {
     setErrorMessage(null);
     const result = await sendRequest({
       endpoint: API.users.list,
+      // The form shows a failure itself, next to the fields.
+      notify: "success",
       method: "post",
       data: formData,
       onError: (err) => {

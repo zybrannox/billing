@@ -18,17 +18,19 @@ export const apiService = {
     const res = await axiosClient.get(url, config);
     return res.data;
   },
-  post: async <T>(url: string, data?: unknown): Promise<T> => {
-    return (await axiosClient.post(url, data)).data;
+  post: async <T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> => {
+    return (await axiosClient.post(url, data, config)).data;
   },
   postWithProgress: async <T>(
     url: string,
     data: unknown,
     onProgress: (percent: number) => void,
     signal?: AbortSignal,
+    config?: AxiosRequestConfig,
   ): Promise<T> =>
     runGuardedTransfer(signal, async (guardedSignal, touch) => {
       const res = await axiosClient.post(url, data, {
+        ...config,
         timeout: 0,
         onUploadProgress: (event) => {
           touch();
@@ -83,13 +85,13 @@ export const apiService = {
       }
       return res.data;
     }),
-  put: async <T>(url: string, data?: unknown): Promise<T> => {
-    return (await axiosClient.put(url, data)).data;
+  put: async <T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> => {
+    return (await axiosClient.put(url, data, config)).data;
   },
-  patch: async <T>(url: string, data?: unknown): Promise<T> => {
-    return (await axiosClient.patch(url, data)).data;
+  patch: async <T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> => {
+    return (await axiosClient.patch(url, data, config)).data;
   },
-  delete: async <T>(url: string): Promise<T> => {
-    return (await axiosClient.delete(url)).data;
+  delete: async <T>(url: string, config?: AxiosRequestConfig): Promise<T> => {
+    return (await axiosClient.delete(url, config)).data;
   },
 };

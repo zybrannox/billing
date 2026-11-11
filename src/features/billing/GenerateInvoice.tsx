@@ -1,3 +1,4 @@
+import { notify } from "../../store/useNoticeStore";
 import { useEffect, useMemo, useState } from "react";
 import {
   Box,
@@ -233,9 +234,9 @@ export default function GenerateInvoice() {
               "Invoice generated, but marking design completed failed twice",
               err,
             );
-            alert(
-              `Invoice ${invoice.id} was created, but this project couldn't be marked "design completed" automatically. Mark it manually from Projects - Generate Invoice will otherwise refuse a second one for this order.`,
-            );
+            notify.warning("Invoice created, but the project wasn't updated", {
+              message: `Mark this project "design completed" yourself from Projects. Until then, Generate Invoice will refuse a second invoice for this order.`,
+            });
           }
         }
       }

@@ -73,7 +73,7 @@ function RecordPaymentForm({
         amount: value,
         payment_method: method,
         payment_reference: reference.trim() || undefined,
-      });
+      }, { notify: "success" });
       onRecorded();
       onClose();
     } catch (err) {

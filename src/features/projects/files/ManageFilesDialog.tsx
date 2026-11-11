@@ -1,3 +1,4 @@
+import { notify } from "../../../store/useNoticeStore";
 import { useState } from "react";
 import { Box, Checkbox, Stack, Typography } from "@mui/material";
 import { apiService } from "../../../api/service";
@@ -59,6 +60,7 @@ export default function ManageFilesDialog({
         setRemovingPath(path);
         try {
           await apiService.delete(`/files/${encodeURIComponent(path)}`);
+          notify.success("File moved to the Bin", { message: name });
           await refreshProject(selectedProject.id);
         } finally {
           setRemovingPath(null);

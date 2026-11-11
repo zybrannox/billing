@@ -13,6 +13,10 @@ import {
   ListItemText,
 } from "@mui/material";
 import PrintRoundedIcon from "@mui/icons-material/PrintRounded";
+import { useAppStore } from "../../store/useAppStore";
+import ReceiptRoundedIcon from "@mui/icons-material/ReceiptRounded";
+import { printInvoiceReceipt } from "../documents/receipt/sendReceipt";
+import { useDocumentSettings } from "../documents/useDocumentSettingsStore";
 import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 import FileDownloadRoundedIcon from "@mui/icons-material/FileDownloadRounded";
 import ShareRoundedIcon from "@mui/icons-material/ShareRounded";
@@ -78,6 +82,9 @@ export default function InvoiceView({
   const [exporting, setExporting] = useState<"download" | "share" | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
   const [shareMenuAnchor, setShareMenuAnchor] = useState<HTMLElement | null>(null);
+  // Receipt printing is set up per counter and kept to admins.
+  const isAdmin = useAppStore((s) => s.user?.role === "admin");
+  const { settings: documentSettings } = useDocumentSettings();
   // Feature-detected once, not on every render - a browser without the Web
   // Share API (most desktop browsers) shouldn't show a menu option that
   // can only ever fail when clicked. WhatsApp itself is always offered
@@ -373,6 +380,19 @@ export default function InvoiceView({
               </MenuItem>
             )}
           </Menu>
+
+          {isAdmin && (
+            <Tooltip title="Print on the receipt printer (set up in System setup → Receipt printer)">
+              <Button
+                variant="outlined"
+                startIcon={<ReceiptRoundedIcon />}
+                onClick={() => printInvoiceReceipt(invoice, documentSettings)}
+                sx={{ textTransform: "none", fontWeight: 600, borderRadius: 2, color: "var(--slate-700)", borderColor: "var(--slate-300)" }}
+              >
+                Receipt
+              </Button>
+            </Tooltip>
+          )}
 
           <Button
             variant="contained"

@@ -21,6 +21,8 @@ export default function AddCustomer({ onSuccess }: AddCustomerProps) {
     setErrorMessage(null);
     const result = await sendRequest({
       endpoint: "/customers/",
+      // The form shows a failure itself, next to the fields.
+      notify: "success",
       method: "post",
       data: { ...formData, email: formData.email || undefined },
       onError: (err) => {

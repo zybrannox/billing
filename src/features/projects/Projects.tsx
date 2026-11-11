@@ -1,3 +1,4 @@
+import { useOnDialogClose } from "../../hooks/useOnDialogClose";
 import { useMemo } from "react";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import PlaceRoundedIcon from "@mui/icons-material/PlaceRounded";
@@ -67,6 +68,8 @@ const Projects = ({
     loadProjects,
   } = useProjectList({ filterOngoing, order });
   const actions = useProjectListActions(loadProjects);
+  // Adding or editing a project happens in a dialog: show the result here once it closes.
+  useOnDialogClose(loadProjects);
 
   const columns = useMemo(() => buildProjectColumns(isAdmin), [isAdmin]);
 

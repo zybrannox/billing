@@ -1,3 +1,4 @@
+import { notify } from "../../store/useNoticeStore";
 import React from "react";
 import { getTransferErrorMessage } from "../../utils/apiError";
 import { getImageDimensions } from "../../utils/appSupport";
@@ -138,6 +139,10 @@ export function useUploadQueue({
               return res.files[0];
             })();
 
+      notify.success("File uploaded", {
+        group: "files-uploaded",
+        groupTitle: (n) => (n === 1 ? "File uploaded" : `${n} files uploaded`),
+      });
       patchItem(item.id, {
         status: "done",
         progress: 100,
@@ -152,9 +157,11 @@ export function useUploadQueue({
       const wasCancelled = code === "ERR_CANCELED" || name === "CanceledError";
       if (wasCancelled) return;
 
+      const reason = getTransferErrorMessage(err, "upload");
+      notify.error(`Couldn't upload ${item.name}`, { message: `${reason} Use Retry next to the file.` });
       patchItem(item.id, {
         status: "error",
-        errorMessage: getTransferErrorMessage(err, "upload"),
+        errorMessage: reason,
       });
     } finally {
       delete controllersRef.current[item.id];

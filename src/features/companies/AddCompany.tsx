@@ -21,6 +21,8 @@ export default function AddCompany({ onSuccess }: AddCompanyProps) {
     setErrorMessage(null);
     const result = await sendRequest({
       endpoint: "/companies/",
+      // The form shows a failure itself, next to the fields.
+      notify: "success",
       method: "post",
       data: {
         ...formData,

@@ -1,3 +1,4 @@
+import { notify } from "../../../store/useNoticeStore";
 import { useState } from "react";
 import { apiService } from "../../../api/service";
 import { useDownloadProgressStore } from "../../../store/useDownloadProgressStore";
@@ -157,6 +158,10 @@ export function useProjectFileTransfers(files: ProjectFile[]) {
 
     setUploadProgress(null);
     if (failures.length > 0) setUploadError(failures.join(" "));
+    const uploaded = selected.length - failures.length;
+    if (uploaded > 0) notify.success(uploaded === 1 ? "File uploaded" : `${uploaded} files uploaded`);
+    if (failures.length > 0)
+      notify.error(failures.length === 1 ? "A file didn't upload" : `${failures.length} files didn't upload`, { message: failures.join(" ") });
     // Whatever did succeed should show up even if something else failed.
     await refreshProject(selectedProject.id).catch((err) => console.error("Could not refresh the project:", err));
   };

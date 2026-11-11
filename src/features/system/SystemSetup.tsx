@@ -6,6 +6,7 @@ import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
 import ListAltRoundedIcon from "@mui/icons-material/ListAltRounded";
 import MonitorHeartRoundedIcon from "@mui/icons-material/MonitorHeartRounded";
 import PaletteRoundedIcon from "@mui/icons-material/PaletteRounded";
+import ReceiptRoundedIcon from "@mui/icons-material/ReceiptRounded";
 import { apiService } from "../../api/service";
 import { usePermission } from "../../hooks/usePermission";
 import { useAppStore } from "../../store/useAppStore";
@@ -16,9 +17,10 @@ import BackupsPanel from "./BackupsPanel";
 import BinPanel from "./BinPanel";
 import DocumentDesignSettings from "./DocumentDesignSettings";
 import DropdownOptionsPanel from "./DropdownOptionsPanel";
+import ReceiptPrinterPanel from "./ReceiptPrinterPanel";
 import SystemHealthPanel from "./SystemHealthPanel";
 
-type Section = "options" | "design" | "bin" | "audit" | "health" | "backups";
+type Section = "options" | "design" | "printer" | "bin" | "audit" | "health" | "backups";
 
 const WORKSPACE = "Workspace";
 const ADMINISTRATION = "Administration";
@@ -26,6 +28,7 @@ const ADMINISTRATION = "Administration";
 const SECTIONS: SettingsNavItem<Section>[] = [
   { value: "options", group: WORKSPACE, label: "Dropdown options", description: "Project types and billable items", icon: <ListAltRoundedIcon /> },
   { value: "design", group: WORKSPACE, label: "Invoice design", description: "Logo, colours, layout and wording", icon: <PaletteRoundedIcon /> },
+  { value: "printer", group: ADMINISTRATION, label: "Receipt printer", description: "58 / 80 mm bills on this device", icon: <ReceiptRoundedIcon /> },
   { value: "backups", group: ADMINISTRATION, label: "Backups", description: "Is your data safely copied?", icon: <BackupRoundedIcon /> },
   { value: "bin", group: ADMINISTRATION, label: "Bin", description: "Restore what was deleted", icon: <DeleteOutlineRoundedIcon /> },
   { value: "audit", group: ADMINISTRATION, label: "All activity", description: "Who changed what, and when", icon: <HistoryRoundedIcon /> },
@@ -66,6 +69,8 @@ export default function SystemSetup() {
         <DropdownOptionsPanel />
       ) : section === "design" ? (
         <DocumentDesignSettings />
+      ) : section === "printer" ? (
+        <ReceiptPrinterPanel />
       ) : section === "backups" ? (
         <BackupsPanel />
       ) : section === "bin" ? (

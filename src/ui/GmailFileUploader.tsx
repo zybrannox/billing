@@ -1,3 +1,4 @@
+import { notify } from "../store/useNoticeStore";
 import React, { useState } from "react";
 import { Box, Paper, Typography } from "@mui/material";
 import { FolderZipOutlined, UploadFile } from "@mui/icons-material";
@@ -64,7 +65,9 @@ const GmailFileUploader = ({
 
     const oversized = selected.filter((file) => file.size > maxFileSize);
     if (oversized.length > 0) {
-      alert(`The following files exceed the ${formatFileSize(maxFileSize)} limit:\n${oversized.map((f) => f.name).join("\n")}`);
+      notify.error(`${oversized.length === 1 ? "File is" : `${oversized.length} files are`} too large`, {
+        message: `The limit is ${formatFileSize(maxFileSize)}: ${oversized.map((f) => f.name).join(", ")}. Nothing was uploaded for ${oversized.length === 1 ? "it" : "them"}.`,
+      });
       return;
     }
 

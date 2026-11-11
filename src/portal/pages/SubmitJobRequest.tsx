@@ -1,3 +1,4 @@
+import { notify } from "../../store/useNoticeStore";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import CustomForm, { type FieldDefinition } from "../../ui/CustomForm";
@@ -62,11 +63,11 @@ export default function SubmitJobRequest() {
 
     const items: UploadItem[] = formData.files || [];
     if (items.some((item) => item.status === "uploading")) {
-      alert(messages.errors.uploadsPending);
+      notify.warning(messages.errors.uploadsPending);
       return;
     }
     if (items.some((item) => item.status === "error")) {
-      alert(messages.errors.uploadsFailed);
+      notify.error(messages.errors.uploadsFailed);
       return;
     }
 

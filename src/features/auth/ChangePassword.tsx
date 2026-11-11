@@ -1,5 +1,4 @@
 import type { FieldValues } from "react-hook-form";
-import { getErrorMessage } from "../../utils/apiError";
 import CustomForm from "../../ui/CustomForm";
 import { changePasswordFields } from "./fields";
 import { useApiRequest } from "../../hooks/useApiRequest";
@@ -20,9 +19,6 @@ export default function ChangePassword({ userId, onSuccess }: ChangePasswordProp
       endpoint: API.users.password(String(userId)),
       method: "patch",
       data: formData,
-      onError: (err) => {
-        alert(getErrorMessage(err, "Failed to change password"));
-      },
     });
 
     if (result) {

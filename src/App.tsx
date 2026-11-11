@@ -15,6 +15,7 @@ import { API } from "./api/endpoints";
 import ProtectedRoute from "./features/auth/ProtectedRoute";
 import ClientProtectedRoute from "./features/auth/ClientProtectedRoute";
 import RequirePermission from "./features/auth/RequirePermission";
+import NoticeStack from "./ui/NoticeStack";
 import ErrorBoundary from "./ui/ErrorBoundary";
 import PageSpinner from "./ui/PageSpinner";
 
@@ -158,6 +159,7 @@ function App() {
   return (
     <>
       <Router>
+        <NoticeStack />
         <ErrorBoundary>
           <Suspense fallback={<PageSpinner fill />}>
           <Routes>

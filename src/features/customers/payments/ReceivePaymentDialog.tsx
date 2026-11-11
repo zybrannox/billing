@@ -114,7 +114,7 @@ function PaymentForm({
     try {
       const allocations = toAllocations(invoices, shares);
       if (credit) {
-        await apiService.post(`/customer-payments/${credit.id}/apply`, { allocations });
+        await apiService.post(`/customer-payments/${credit.id}/apply`, { allocations }, { notify: "success" });
       } else {
         await apiService.post(`/customers/${customerId}/payments`, {
           amount,
@@ -125,7 +125,7 @@ function PaymentForm({
           // timezone can push it onto the day before).
           received_at: date === today() ? undefined : new Date(`${date}T12:00:00`).toISOString(),
           allocations,
-        });
+        }, { notify: "success" });
       }
       await Promise.all([
         client.invalidateQueries({ queryKey: paymentKeys.list(customerId) }),

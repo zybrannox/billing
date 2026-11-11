@@ -1,4 +1,3 @@
-import { getErrorMessage } from "../../utils/apiError";
 import type { z } from "zod";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { addProjectFields } from "./fields";
@@ -12,6 +11,8 @@ import CustomForm from "../../ui/CustomForm";
 import type { UploadItem } from "../../ui/GmailFileUploader";
 import { addProjectSchema } from "./addProject.schema";
 import { messages } from "../../messages";
+import { notify } from "../../store/useNoticeStore";
+import { projectLink } from "../../api/actionNotices";
 
 export default function AddProject() {
   const { sendRequest, loading } = useApiRequest();
@@ -43,7 +44,8 @@ export default function AddProject() {
       imagesRef.current
         .filter((item) => item.status === "done" && item.path)
         .forEach((item) => {
-          apiService.delete(`/files/${encodeURIComponent(item.path!)}`).catch(() => {});
+          // Quiet: tidying up files picked for a project that was never added.
+          apiService.delete(`/files/${encodeURIComponent(item.path!)}`, { notify: false }).catch(() => {});
         });
     };
   }, []);
@@ -87,13 +89,13 @@ export default function AddProject() {
     // the time the form submits they should already be "done". Block submit
     // if any are still in flight rather than silently dropping them.
     if (items.some((item) => item.status === "uploading")) {
-      alert(messages.errors.uploadsPending);
+      notify.warning(messages.errors.uploadsPending);
       return;
     }
     // A failed file used to be dropped without a word, leaving a project that
     // looked fine but was missing its artwork.
     if (items.some((item) => item.status === "error")) {
-      alert(messages.errors.uploadsFailed);
+      notify.error(messages.errors.uploadsFailed);
       return;
     }
 
@@ -122,7 +124,9 @@ export default function AddProject() {
         endpoint: "/projects/",
         method: "post",
         data: projectPayload,
-        onError: (err) => alert(getErrorMessage(err, "Couldn't create the project. Please try again.")),
+        // A failure is announced with its reason; success is said once, below,
+        // together with the files.
+        notify: "errors",
       });
 
       // Keep the form and what was typed, rather than closing as if it worked.
@@ -140,17 +144,26 @@ export default function AddProject() {
           endpoint: `/files/attach/${project.id}`,
           method: "post",
           data: { files: attachedFiles },
+          notify: false,
         });
 
         if (!attachResult) {
-          alert(
-            "Project was created, but attaching the uploaded files failed. Please edit the project and re-add them.",
-          );
+          notify.error("Project added, but its files weren't attached", {
+            message: "Open the project's files and add them again.",
+            action: { label: "Show project", to: projectLink(project.id) },
+          });
+          closeDialog();
+          return;
         }
       }
 
+      const files = attachedFiles.length;
+      notify.success("Project added", {
+        message: files ? `With ${files} ${files === 1 ? "file" : "files"}.` : undefined,
+        action: { label: "Show project", to: projectLink(project.id) },
+      });
+      // The projects list refreshes itself when this dialog closes (Projects.tsx).
       closeDialog();
-      window.location.reload(); // Refresh to show new project
     } catch (error) {
       console.error("Error creating project:", error);
       // Error is already handled by useApiRequest hook

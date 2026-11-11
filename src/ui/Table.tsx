@@ -1,3 +1,5 @@
+import { isAxiosError } from "axios";
+import { notify } from "../store/useNoticeStore";
 import {
   DataGrid,
   type GridColDef,
@@ -257,10 +259,8 @@ const gridSx = React.useMemo(
     // The row already reverts itself (MUI's own behavior when
     // processRowUpdate rejects) - this just tells the user *why*, e.g. the
     // backend rejecting an invalid print-status transition.
-    const message =
-      (error as { response?: { data?: { detail?: string } } })?.response
-        ?.data?.detail;
-    if (message) alert(message);
+    // A failed save is already announced by the API client (api/client.ts).
+    if (!isAxiosError(error)) notify.error("Couldn't save the change", { message: error instanceof Error ? error.message : undefined });
   }, []);
 
   const handleRowClick = React.useCallback<GridEventListener<"rowClick">>(
